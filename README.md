@@ -1,5 +1,9 @@
 # Open in AI Agent for Gmail (Claude Code & Codex)
 
+**[Website](https://thomasoclegg.github.io/gmail-to-agent/) · [Download v1.0.0](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-v1.0.0.zip) · [Privacy](PRIVACY.md)**
+
+![Gmail's right-click menu with Open in Claude Code and Open in Codex](docs/shot-menu.png)
+
 Right-click a Gmail thread and pick **Open in Claude Code** or **Open in Codex (GPT)**. A new agent session opens on your computer with a short prompt naming the mailbox, thread ID and Gmail link. The agent then reads the thread with its own Gmail connection.
 
 - Claude Code pre-fills a new session; press Enter to start it.

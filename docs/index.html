@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open in AI Agent for Gmail</title>
+<meta name="description" content="Free Chrome extension: right-click a Gmail thread to open it in a Claude Code or Codex session. Runs locally, open source.">
+<meta property="og:title" content="Open in AI Agent for Gmail">
+<meta property="og:description" content="Right-click a Gmail thread to open it in Claude Code or Codex. Free, local, open source.">
+<meta property="og:image" content="https://thomasoclegg.github.io/gmail-to-agent/shot-menu.png">
+<link rel="icon" href="icon.png">
+<style>
+  :root { --bg: #f6f8f6; --card: #ffffff; --fg: #1a211d; --muted: #58635d; --line: #dde4df;
+          --accent: #1f5135; --accent-fg: #fff; --tint: #e7f1ea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #131715; --card: #1c211e; --fg: #e9eeea; --muted: #a2ada6; --line: #2f3632;
+            --accent: #8fd3a4; --accent-fg: #0f2418; --tint: #1f2a23; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header.hero { padding: 64px 0 40px; text-align: center; }
+  .hero img.logo { width: 72px; height: 72px; }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.12; margin: 18px 0 14px; letter-spacing: -0.01em; }
+  .lede { font-size: 19px; color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+  .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 12px 22px; border-radius: 10px; font-weight: 600; text-decoration: none; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); }
+  .btn.ghost { border: 1px solid var(--line); color: var(--fg); background: var(--card); }
+  .note { font-size: 14px; color: var(--muted); margin-top: 14px; }
+  .shot { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line);
+          box-shadow: 0 12px 40px rgba(0,0,0,.12); background: var(--card); }
+  section { padding: 72px 0 8px; }
+  .hero h1 br { display: none; } @media (min-width: 700px) { .hero h1 br { display: inline; } }
+  h2 { font-size: 26px; margin: 0 0 22px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 16px; }
+  .step { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+          background: var(--tint); color: var(--accent); font-weight: 700; margin-bottom: 10px; }
+  ol.install { padding-left: 22px; } ol.install li { margin: 8px 0; }
+  code { background: var(--tint); padding: 2px 6px; border-radius: 5px; font-size: 0.92em; }
+  footer { padding: 48px 0 56px; color: var(--muted); font-size: 14px; text-align: center; }
+</style>
+</head>
+<body>
+<header class="hero wrap">
+  <img class="logo" src="icon.png" alt="">
+  <h1>Hand any Gmail thread<br>to your AI agent.</h1>
+  <p class="lede">Right-click a thread, pick Claude Code or Codex, and a new session opens on your computer, pointed at that exact conversation.</p>
+  <div class="ctas">
+    <a class="btn primary" href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-v1.0.0.zip">Download free (v1.0.0)</a>
+    <a class="btn ghost" href="https://github.com/thomasoclegg/gmail-to-agent">View source on GitHub</a>
+  </div>
+  <p class="note">Chrome Web Store listing coming soon. Free and open source (MIT).</p>
+</header>
+
+<div class="wrap"><img class="shot" src="shot-menu.png" alt="Gmail's right-click menu with Open in Claude Code and Open in Codex (GPT) at the top"></div>
+
+<section class="wrap">
+  <h2>How it works</h2>
+  <div class="grid">
+    <div class="card"><div class="step">1</div><h3>Right-click</h3><p>Two items appear at the top of Gmail's menu, and in Chrome's menu inside an open thread.</p></div>
+    <div class="card"><div class="step">2</div><h3>Session opens</h3><p>Claude Code pre-fills a new session for you to start. Codex starts straight away.</p></div>
+    <div class="card"><div class="step">3</div><h3>Agent reads the thread</h3><p>It fetches the conversation through its own Gmail connection, sums up where things stand and drafts a reply.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Safe by default</h2>
+  <div class="grid">
+    <div class="card"><h3>Nothing leaves your machine</h3><p>No server, no analytics, no tracking. It reads only the mailbox address and thread ID.</p></div>
+    <div class="card"><h3>Drafts, not sends</h3><p>The prompt tells the agent to draft replies and send nothing without your approval.</p></div>
+    <div class="card"><h3>No injected instructions</h3><p>The sender-written subject never goes into the prompt, so a sender can't slip in commands.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>What the agent receives</h2>
+  <img class="shot" src="shot-prompt.png" alt="The prompt: mailbox, thread ID, Gmail link and a draft-only instruction">
+</section>
+
+<section class="wrap">
+  <h2>Install in two minutes</h2>
+  <div class="card">
+    <ol class="install">
+      <li><a href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-v1.0.0.zip">Download the zip</a> and unzip it somewhere it will stay.</li>
+      <li>Open <code>chrome://extensions</code>, switch on <strong>Developer mode</strong>, click <strong>Load unpacked</strong> and pick the folder.</li>
+      <li>Paste the folder you want sessions to open in, then <strong>Save</strong>.</li>
+      <li>Reload Gmail and right-click a thread. The first time, tick <strong>Always allow</strong>.</li>
+    </ol>
+    <p class="note" style="text-align:left">You need the Claude desktop app and/or OpenAI's ChatGPT desktop app with Codex, with Gmail connected for the same mailbox. Tested on macOS.</p>
+  </div>
+</section>
+
+<footer class="wrap">
+  Made by Thomas Clegg. <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md">Privacy</a> ·
+  <a href="https://github.com/thomasoclegg/gmail-to-agent/issues">Report a problem</a><br>
+  Not affiliated with or endorsed by Google, Anthropic or OpenAI. Gmail, Claude and Codex are trademarks of their owners.
+</footer>
+</body>
+</html>

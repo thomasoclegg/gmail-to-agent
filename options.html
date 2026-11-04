@@ -2,21 +2,47 @@
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
 <style>
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 16px; min-width: 420px; color: #202124; }
-  label { display: block; font-weight: 600; margin-bottom: 4px; }
-  input { width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit; }
-  p { color: #5f6368; margin: 6px 0 12px; }
-  button { padding: 6px 14px; font: inherit; }
-  #status { margin-left: 8px; color: #188038; }
+  :root { --bg: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dfe5e1; --field: #f5f8f6;
+          --accent: #1f5135; --accent-fg: #ffffff; --ok: #1e7a45; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1c201e; --fg: #e8ede9; --muted: #a3ada7; --line: #333a36; --field: #262b28;
+            --accent: #8fd3a4; --accent-fg: #10261a; --ok: #8fd3a4; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px 22px 22px; min-width: 460px; background: var(--bg); color: var(--fg);
+         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  header img { width: 36px; height: 36px; }
+  h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  input { width: 100%; padding: 9px 11px; font: 13px ui-monospace, Menlo, monospace; color: var(--fg);
+          background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 16px; }
+  .row { display: flex; align-items: center; gap: 12px; }
+  button { padding: 8px 18px; font: 600 13px inherit; font-family: inherit; color: var(--accent-fg);
+           background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+  #status { color: var(--ok); font-size: 13px; }
+  footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  footer a { color: inherit; }
 </style>
 </head>
 <body>
+  <header>
+    <img src="icons/icon48.png" alt="">
+    <div><h1>Open in AI Agent</h1><p>Right-click a Gmail thread to hand it to Claude Code or Codex.</p></div>
+  </header>
   <label for="folder">Working folder for new sessions</label>
-  <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false">
-  <p>Full path to the folder Claude Code and Codex should open in. Recommended. If left blank, Claude Code uses its default folder
-     and Codex may wait for you to pick a project instead of starting. On a Mac, drag the folder into Terminal to copy its path.</p>
-  <button id="save">Save</button><span id="status"></span>
+  <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off">
+  <p class="hint">Recommended. If left blank, Claude Code uses its default folder and Codex may wait for you to pick a project
+     instead of starting. On a Mac, drag the folder into Terminal to copy its path.</p>
+  <div class="row"><button id="save">Save</button><span id="status" role="status"></span></div>
+  <footer>Runs on your computer and sends nothing to any server.
+    <a href="https://github.com/thomasoclegg/gmail-to-agent" target="_blank">Help and source</a></footer>
   <script src="options.js"></script>
 </body>
 </html>
