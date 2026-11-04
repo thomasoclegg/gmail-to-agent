@@ -1,48 +1,163 @@
 <!doctype html>
-<html>
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
+<title>Open in AI Agent</title>
+<link rel="icon" href="icons/icon32.png">
 <style>
-  :root { --bg: #ffffff; --fg: #1d2420; --muted: #5d6862; --line: #dfe5e1; --field: #f5f8f6;
-          --accent: #1f5135; --accent-fg: #ffffff; --ok: #1e7a45; }
+  :root { --bg: #f6f8f6; --card: #ffffff; --fg: #1a211d; --muted: #58635d; --line: #dde4df; --field: #f8faf8;
+          --field-line: #828c86; --accent: #1f5135; --accent-fg: #ffffff; --tint: #e7f1ea; --focus: #1f5135;
+          --shadow: 0 1px 2px rgba(16, 32, 22, 0.05), 0 6px 20px rgba(16, 32, 22, 0.05); }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #1c201e; --fg: #e8ede9; --muted: #a3ada7; --line: #333a36; --field: #262b28;
-            --accent: #8fd3a4; --accent-fg: #10261a; --ok: #8fd3a4; }
+    :root { --bg: #131715; --card: #1c211e; --fg: #e9eeea; --muted: #a2ada6; --line: #333b36; --field: #161a18;
+            --field-line: #6b7670; --accent: #8fd3a4; --accent-fg: #0f2418; --tint: #1f2a23; --focus: #e9eeea;
+            --shadow: none; }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 20px 22px 22px; min-width: 460px; background: var(--bg); color: var(--fg);
-         font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
-  header img { width: 36px; height: 36px; }
-  h1 { font-size: 16px; margin: 0; }
-  header p { margin: 0; color: var(--muted); font-size: 13px; }
-  label { display: block; font-weight: 600; margin-bottom: 6px; }
-  input { width: 100%; padding: 9px 11px; font: 13px ui-monospace, Menlo, monospace; color: var(--fg);
-          background: var(--field); border: 1px solid var(--line); border-radius: 8px; }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 16px; }
-  .row { display: flex; align-items: center; gap: 12px; }
-  button { padding: 8px 18px; font: 600 13px inherit; font-family: inherit; color: var(--accent-fg);
-           background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
-  button:hover { filter: brightness(1.08); }
-  #status { color: var(--ok); font-size: 13px; }
-  footer { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  p, .note, .hint { text-wrap: pretty; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 40px; }
+
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  header img { width: 48px; height: 48px; flex: none; }
+  h1 { font-size: 24px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p { margin: 0; color: var(--muted); }
+
+  main { counter-reset: step; display: grid; gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+          box-shadow: var(--shadow); }
+  .step { counter-increment: step; }
+  .step-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  h2 { display: flex; align-items: flex-start; gap: 12px; font-size: 18px; line-height: 1.3; margin: 0; }
+  .num { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; margin-top: -2px; border-radius: 50%;
+         background: var(--tint); color: var(--accent); font-size: 14px; font-weight: 700; }
+  .num::before { content: counter(step); }
+  .sub { margin: 0 0 18px; color: var(--muted); }
+  .saved { flex: none; color: var(--accent); font-size: 13.5px; font-weight: 600; opacity: 0; transition: opacity 150ms; }
+  .saved.show { opacity: 1; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .tile { position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
+          width: 100%; text-align: left; padding: 14px 16px 15px 48px;
+          font: inherit; color: var(--fg); background: var(--card); border: 1.5px solid var(--field-line);
+          border-radius: 12px; cursor: pointer; transition: border-color 120ms, background-color 120ms; }
+  .tile:hover { border-color: var(--muted); }
+  .tile[aria-pressed="true"] { border-color: var(--accent); background: var(--tint); }
+  .tick { position: absolute; left: 16px; top: 16px; width: 20px; height: 20px; border-radius: 6px;
+          border: 1.5px solid var(--muted); }
+  .tile[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); }
+  .tile[aria-pressed="true"] .tick::after { content: ""; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px;
+          border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .name { display: block; font-weight: 600; }
+  .note { display: block; margin-top: 3px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+  .empty { margin: 0 0 16px; padding: 11px 14px; border-radius: 10px; background: var(--tint); }
+  .notice { margin: 0; padding: 14px 18px; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--tint);
+            font-weight: 600; }
+
+  label { display: block; font-weight: 600; margin: 4px 0 6px; }
+  input { width: 100%; padding: 11px 13px; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg);
+          background: var(--field); border: 1.5px solid var(--field-line); border-radius: 10px; }
+  input::placeholder { color: var(--muted); opacity: 1; }
+  .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+
+  .try { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 14px; }
+  .try p { flex: 1 1 280px; margin: 0; }
+  .try + .hint { margin-top: 14px; }
+  .button { display: inline-block; padding: 11px 20px; border-radius: 10px; background: var(--accent);
+            color: var(--accent-fg); font-weight: 600; text-decoration: none; }
+  .button:hover { filter: brightness(1.08); }
+  .donate p { margin: 0 0 14px; }
+  .donate .button { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  .donate .small { margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
+
+  .tile:focus-visible, .button:focus-visible, a:focus-visible, input:focus {
+    outline: 3px solid var(--focus); outline-offset: 2px; }
+  input:focus { border-color: var(--accent); outline-offset: 1px; }
+
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; margin-top: 28px;
+           color: var(--muted); font-size: 13.5px; }
   footer a { color: inherit; }
+  footer nav { display: flex; gap: 16px; }
+
+  @media (max-width: 520px) {
+    .wrap { padding: 28px 16px 32px; }
+    header { gap: 12px; }
+    header img { width: 40px; height: 40px; }
+    h1 { font-size: 21px; }
+    .card { padding: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
+<div class="wrap">
   <header>
     <img src="icons/icon48.png" alt="">
-    <div><h1>Open in AI Agent</h1><p>Right-click a Gmail thread to hand it to Claude Code or Codex.</p></div>
+    <div>
+      <h1>Open in AI Agent</h1>
+      <p>Right-click any Gmail thread to hand it to your AI.</p>
+    </div>
   </header>
-  <label for="folder">Working folder for new sessions</label>
-  <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off">
-  <p class="hint">Recommended. If left blank, Claude Code uses its default folder and Codex may wait for you to pick a project
-     instead of starting. On a Mac, drag the folder into Terminal to copy its path.</p>
-  <div class="row"><button id="save">Save</button><span id="status" role="status"></span></div>
-  <footer>Runs on your computer and sends nothing to any server.
-    <a href="https://github.com/thomasoclegg/gmail-to-agent" target="_blank">Help and source</a></footer>
-  <script src="options.js"></script>
+
+  <main>
+    <p class="notice" id="reload-notice" hidden>Reload your Gmail tab, then right-click the email again. Gmail tabs that
+      were open before the extension was installed or updated need one reload.</p>
+
+    <section class="card step" aria-labelledby="pick-title">
+      <div class="step-head">
+        <h2 id="pick-title"><span class="num" aria-hidden="true"></span>Pick the AI you use</h2>
+        <span class="saved" id="pick-saved" role="status"></span>
+      </div>
+      <p class="sub">Pick one or more. Each one appears when you right-click in Gmail.</p>
+      <p class="empty" id="empty" hidden>Nothing picked yet, so your right-click menu will be empty. Pick at least one.</p>
+      <div class="tiles" id="tiles" role="group" aria-labelledby="pick-title"></div>
+    </section>
+
+    <section class="card step" id="folder-step" aria-labelledby="folder-title" hidden>
+      <div class="step-head">
+        <h2 id="folder-title"><span class="num" aria-hidden="true"></span>Where should desktop sessions start?</h2>
+        <span class="saved" id="folder-saved" role="status"></span>
+      </div>
+      <label for="folder">Working folder</label>
+      <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off"
+             aria-describedby="folder-hint">
+      <p class="hint" id="folder-hint">Recommended. Codex needs a folder to start on its own. On a Mac, drag a folder into
+        Terminal to copy its path.</p>
+    </section>
+
+    <section class="card step" aria-labelledby="try-title">
+      <div class="step-head">
+        <h2 id="try-title"><span class="num" aria-hidden="true"></span>Try it</h2>
+      </div>
+      <div class="try">
+        <a class="button" href="https://mail.google.com/" target="_blank" rel="noopener">Open Gmail</a>
+        <p>Right-click any email and pick your AI. Web AIs open with the email copied: press Cmd+V (Ctrl+V), then Enter.</p>
+      </div>
+      <p class="hint">Gmail already open? Reload that tab first.</p>
+    </section>
+
+    <!-- Filled from DONATION in targets.js; stays hidden until both fields are set. -->
+    <section class="card donate" id="donate" hidden>
+      <p id="donate-text"></p>
+      <a class="button" id="donate-link" target="_blank" rel="noopener"></a>
+      <p class="small">Donations go straight to the charity. We never see the money.</p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Runs on your computer. Nothing is sent to us.</span>
+    <nav>
+      <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
+      <a href="https://github.com/thomasoclegg/gmail-to-agent" target="_blank" rel="noopener">Help</a>
+    </nav>
+  </footer>
+</div>
+<script src="targets.js"></script>
+<script src="options.js"></script>
 </body>
 </html>

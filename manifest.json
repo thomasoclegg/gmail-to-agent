@@ -1,18 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Open in AI Agent for Gmail (Claude Code & Codex)",
+  "name": "Open in AI Agent for Gmail",
   "short_name": "Open in AI Agent",
-  "version": "1.0.0",
-  "description": "Right-click a Gmail thread to start a Claude Code or Codex session on it. Runs on your computer; sends nothing to any server.",
+  "version": "1.1.0",
+  "description": "Right-click a Gmail thread to hand it to Claude, ChatGPT, Gemini, Copilot, Claude Code, Codex and more. Runs on your computer.",
   "homepage_url": "https://github.com/thomasoclegg/gmail-to-agent",
+  "minimum_chrome_version": "116",
   "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "permissions": ["contextMenus", "storage"],
+  "action": {
+    "default_title": "Open in AI Agent settings",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
+  },
+  "permissions": ["contextMenus", "storage", "offscreen", "clipboardWrite"],
   "background": { "service_worker": "background.js" },
-  "options_ui": { "page": "options.html", "open_in_tab": false },
+  "options_page": "options.html",
   "content_scripts": [
     {
       "matches": ["https://mail.google.com/*"],
-      "js": ["content.js"],
+      "js": ["targets.js", "content.js"],
       "run_at": "document_idle"
     }
   ]
