@@ -40,7 +40,7 @@ Not affiliated with or endorsed by Google, Anthropic or OpenAI. Gmail, Claude an
 **Store icon:** `icons/icon128.png`
 **Screenshots (1280×800):** `store/shot1.png`, `store/shot2.png`
 **Small promo tile (440×280):** `store/promo.png`
-**Homepage URL:** https://github.com/thomasoclegg/gmail-to-agent
+**Homepage URL:** https://thomasoclegg.github.io/gmail-to-agent/
 **Support URL:** https://github.com/thomasoclegg/gmail-to-agent/issues
 
 ## Privacy tab
