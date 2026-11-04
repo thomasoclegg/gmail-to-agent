@@ -12,11 +12,21 @@ const mock = {
   calls: [], // { api, args, t }
   launches: [], // deep links caught at anchor click
   opens: [], // window.open calls
-  store: SUITE === 'main' || SUITE === 'toast' ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '' } : {},
+  store: ['main', 'toast', 'guard', 'orphan', 'orphan111'].includes(SUITE) ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '' } : {},
   changeListeners: [],
   messageListeners: [],
   // How runtime.sendMessage answers: 'ok' | 'fail' | 'invalidated'
   sendMode: 'ok',
+  // What background.js answers to {action:'ik'} (Gmail's GLOBALS[9]); 'error' for {ok:false};
+  // 'reject' makes the request itself fail (the message port closed, as when the service worker restarts).
+  ik: 'a1b2c3d4e5',
+  // Print view per hex thread id: { html, status, delay, never }; missing ids answer 404.
+  printViews: {},
+  fetches: [], // { url, credentials, redirect, t, aborted }
+  inFlight: 0,
+  maxInFlight: 0,
+  errors: [], // uncaught page errors
+  captureListeners: [], // document.addEventListener(type, fn, true) calls
 };
 window.__mock = mock;
 
@@ -60,6 +70,11 @@ window.chrome = {
     sendMessage(msg) {
       record('runtime.sendMessage', msg);
       if (mock.sendMode === 'invalidated') throw new Error('Extension context invalidated.');
+      if (msg?.action === 'ik') {
+        if (mock.ik === 'reject') return Promise.reject(new Error('The message port closed before a response was received.'));
+        const reply = mock.ik === 'error' ? { ok: false, error: 'Cannot access contents of the page' } : { ok: true, ik: mock.ik };
+        return new Promise((resolve) => setTimeout(() => resolve(reply), 10));
+      }
       return new Promise((resolve) =>
         setTimeout(() => resolve(mock.sendMode === 'fail' ? { ok: false, error: 'Copy was blocked' } : { ok: true }), 20),
       );
@@ -90,3 +105,43 @@ document.addEventListener(
   true,
 );
 window.open = (...args) => (mock.opens.push(args), null);
+
+// Gmail's print view (same origin, the user's session). Answers from mock.printViews by th=,
+// honours the abort signal, and records every request and the number in flight.
+window.fetch = (input, init = {}) => {
+  const url = String(input);
+  const entry = { url, credentials: init.credentials, redirect: init.redirect, t: now(), aborted: false };
+  mock.fetches.push(entry);
+  const th = new URL(url, location.href).searchParams.get('th');
+  const view = mock.printViews[th] || { status: 404, html: 'Not found' };
+  mock.inFlight++;
+  mock.maxInFlight = Math.max(mock.maxInFlight, mock.inFlight);
+  return new Promise((resolve, reject) => {
+    let timer = 0;
+    const settle = () => {
+      mock.inFlight--;
+      init.signal?.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      clearTimeout(timer);
+      entry.aborted = true;
+      entry.abortedAt = now();
+      settle();
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+    init.signal?.addEventListener('abort', onAbort);
+    if (view.never) return;
+    timer = setTimeout(() => {
+      settle();
+      resolve(new Response(view.html, { status: view.status ?? 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } }));
+    }, view.delay ?? 30);
+  });
+};
+
+window.addEventListener('error', (e) => mock.errors.push(String(e.message || e.error)));
+window.addEventListener('unhandledrejection', (e) => mock.errors.push(`unhandled: ${e.reason?.message || e.reason}`));
+const realAdd = Document.prototype.addEventListener;
+Document.prototype.addEventListener = function (type, fn, opts) {
+  if (opts === true || opts?.capture) mock.captureListeners.push(type);
+  return realAdd.call(this, type, fn, opts);
+};

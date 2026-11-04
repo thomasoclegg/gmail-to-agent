@@ -35,10 +35,21 @@
 <pre id="summary"></pre>
 <pre id="results">PENDING</pre>
 <script src="stub.js"></script>
+<script src="printview.js"></script>
 <script src="data.js"></script>
 <!-- The real extension files, from the repository root (this page is tests/content/mail/u/1/index.html). -->
 <script src="../../../../../targets.js"></script>
+<script>
+  // Orphan suites: an older copy that an update orphaned runs first, in its own scope. run.mjs writes
+  // these files to tests/.out/content/.
+  if (SUITE === 'orphan') document.write('<script src="../../../../.out/content/orphan-120.js"><\/script>');
+  if (SUITE === 'orphan111') document.write('<script src="../../../../.out/content/orphan-111.js"><\/script>');
+</script>
 <script src="../../../../../content.js"></script>
+<script>
+  // Guard suite: content.js arrives a second time, as when background.js injects it into a tab that already has it.
+  if (SUITE === 'guard') document.write('<script src="../../../../../content.js"><\/script>');
+</script>
 <script src="gmail.js"></script>
 <script src="driver.js"></script>
 </body>

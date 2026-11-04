@@ -186,6 +186,13 @@ const THREADS = {
   },
 };
 
+// The bulk suite shows only the bulk rows (printview.js), with their print views.
+if (SUITE === 'bulk' || SUITE.startsWith('orphan')) {
+  for (const id of Object.keys(THREADS)) delete THREADS[id];
+  Object.assign(THREADS, BULK_THREADS);
+  installPrintViews(window.__mock);
+}
+
 const threadByKey = (key) => {
   const id = Object.keys(THREADS).find((k) => THREADS[k].key === key);
   return { id, ...THREADS[id] };

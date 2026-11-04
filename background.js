@@ -1,6 +1,8 @@
 // Chrome's own right-click menu (Gmail replaces it on inbox rows, where
 // content.js adds the items, but it shows inside an open thread), the toolbar
-// icon, first-run settings, and the clipboard hand-off for web and copy targets.
+// icon, first-run settings, the content script for Gmail tabs that were already
+// open, Gmail's session key for bulk reads, and the clipboard hand-off for web
+// and copy targets.
 importScripts('targets.js');
 
 const GMAIL = 'https://mail.google.com/';
@@ -8,6 +10,8 @@ const GMAIL = 'https://mail.google.com/';
 const CONTEXTS = ['page', 'frame', 'selection', 'link', 'editable', 'image'];
 // Web AIs open after this pause, so the paste hint shows in Gmail first.
 const OPEN_DELAY = 1200;
+// Gmail's session key (ik) is a short token; anything else is ignored.
+const IK_PATTERN = /^[\w-]{4,32}$/;
 
 // Next to the Gmail tab when Chrome allows it (an app window may not).
 const openNextTo = (tab, url) =>
@@ -30,9 +34,27 @@ async function firstRun({ reason, previousVersion }) {
   if (legacy) chrome.tabs.create({ url: chrome.runtime.getURL('options.html#new') });
 }
 
+// Gmail tabs that were open before an install or update get the content script
+// now, so they need no reload. content.js runs once per tab; a tab that cannot
+// take it keeps the reload fallback (needsReload). A tab still loading gets the
+// manifest's copy as well: the second targets.js then logs a harmless "already
+// declared" error in that tab's console. Skipping loading tabs would avoid it, but
+// would also skip a Gmail tab whose status reads loading for another reason.
+async function injectIntoGmailTabs() {
+  const tabs = await chrome.tabs.query({ url: `${GMAIL}*` });
+  const inject = (tab) =>
+    chrome.scripting
+      .executeScript({ target: { tabId: tab.id, frameIds: [0] }, files: ['targets.js', 'content.js'] })
+      .catch(() => {});
+  await Promise.all(tabs.map(inject));
+}
+
 chrome.runtime.onInstalled.addListener(async (details) => {
   await firstRun(details).catch((e) => console.warn('First run:', e));
   rebuildMenus();
+  if (details.reason === 'install' || details.reason === 'update') {
+    await injectIntoGmailTabs().catch((e) => console.warn('Gmail tabs:', e));
+  }
 });
 
 chrome.runtime.onStartup.addListener(() => rebuildMenus());
@@ -126,9 +148,26 @@ async function handOff({ platform, prompt }, tab) {
   return { ok: true };
 }
 
+// ---- Gmail's session key (bulk reads) ----
+
+// content.js reads several threads from Gmail's print view, which needs the
+// page's ik. It lives in the page's own scripts (window.GLOBALS), out of the
+// content script's reach, so it is read in the page's world of the top frame.
+async function gmailKey(tab) {
+  const [res] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id, frameIds: [0] },
+    world: 'MAIN',
+    func: () => window.GLOBALS && window.GLOBALS[9],
+  });
+  const ik = res?.result;
+  return { ok: true, ik: typeof ik === 'string' && IK_PATTERN.test(ik) ? ik : null };
+}
+
+const ACTIONS = { handoff: handOff, ik: (_msg, tab) => gmailKey(tab) };
+
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
-  if (msg?.target !== 'background' || msg.action !== 'handoff') return;
+  if (msg?.target !== 'background' || !Object.hasOwn(ACTIONS, msg.action)) return;
   if (!sender.tab || !sender.url?.startsWith(GMAIL)) return reply({ ok: false, error: 'Not from Gmail' });
-  handOff(msg, sender.tab).then(reply, (e) => reply({ ok: false, error: e?.message || String(e) }));
+  ACTIONS[msg.action](msg, sender.tab).then(reply, (e) => reply({ ok: false, error: e?.message || String(e) }));
   return true;
 });

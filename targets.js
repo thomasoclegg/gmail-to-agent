@@ -12,12 +12,14 @@ const PASTE_KEYS = (() => {
 const hostOf = (url) => url.replace(/^https:\/\/(?:www\.)?([^/]+).*$/, '$1');
 
 // A web AI's note is its address. The settings page gives the paste keys once for the group.
+// bulkMenu is the Gmail menu label when several emails are selected; {n} is their number.
 const webTarget = (id, name, url) => ({
   id,
   name,
   kind: 'web',
   url,
   menu: `Ask ${name}`,
+  bulkMenu: `Ask ${name} about {n} emails`,
   chromeMenu: `Ask ${name} about this thread`,
   note: hostOf(url),
 });
@@ -28,6 +30,7 @@ const TARGETS = [
     name: 'Claude Code',
     kind: 'app',
     menu: 'Open in Claude Code',
+    bulkMenu: 'Open {n} in Claude Code',
     chromeMenu: 'Open thread in Claude Code',
     note: 'Claude desktop app. Reads the thread itself; you press Enter.',
   },
@@ -36,6 +39,7 @@ const TARGETS = [
     name: 'Codex',
     kind: 'app',
     menu: 'Open in Codex',
+    bulkMenu: 'Open {n} in Codex (GPT)',
     chromeMenu: 'Open thread in Codex',
     note: 'ChatGPT desktop app. Reads the thread itself and starts straight away once a working folder is set.',
   },
@@ -52,6 +56,7 @@ const TARGETS = [
     name: 'Copy thread for any AI',
     kind: 'copy',
     menu: 'Copy thread for any AI',
+    bulkMenu: 'Copy {n} emails for any AI',
     chromeMenu: 'Copy thread for any AI',
     note: 'Copies the whole thread so you can paste it into any AI.',
   },

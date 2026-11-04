@@ -30,14 +30,23 @@
   document.title = INBOX_TITLE;
 
   // ---- Inbox rows ----
+  // As in Gmail, the subject is span.bqe (the node with the thread id), the snippet span.y2
+  // ("&nbsp;-&nbsp;" then the text), and the checkbox carries aria-checked.
   for (const [id, th] of Object.entries(THREADS)) {
     const count = th.messages.length > 1 ? el('span', { class: 'bx0', text: String(th.messages.length) }) : '';
+    const snippetText = th.rowSnippet ?? th.messages.at(-1)?.snippet ?? '';
+    const snippet = el('span', { class: 'y2' }, el('span', { class: 'Zt', text: '\u00a0-\u00a0' }), snippetText);
     const row = el(
       'tr',
       { class: `zA${th.unread ? ' zE' : ''}`, id: `row-${th.key}` },
-      el('td', { class: 'oZ-x3' }, el('div', { role: 'checkbox' })),
+      el('td', { class: 'oZ-x3' }, el('div', { role: 'checkbox', 'aria-checked': 'false' })),
       el('td', { class: 'yX' }, el('span', { class: 'yP', email: `${th.key.toLowerCase()}@x.test`, name: th.from, text: th.from }), count),
-      el('td', { class: 'xY' }, el('span', { class: 'bog' }, el('span', { 'data-thread-id': `#thread-f:${BigInt('0x' + id)}`, 'data-legacy-thread-id': id, text: th.subject }))),
+      el(
+        'td',
+        { class: 'xY' },
+        el('span', { class: 'bog' }, el('span', { class: 'bqe', 'data-thread-id': `#thread-f:${BigInt('0x' + id)}`, 'data-legacy-thread-id': id, text: th.subject })),
+        snippetText ? snippet : '',
+      ),
     );
     row.addEventListener('click', () => {
       log('row-click', { key: th.key });
@@ -179,6 +188,30 @@
   }
 
   g.openThread = openThread;
+  // Tick rows as Gmail does. mode 'aria' sets the checkbox's aria-checked; 'x7' drops
+  // aria-checked and adds class x7 to the row (the fallback); 'both-false' keeps aria-checked="false" with x7.
+  g.select = (keys, mode = 'aria') => {
+    for (const key of keys) {
+      const r = document.getElementById(`row-${key}`);
+      const box = r.querySelector('[role="checkbox"]');
+      if (mode === 'aria') box.setAttribute('aria-checked', 'true');
+      if (mode === 'x7') {
+        box.removeAttribute('aria-checked');
+        r.classList.add('x7');
+      }
+      if (mode === 'both-false') {
+        box.setAttribute('aria-checked', 'false');
+        r.classList.add('x7');
+      }
+    }
+    log('select', { keys, mode });
+  };
+  g.clearSelection = () => {
+    document.querySelectorAll('tr.zA').forEach((r) => {
+      r.classList.remove('x7');
+      r.querySelector('[role="checkbox"]').setAttribute('aria-checked', 'false');
+    });
+  };
   g.backToInbox = () => {
     hideMenu();
     main.querySelectorAll('.thread-view').forEach((v) => (v.style.display = 'none'));

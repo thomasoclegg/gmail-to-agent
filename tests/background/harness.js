@@ -74,6 +74,14 @@ function createWorld(opts = {}) {
     contentReply: () => ({}),
     createDocFailOnce: null, // error message to throw on next createDocument
     hasDocumentLiesOnce: false,
+    // Open tabs for tabs.query, chrome.scripting calls, tabs whose injection fails,
+    // and the page's own globals that a MAIN-world func sees (per tab).
+    openTabs: [],
+    queryCalls: [],
+    queryThrows: null,
+    scriptCalls: [],
+    scriptFails: new Set(),
+    pageGlobals: {}, // tabId -> object exposed as window in the MAIN world
   };
 
   // ---- chrome.storage ----
@@ -260,6 +268,40 @@ function createWorld(opts = {}) {
       log.push({ ev: 'tabs.create', url: props?.url });
       return { id: nextTabId++, ...clone(props) };
     },
+    // url filter as a match pattern ("*" = anything), like Chrome with host permission.
+    async query(q) {
+      world.queryCalls.push(clone(q));
+      log.push({ ev: 'tabs.query' });
+      await tick(jitter());
+      if (world.queryThrows) throw new Error(world.queryThrows);
+      const patterns = q?.url == null ? null : [].concat(q.url);
+      const re = (p) => new RegExp(`^${p.split('*').map((x) => x.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('.*')}$`);
+      return clone(world.openTabs.filter((t) => !patterns || patterns.some((p) => re(p).test(t.url || ''))));
+    },
+  };
+
+  // ---- chrome.scripting ----
+  // A func is serialised and run in a fresh context whose window is the page's
+  // globals for that tab, as Chrome does for world: 'MAIN'.
+  const scripting = {
+    async executeScript(injection) {
+      const call = {
+        target: clone(injection?.target),
+        world: injection?.world,
+        files: clone(injection?.files),
+        func: injection?.func ? String(injection.func) : undefined,
+      };
+      world.scriptCalls.push(call);
+      log.push({ ev: 'scripting.executeScript', tabId: call.target?.tabId, files: call.files, world: call.world });
+      await tick(jitter());
+      const tabId = call.target?.tabId;
+      if (world.scriptFails.has(tabId)) throw new Error('Cannot access contents of the page. Extension manifest must request permission to access the respective host.');
+      if (call.func) {
+        const page = vm.createContext({ window: clone(world.pageGlobals[tabId] || {}) });
+        return [{ frameId: 0, documentId: 'doc', result: clone(vm.runInContext(`(${call.func})()`, page)) }];
+      }
+      return [{ frameId: 0, documentId: 'doc', result: undefined }];
+    },
   };
 
   const chrome = {
@@ -267,6 +309,7 @@ function createWorld(opts = {}) {
     storage: { sync, onChanged },
     runtime,
     tabs,
+    scripting,
     offscreen,
     action: {
       onClicked: makeEvent('action.onClicked'),

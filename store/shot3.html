@@ -163,10 +163,10 @@ window.chrome = {
     <p>Choose what appears when you right-click an email in Gmail. Changes save as you go.</p>
   </header>
 
-  <p class="notice" id="new-notice" hidden><b>New in 1.1.</b> You can also open an email in Claude, ChatGPT, Gemini and
-    five other web AIs, or copy it for any AI. Pick them below. Claude Code and Codex work as before.</p>
+  <p class="notice" id="new-notice" hidden><b>New since 1.0.</b> Pick Claude, ChatGPT, Gemini or another web AI below, or
+    tick several emails in Gmail and send them all at once. Claude Code now names each session after its email.</p>
   <p class="notice" id="reload-notice" hidden><b>One more step.</b> Reload your Gmail tab, then right-click the email again.
-    Gmail tabs that were open before the extension was installed or updated need one reload.</p>
+    That Gmail tab could not pick up the extension by itself, so it needs one reload.</p>
 
   <main>
     <section class="pick step" aria-labelledby="pick-title">
@@ -201,14 +201,14 @@ window.chrome = {
           <a class="button" href="https://mail.google.com/" target="_blank" rel="noopener">Open Gmail</a>
           <p id="try-line">Right-click any email and pick your AI. Web AIs open with the thread copied: press Cmd+V (Ctrl+V), then Enter.</p>
         </div>
-        <p class="try-hint">Gmail already open? Reload that tab first.</p>
+        <p class="try-hint">If the menu doesn't show in a Gmail tab, reload that tab.</p>
       </section>
 
       <!-- Filled from DONATION in targets.js; stays hidden while its charity or url is empty. -->
       <section class="donate" id="donate" aria-label="Donation" hidden>
         <p id="donate-text"></p>
         <a class="button" id="donate-link" target="_blank" rel="noopener"></a>
-        <p class="small">Donations go straight to them. I never see the money.</p>
+        <p class="small">Donations go straight to them. I never see the money. Paying by PayPal? Write &ldquo;AI Agent&rdquo; in the note so they know it came from here.</p>
       </section>
     </div>
   </main>

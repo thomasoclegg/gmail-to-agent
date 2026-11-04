@@ -68,10 +68,11 @@ describe('static: manifest, targets, offscreen.html', () => {
     eq(keyFor({ platform: '' })[0], 'Cmd+V (Ctrl+V)');
   });
 
-  test('manifest matches the v1.1.1 spec', () => {
+  // 1.2.0 adds "scripting" and a host permission for Gmail only.
+  test('manifest matches the v1.2.0 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.1.1');
+    assert.equal(m.version, '1.2.0');
     assert.equal(m.name, 'Open in AI Agent for Gmail');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -79,8 +80,9 @@ describe('static: manifest, targets, offscreen.html', () => {
       'Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or another AI. Runs on your computer.',
     );
     assert.ok(m.description.length <= 132, `description ${m.description.length} chars`);
-    eq(m.permissions, ['contextMenus', 'storage', 'offscreen', 'clipboardWrite']);
-    assert.equal(m.host_permissions, undefined, 'no host permissions');
+    eq(m.permissions, ['contextMenus', 'storage', 'offscreen', 'clipboardWrite', 'scripting']);
+    eq(m.host_permissions, ['https://mail.google.com/*'], 'Gmail only, the same host the content script already matches');
+    eq(m.host_permissions, m.content_scripts[0].matches, 'host permission adds no host beyond the content script');
     eq(m.background, { service_worker: 'background.js' });
     assert.equal(m.options_page, 'options.html');
     assert.equal(m.options_ui, undefined, 'options_ui replaced');
@@ -118,6 +120,16 @@ describe('static: manifest, targets, offscreen.html', () => {
     assert.equal(T.find((t) => t.id === 'copy').menu, 'Copy thread for any AI');
     assert.equal(T.find((t) => t.id === 'claude-code').menu, 'Open in Claude Code');
     assert.equal(T.find((t) => t.id === 'codex').menu, 'Open in Codex');
+    // Bulk labels in Gmail's row menu ({n} is the number of emails).
+    eq(
+      Object.fromEntries(T.map((t) => [t.id, t.bulkMenu])),
+      {
+        'claude-code': 'Open {n} in Claude Code',
+        codex: 'Open {n} in Codex (GPT)',
+        ...Object.fromEntries(T.filter((t) => t.kind === 'web').map((t) => [t.id, `Ask ${t.name} about {n} emails`])),
+        copy: 'Copy {n} emails for any AI',
+      },
+    );
     // pickTargets keeps TARGETS order and drops unknown ids / non-arrays
     eq(clone(vm.runInContext("pickTargets(['copy','nope','claude-code']).map(t=>t.id)", ctx)), ['claude-code', 'copy']);
     eq(clone(vm.runInContext("pickTargets('claude').map(t=>t.id)", ctx)), []);
@@ -599,6 +611,189 @@ describe('offscreen.js on its own', () => {
       eq(replies, []);
     }
     eq(o.calls, []);
+  });
+});
+
+// ---- Gmail tabs already open, and Gmail's session key ----
+
+const GMAIL_TABS = [
+  { id: 7, index: 2, windowId: 3, url: 'https://mail.google.com/mail/u/0/#inbox' },
+  { id: 8, index: 4, windowId: 3, url: 'https://mail.google.com/mail/u/1/#all/thread-f:1797679198082885624' },
+  { id: 10, index: 0, windowId: 5, url: 'https://mail.google.com/mail/u/2/' },
+];
+const OTHER_TABS = [
+  { id: 9, index: 3, windowId: 3, url: 'https://example.com/' },
+  { id: 11, index: 5, windowId: 3, url: 'https://mail.google.com.evil.com/mail/' },
+  { id: 12, index: 6, windowId: 3, url: 'https://calendar.google.com/' },
+];
+const injections = (w) => w.scriptCalls.filter((c) => c.files);
+
+describe('background: content script for Gmail tabs that were already open', () => {
+  for (const [label, details] of [
+    ['install', { reason: 'install' }],
+    ['update from 1.1.1', { reason: 'update', previousVersion: '1.1.1' }],
+    ['update from 1.0.3 (legacy)', { reason: 'update', previousVersion: '1.0.3' }],
+  ]) {
+    test(`${label}: tabs.query for Gmail, then targets.js + content.js into frame 0 of every Gmail tab, nothing else`, async () => {
+      const w = createWorld();
+      w.openTabs = [...GMAIL_TABS, ...OTHER_TABS];
+      await w.chrome.runtime.onInstalled.fire(details);
+      await w.settle();
+      eq(w.queryCalls, [{ url: 'https://mail.google.com/*' }]);
+      eq(
+        injections(w),
+        GMAIL_TABS.map((t) => ({ target: { tabId: t.id, frameIds: [0] }, files: ['targets.js', 'content.js'] })),
+        'one injection per Gmail tab, top frame only, the two manifest files in order',
+      );
+      assert.ok(injections(w).every((c) => c.world === undefined && c.func === undefined), 'the isolated world (no world given), files only');
+      eq(w.scriptCalls.filter((c) => !c.files), [], 'no other scripts');
+      eq(w.warnings, []);
+      assert.ok(w.menuList().length > 0, 'menus still built');
+    });
+  }
+
+  test('a tab that refuses the injection is skipped; the others still get it; no warnings or unhandled rejections', async () => {
+    const w = createWorld();
+    w.openTabs = [...GMAIL_TABS];
+    w.scriptFails.add(8);
+    await w.chrome.runtime.onInstalled.fire({ reason: 'update', previousVersion: '1.1.1' });
+    await w.settle();
+    eq(injections(w).map((c) => c.target.tabId), [7, 8, 10], 'all three attempted');
+    eq(w.warnings, [], 'a failing tab is ignored quietly');
+    eq(w.storage.targets, ['claude', 'chatgpt']);
+    expectMenus(w, ['claude', 'chatgpt']);
+    await tick(10);
+    eq(unhandled, []);
+  });
+
+  test('every Gmail tab failing still finishes install: settings page opened, menus built', async () => {
+    const w = createWorld();
+    w.openTabs = [...GMAIL_TABS];
+    GMAIL_TABS.forEach((t) => w.scriptFails.add(t.id));
+    await w.chrome.runtime.onInstalled.fire({ reason: 'install' });
+    await w.settle();
+    assert.equal(w.optionsOpened, 1);
+    expectMenus(w, ['claude', 'chatgpt']);
+    eq(w.warnings, []);
+  });
+
+  test('tabs.query failing is logged once and nothing else breaks', async () => {
+    const w = createWorld();
+    w.queryThrows = 'No tabs today';
+    await w.chrome.runtime.onInstalled.fire({ reason: 'install' });
+    await w.settle();
+    assert.equal(w.optionsOpened, 1);
+    expectMenus(w, ['claude', 'chatgpt']);
+    eq(injections(w), []);
+    assert.equal(w.warnings.length, 1);
+    assert.match(w.warnings[0], /Gmail tabs:.*No tabs today/);
+  });
+
+  test('no Gmail tabs open: nothing injected', async () => {
+    const w = createWorld();
+    w.openTabs = [...OTHER_TABS];
+    await w.chrome.runtime.onInstalled.fire({ reason: 'install' });
+    await w.settle();
+    eq(w.queryCalls, [{ url: 'https://mail.google.com/*' }]);
+    eq(w.scriptCalls, []);
+  });
+
+  test('Chrome or shared-module updates and browser startup inject nothing (the manifest content script is already there)', async () => {
+    for (const fire of [
+      (w) => w.chrome.runtime.onInstalled.fire({ reason: 'chrome_update' }),
+      (w) => w.chrome.runtime.onInstalled.fire({ reason: 'shared_module_update' }),
+      (w) => w.chrome.runtime.onStartup.fire(),
+    ]) {
+      const w = createWorld();
+      w.openTabs = [...GMAIL_TABS];
+      await fire(w);
+      await w.settle();
+      eq(w.queryCalls, []);
+      eq(w.scriptCalls, []);
+    }
+  });
+
+  test('the #reload fallback still opens when a Chrome-menu message cannot reach the tab', async () => {
+    const w = createWorld();
+    w.contentReply = () => new Error('Could not establish connection. Receiving end does not exist.');
+    await w.chrome.contextMenus.onClicked.fire(click('claude'), GMAIL_TAB);
+    eq(w.tabsCreated, [{ url: 'chrome-extension://test-ext/options.html#reload', index: 3, openerTabId: 7, windowId: 3 }]);
+  });
+});
+
+describe("background: Gmail's session key (ik) for bulk reads", () => {
+  const IK_MSG = { target: 'background', action: 'ik' };
+  const globalsWith = (ik) => ({ GLOBALS: [null, 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', ik] });
+
+  test('reads window.GLOBALS[9] in the MAIN world of frame 0 of the sender tab and replies {ok:true, ik}', async () => {
+    const w = createWorld();
+    w.pageGlobals[7] = globalsWith('a1b2c3d4e5');
+    const r = await w.fromContent(IK_MSG, GMAIL_SENDER);
+    eq(r, { ok: true, ik: 'a1b2c3d4e5' });
+    assert.equal(w.scriptCalls.length, 1);
+    const call = w.scriptCalls[0];
+    eq(call.target, { tabId: 7, frameIds: [0] });
+    assert.equal(call.world, 'MAIN');
+    assert.equal(call.files, undefined);
+    assert.match(call.func, /window\.GLOBALS && window\.GLOBALS\[9\]/);
+    eq(w.createDocCalls, [], 'no clipboard work');
+    eq(w.tabsCreated, []);
+  });
+
+  test('anything that is not a short token comes back as ik null', async () => {
+    for (const bad of [undefined, null, '', 'abc', 12345, 'a'.repeat(33), 'bad ik', 'x&th=1', '<img>', ['a1b2c3d4e5'], { ik: 'a1b2c3d4e5' }]) {
+      const w = createWorld();
+      w.pageGlobals[7] = globalsWith(bad);
+      eq(await w.fromContent(IK_MSG, GMAIL_SENDER), { ok: true, ik: null }, JSON.stringify(bad));
+    }
+    const w = createWorld();
+    w.pageGlobals[7] = {}; // no GLOBALS at all
+    eq(await w.fromContent(IK_MSG, GMAIL_SENDER), { ok: true, ik: null });
+    w.pageGlobals[7] = globalsWith('Ab_9-xyz');
+    eq(await w.fromContent(IK_MSG, GMAIL_SENDER), { ok: true, ik: 'Ab_9-xyz' }, 'letters, digits, _ and - accepted');
+  });
+
+  test('executeScript failing gives {ok:false, error}', async () => {
+    const w = createWorld();
+    w.scriptFails.add(7);
+    const r = await w.fromContent(IK_MSG, GMAIL_SENDER);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /Cannot access contents of the page/);
+  });
+
+  test('refused unless it comes from a Gmail tab; nothing injected', async () => {
+    for (const sender of [
+      { tab: GMAIL_TAB, url: 'https://evil.example/' },
+      { tab: GMAIL_TAB, url: 'https://mail.google.com.evil.com/x' },
+      { id: 'test-ext', url: 'https://mail.google.com/' },
+    ]) {
+      const w = createWorld();
+      w.pageGlobals[7] = globalsWith('a1b2c3d4e5');
+      eq(await w.fromContent(IK_MSG, sender), { ok: false, error: 'Not from Gmail' }, JSON.stringify(sender));
+      eq(w.scriptCalls, []);
+    }
+  });
+
+  test('the ik listener keeps the channel open (returns true); unknown and inherited action names are ignored', () => {
+    const w = createWorld();
+    assert.deepStrictEqual(w.toBackgroundOnly(IK_MSG, GMAIL_SENDER).ret, [true]);
+    for (const action of ['toString', 'constructor', '__proto__', 'hasOwnProperty', 'IK']) {
+      const { ret, calls } = w.toBackgroundOnly({ target: 'background', action }, GMAIL_SENDER);
+      assert.deepStrictEqual(ret, [undefined], action);
+      eq(calls, [], action);
+    }
+    assert.equal(w.scriptCalls.length, 1, 'only the real ik request read the page');
+  });
+
+  test('a bulk hand-off after the ik read uses the unchanged hand-off route (copy, then open next to Gmail)', async () => {
+    const w = createWorld();
+    w.pageGlobals[7] = globalsWith('a1b2c3d4e5');
+    eq(await w.fromContent(IK_MSG, GMAIL_SENDER), { ok: true, ik: 'a1b2c3d4e5' });
+    const prompt = 'Here are 3 email threads from my inbox.\n\n<<<EMAIL THREAD 1 of 3\nx\nEMAIL THREAD 1>>>';
+    eq(await w.fromContent({ target: 'background', action: 'handoff', platform: 'gemini', prompt }, GMAIL_SENDER), { ok: true });
+    await afterOpenDelay();
+    assert.equal(w.clipboard, prompt);
+    eq(w.tabsCreated, [{ url: 'https://gemini.google.com/app', index: 3, openerTabId: 7, windowId: 3 }]);
   });
 });
 

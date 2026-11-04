@@ -116,13 +116,13 @@ await send('Runtime.enable');
 await send('Log.enable');
 
 let seedScript = null;
-async function open(variant, seed = {}, { width = 1280, height = 900, scheme = 'light' } = {}) {
+async function open(variant, seed = {}, { width = 1280, height = 900, scheme = 'light', hash = '' } = {}) {
   if (seedScript) await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: seedScript });
   seedScript = (await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__seed = ${JSON.stringify(seed)};` })).identifier;
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] });
   const before = events.length;
-  await send('Page.navigate', { url: pageFor[variant] });
+  await send('Page.navigate', { url: pageFor[variant] + hash });
   for (let i = 0; i < 100 && !events.slice(before).some((e) => e.method === 'Page.loadEventFired'); i++) await sleep(50);
   await withDeadline(
     evaluate(`new Promise((r) => { const t = () => document.querySelectorAll('#tiles .tile').length ? r() : setTimeout(t, 10); t(); })`),
@@ -413,6 +413,44 @@ await scenario('B12 Try it: Open Gmail link and copy', async (check) => {
   const clicks = await evaluate('window.__clicks');
   check(same(clicks, [{ href: 'https://mail.google.com/', target: '_blank' }]), 'real click activates the link (new tab, intercepted)', clicks);
   check(same(await evaluate('window.__log.tabsCreate'), []), 'no chrome.tabs.create needed (plain link)');
+});
+
+// Gmail tabs that were already open get the content script on install and update (1.2.0), so the
+// Try it step no longer asks for a reload first; the #reload notice stays as the fallback.
+await scenario('B22 reload line: new copy under Try it; the #reload fallback notice still works', async (check) => {
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', {});
+  const hint = await evaluate(`(() => { const p = document.querySelector('.try-hint'); return { text: p.textContent, visible: !!p.offsetParent,
+    all: [...document.querySelectorAll('.try-hint')].length, body: document.body.innerText }; })()`);
+  check(hint.text === "If the menu doesn't show in a Gmail tab, reload that tab." && hint.visible && hint.all === 1, 'try-hint line', hint.text);
+  check(!/Gmail already open\?|Reload that tab first/.test(hint.body), 'old line gone from the page', null);
+  check(!/\u2014/.test(hint.text), 'no em dash', hint.text);
+  check((await evaluate(`document.getElementById('reload-notice').hidden`)) === true, 'reload notice hidden without #reload');
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', {}, { hash: '#reload' });
+  const notice = await evaluate(`(() => { const n = document.getElementById('reload-notice'); return { hidden: n.hidden, visible: !!n.offsetParent, text: n.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
+  check(!notice.hidden && notice.visible, 'reload notice shown with #reload (fallback kept)', notice);
+  check(notice.text === 'One more step. Reload your Gmail tab, then right-click the email again. That Gmail tab could not pick up the extension by itself, so it needs one reload.', 'reload notice text', notice.text);
+  // Leave the page as B12 left it: B13 reads the footer without reopening.
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', {});
+});
+
+// Upgraders from 1.0 get options.html#new once (background.js); the notice says what is new since 1.0.
+await scenario('B23 #new notice for upgraders from 1.0: shown only with #new; names the web AIs, bulk and Claude Code session names', async (check) => {
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', {});
+  check((await evaluate(`document.getElementById('new-notice').hidden`)) === true, 'new notice hidden without #new');
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', { targets: ['claude-code', 'codex'] }, { hash: '#new' });
+  const n = await evaluate(`(() => { const n = document.getElementById('new-notice'); return { hidden: n.hidden, visible: !!n.offsetParent, text: n.textContent.replace(/\\s+/g, ' ').trim(),
+    reload: document.getElementById('reload-notice').hidden }; })()`);
+  check(!n.hidden && n.visible && n.reload, 'new notice shown with #new; the reload notice stays hidden', n);
+  check(n.text === 'New since 1.0. Pick Claude, ChatGPT, Gemini or another web AI below, or tick several emails in Gmail and send them all at once. Claude Code now names each session after its email.', 'notice text', n.text);
+  check(!/\u2014/.test(n.text), 'no em dash', n.text);
+  // Leave the page as B12 left it: B13 reads the footer without reopening.
+  await send('Page.navigate', { url: 'about:blank' });
+  await open('real', {});
 });
 
 await scenario('B13 footer copy and links', async (check) => {

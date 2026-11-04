@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Open in AI Agent for Gmail",
   "short_name": "Open in AI Agent",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or another AI. Runs on your computer.",
   "homepage_url": "https://github.com/thomasoclegg/gmail-to-agent",
   "minimum_chrome_version": "116",
@@ -11,7 +11,8 @@
     "default_title": "Open in AI Agent settings",
     "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png" }
   },
-  "permissions": ["contextMenus", "storage", "offscreen", "clipboardWrite"],
+  "permissions": ["contextMenus", "storage", "offscreen", "clipboardWrite", "scripting"],
+  "host_permissions": ["https://mail.google.com/*"],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",
   "content_scripts": [
