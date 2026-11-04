@@ -27,7 +27,7 @@ async function firstRun({ reason, previousVersion }) {
   // 1.0.x only had the two desktop targets; keep them for upgraders.
   const legacy = /^1\.0\./.test(previousVersion || '');
   await chrome.storage.sync.set({ targets: legacy ? LEGACY_TARGETS : DEFAULT_TARGETS });
-  if (legacy && !s.folder) chrome.runtime.openOptionsPage();
+  if (legacy) chrome.tabs.create({ url: chrome.runtime.getURL('options.html#new') });
 }
 
 chrome.runtime.onInstalled.addListener(async (details) => {

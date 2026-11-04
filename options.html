@@ -100,11 +100,13 @@
     <img src="icons/icon48.png" alt="">
     <div>
       <h1>Open in AI Agent</h1>
-      <p>Right-click any Gmail thread to hand it to your AI.</p>
+      <p>Right-click any email in Gmail to hand it to your AI.</p>
     </div>
   </header>
 
   <main>
+    <p class="notice" id="new-notice" hidden>New in 1.1: you can also hand an email to Claude, ChatGPT, Gemini and
+      other AIs. Pick them below. Claude Code and Codex work as before.</p>
     <p class="notice" id="reload-notice" hidden>Reload your Gmail tab, then right-click the email again. Gmail tabs that
       were open before the extension was installed or updated need one reload.</p>
 
@@ -126,8 +128,8 @@
       <label for="folder">Working folder</label>
       <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off"
              aria-describedby="folder-hint">
-      <p class="hint" id="folder-hint">Recommended. Codex needs a folder to start on its own. On a Mac, drag a folder into
-        Terminal to copy its path.</p>
+      <p class="hint" id="folder-hint">Recommended. Codex needs a folder to start on its own. On a Mac, right-click the
+        folder in Finder, hold Option and choose Copy as Pathname. On Windows, Shift+right-click it and choose Copy as path.</p>
     </section>
 
     <section class="card step" aria-labelledby="try-title">
@@ -136,7 +138,7 @@
       </div>
       <div class="try">
         <a class="button" href="https://mail.google.com/" target="_blank" rel="noopener">Open Gmail</a>
-        <p>Right-click any email and pick your AI. Web AIs open with the email copied: press Cmd+V (Ctrl+V), then Enter.</p>
+        <p id="try-line">Right-click any email and pick your AI. Web AIs open with the email copied: press Cmd+V (Ctrl+V), then Enter.</p>
       </div>
       <p class="hint">Gmail already open? Reload that tab first.</p>
     </section>
@@ -153,7 +155,7 @@
     <span>Runs on your computer. Nothing is sent to us.</span>
     <nav>
       <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
-      <a href="https://github.com/thomasoclegg/gmail-to-agent" target="_blank" rel="noopener">Help</a>
+      <a href="https://thomasoclegg.github.io/gmail-to-agent/" target="_blank" rel="noopener">Help</a>
     </nav>
   </footer>
 </div>

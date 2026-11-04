@@ -1,7 +1,13 @@
 // Platforms a thread can be handed to. Plain script shared by content.js,
 // background.js (importScripts) and options.js.
 
-const PASTE_HINT = 'Press Cmd+V (Ctrl+V), then Enter.';
+// Cmd+V on a Mac, Ctrl+V elsewhere; both when the platform is unknown.
+const PASTE_KEYS = (() => {
+  const p = globalThis.navigator?.userAgentData?.platform || globalThis.navigator?.platform || '';
+  if (!p) return 'Cmd+V (Ctrl+V)';
+  return /mac/i.test(p) ? 'Cmd+V' : 'Ctrl+V';
+})();
+const PASTE_HINT = `Press ${PASTE_KEYS}, then Enter.`;
 
 const webTarget = (id, name, url) => ({
   id,

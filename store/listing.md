@@ -6,7 +6,7 @@ Paste-ready answers for the Developer Dashboard. Upload `Open-in-AI-Agent_Store-
 
 **Name** (from manifest): Open in AI Agent for Gmail
 
-**Summary** (from manifest, 126 of 132 characters): Right-click a Gmail thread to hand it to Claude, ChatGPT, Gemini, Copilot, Claude Code, Codex and more. Runs on your computer.
+**Summary** (from manifest, 110 of 132 characters): Right-click a Gmail thread to hand it to the AI you use, on the web or on your desktop. Runs on your computer.
 
 **Description:**
 

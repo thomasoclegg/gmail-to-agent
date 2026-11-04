@@ -73,7 +73,7 @@ To update a downloaded copy, unzip the new version over the same folder and clic
 Click the extension's icon in Chrome's toolbar (pin it from the puzzle-piece menu), or open **Details > Extension options** in `chrome://extensions`.
 
 - **Pick the AI you use.** Click a tile to turn it on or off. Changes save straight away. New installs start with Claude and ChatGPT. Upgrades from 1.0 keep Claude Code and Codex until you change them.
-- **Where should desktop sessions start?** Shown only when Claude Code or Codex is picked. Recommended: Codex needs a folder to start on its own, and without one Claude Code uses its default folder. On a Mac, drag a folder into Terminal to copy its path.
+- **Where should desktop sessions start?** Shown only when Claude Code or Codex is picked. Recommended: Codex needs a folder to start on its own, and without one Claude Code uses its default folder. On a Mac, right-click the folder in Finder, hold Option and choose Copy as Pathname. On Windows, Shift+right-click it and choose Copy as path.
 
 Settings live in Chrome's sync storage, so they follow your Chrome profile.
 

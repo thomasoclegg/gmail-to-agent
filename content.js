@@ -254,11 +254,7 @@ function chatPrompt(thread) {
 
 let toastTimer = 0;
 
-function pasteKeys() {
-  const platform = navigator.userAgentData?.platform || navigator.platform || '';
-  if (!platform) return 'Cmd+V (Ctrl+V)';
-  return /mac/i.test(platform) ? 'Cmd+V' : 'Ctrl+V';
-}
+const pasteKeys = () => PASTE_KEYS;
 
 function toastElement() {
   let el = document.getElementById('vpa-toast');

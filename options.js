@@ -152,4 +152,8 @@ chrome.storage.sync.get({ targets: DEFAULT_TARGETS, folder: '' }, (s) => {
 });
 // Opened by background.js after a menu click in a Gmail tab that needs a reload.
 $('reload-notice').hidden = location.hash !== '#reload';
+// Opened by background.js for upgrades from 1.0.
+$('new-notice').hidden = location.hash !== '#new';
+$('try-line').textContent =
+  `Right-click any email and pick your AI. Web AIs open with the email copied: press ${PASTE_KEYS}, then Enter.`;
 showDonation();
