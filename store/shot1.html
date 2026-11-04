@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;width:1280px;height:800px;font:14px/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#f6f8fc;color:#202124;overflow:hidden}
+.top{height:64px;display:flex;align-items:center;padding:0 24px;gap:16px}
+.search{flex:0 0 640px;height:46px;border-radius:24px;background:#e9eef6;display:flex;align-items:center;padding:0 20px;color:#5f6368}
+.side{position:absolute;top:64px;left:0;width:240px;padding:8px 12px}
+.compose{display:inline-block;background:#c2e7ff;border-radius:16px;padding:18px 24px;font-weight:600;margin-bottom:12px}
+.nav{padding:6px 16px;border-radius:0 16px 16px 0;margin-right:8px}.nav.on{background:#d3e3fd;font-weight:700}
+.main{position:absolute;top:64px;left:240px;right:16px;bottom:16px;background:#fff;border-radius:16px;overflow:hidden}
+.row{display:flex;height:40px;align-items:center;border-bottom:1px solid #f1f3f4;padding:0 16px;gap:16px}
+.row .from{width:200px;font-weight:700}.row .subj{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .subj span{color:#5f6368;font-weight:400}
+.row .d{width:60px;text-align:right;font-weight:700;font-size:12px}
+.row.sel{background:#e8f0fe}
+.box{width:16px;height:16px;border:2px solid #9aa0a6;border-radius:2px}
+.menu{position:absolute;left:560px;top:176px;width:300px;background:#fff;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);padding:6px 0;font-size:14px}
+.mi{padding:9px 20px}.mi.ours{font-weight:600}.mi.hi{background:#f1f3f4}
+.sep{height:1px;background:#e0e0e0;margin:6px 0}
+.cap{position:absolute;left:900px;top:560px;width:340px;background:#1f5135;color:#fff;border-radius:14px;padding:22px 24px;font-size:20px;line-height:1.35;font-weight:600}
+.cap small{display:block;font-size:15px;font-weight:400;opacity:.9;margin-top:10px}
+</style></head><body>
+<div class="top"><div style="width:216px;font-size:22px;color:#444">Mail</div><div class="search">Search mail</div></div>
+<div class="side"><div class="compose">✎ Compose</div><div class="nav on">Inbox</div><div class="nav">Starred</div><div class="nav">Snoozed</div><div class="nav">Sent</div><div class="nav">Drafts</div></div>
+<div class="main">
+<div class="row"><div class="box"></div><div class="from">Northwind Supply</div><div class="subj">Revised quote for the December order <span>– Hi, attached is the updated pricing for…</span></div><div class="d">10:42</div></div>
+<div class="row"><div class="box"></div><div class="from">Alex Rivera</div><div class="subj">Contract renewal questions <span>– Before we sign, can you confirm the notice…</span></div><div class="d">09:15</div></div>
+<div class="row sel"><div class="box"></div><div class="from">Priya Shah</div><div class="subj">Shipment delayed: new ETA? <span>– Our receiving team says the pallet hasn't…</span></div><div class="d">08:03</div></div>
+<div class="row"><div class="box"></div><div class="from">Billing Team</div><div class="subj">Invoice 1042 is past due <span>– This is a reminder that invoice 1042…</span></div><div class="d">Nov 3</div></div>
+<div class="row"><div class="box"></div><div class="from">Jamie Chen</div><div class="subj">Intro: partnership opportunity <span>– Great to meet you at the show last week…</span></div><div class="d">Nov 3</div></div>
+<div class="row"><div class="box"></div><div class="from">Logistics Desk</div><div class="subj">Pickup confirmation needed <span>– Please confirm the dock window for Thursday…</span></div><div class="d">Nov 2</div></div>
+<div class="row"><div class="box"></div><div class="from">Sam Okafor</div><div class="subj">Feedback on the proposal <span>– I've added comments on sections two and…</span></div><div class="d">Nov 2</div></div>
+<div class="row"><div class="box"></div><div class="from">Accounts Payable</div><div class="subj">Remittance advice <span>– Payment has been scheduled for the…</span></div><div class="d">Nov 1</div></div>
+<div class="row"><div class="box"></div><div class="from">Morgan Lee</div><div class="subj">Can we move Friday's call? <span>– Something came up on my end…</span></div><div class="d">Oct 31</div></div>
+<div class="row"><div class="box"></div><div class="from">Support</div><div class="subj">Ticket #8812 updated <span>– A new reply has been added to your…</span></div><div class="d">Oct 31</div></div>
+</div>
+<div class="menu"><div class="mi ours hi">Open in Claude Code</div><div class="mi ours">Open in Codex (GPT)</div><div class="sep"></div><div class="mi">Reply</div><div class="mi">Forward</div><div class="mi">Archive</div><div class="mi">Mark as read</div><div class="mi">Snooze</div></div>
+<div class="cap">Right-click any thread.<br>Pick your agent.<small>A new Claude Code or Codex session opens on your computer, pointed at that exact thread.</small></div>
+</body></html>
