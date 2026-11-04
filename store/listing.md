@@ -19,7 +19,7 @@ How it works
 • Inside an open thread: right-click and use Chrome's menu.
 • Claude Code opens a pre-filled session; you press Enter to start.
 • Codex starts the session straight away.
-• Choose the working folder once in Options, or leave it blank to use each app's default.
+• Choose the working folder once in Options.
 
 Built to be safe by default
 • The prompt tells the agent to draft only and send nothing without your approval.

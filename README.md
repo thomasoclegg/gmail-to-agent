@@ -29,7 +29,7 @@ From the Chrome Web Store (once listed), or from source:
 
 Then:
 
-4. A settings box opens. Paste the full path of the folder you want sessions to open in, then **Save**, or leave it blank to use each app's default. Change it later via the extension's **Options**.
+4. A settings box opens. Paste the full path of the folder you want sessions to open in, then **Save**. Recommended: if left blank, Claude Code uses its default folder and Codex may wait for you to pick a project instead of starting. Change it later via the extension's **Options**.
 5. Reload any open Gmail tab.
 6. The first launch shows "Open Claude?" or "Open ChatGPT?". Tick **Always allow** and open.
 
