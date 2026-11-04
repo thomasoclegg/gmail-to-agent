@@ -4,155 +4,203 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Open in AI Agent</title>
+<title>Open in AI Agent for Gmail settings</title>
 <link rel="icon" href="icons/icon32.png">
 <style>
-  :root { --bg: #f6f8f6; --card: #ffffff; --fg: #1a211d; --muted: #58635d; --line: #dde4df; --field: #f8faf8;
-          --field-line: #828c86; --accent: #1f5135; --accent-fg: #ffffff; --tint: #e7f1ea; --focus: #1f5135;
-          --shadow: 0 1px 2px rgba(16, 32, 22, 0.05), 0 6px 20px rgba(16, 32, 22, 0.05); }
+  /* Fonts ship in the extension's own fonts/ folder (OFL, see fonts/OFL.txt): no network requests. */
+  @font-face { font-family: 'Libre Franklin'; font-weight: 400; font-style: normal; font-display: block;
+               src: url(fonts/libre-franklin-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Libre Franklin'; font-weight: 600; font-style: normal; font-display: block;
+               src: url(fonts/libre-franklin-latin-600-normal.woff2) format('woff2'); }
+
+  /* Same tokens as the website: near-white paper, ink, and the icon's red for focus rings and link underlines only. */
+  :root { --paper: #fafaf8; --ink: #15171a; --ink-2: #555a61; --rule: #dcdfe3; --line: #80858d; --rubric: #fb3e36;
+          --key-bg: #ffffff; --key-line: #c4c8ce; --icon-ring: transparent;
+          --sans: 'Libre Franklin', -apple-system, 'Segoe UI', Roboto, sans-serif;
+          --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #131715; --card: #1c211e; --fg: #e9eeea; --muted: #a2ada6; --line: #333b36; --field: #161a18;
-            --field-line: #6b7670; --accent: #8fd3a4; --accent-fg: #0f2418; --tint: #1f2a23; --focus: #e9eeea;
-            --shadow: none; }
+    :root { --paper: #121315; --ink: #e8e9eb; --ink-2: #9aa0a8; --rule: #2c2f34; --line: #6b7078;
+            --key-bg: #1d1f23; --key-line: #3d4148; --icon-ring: #3d4148; }
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--fg);
-         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  a { color: var(--accent); }
-  p, .note, .hint { text-wrap: pretty; }
-  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 40px; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15.5px/1.55 var(--sans);
+         font-kerning: normal; -webkit-font-smoothing: antialiased; }
+  p { text-wrap: pretty; }
+  a { color: inherit; text-decoration-color: var(--rubric); text-decoration-thickness: 1px; text-underline-offset: 0.22em; }
+  a:hover { text-decoration-thickness: 2px; }
+  kbd { display: inline-block; min-width: 1.75em; padding: 0.14em 0.42em 0.16em; margin: 0 0.06em; text-align: center;
+        font: 600 0.8em/1.25 var(--sans); vertical-align: 0.06em; color: var(--ink);
+        background: var(--key-bg); border: 1px solid var(--key-line); border-bottom-width: 2px; border-radius: 4px; }
+  kbd.combo { display: inline; min-width: 0; margin: 0; padding: 0; font: inherit; vertical-align: baseline; white-space: nowrap;
+              background: none; border: 0; }
+  .plus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* A key pair, or a key and the word next to it, never splits across lines. */
+  .nw { white-space: nowrap; }
 
-  header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
-  header img { width: 48px; height: 48px; flex: none; }
-  h1 { font-size: 24px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
-  header p { margin: 0; color: var(--muted); }
+  /* Desktop: hanging step numbers, the list of AIs, then steps 2 and 3 and the donation in the right-hand column. */
+  .sheet { display: grid; grid-template-columns: 72px minmax(0, 700px) 72px minmax(0, 312px); justify-content: center;
+           padding: 40px 40px 48px; }
+  .sheet > * { grid-column: 2 / -1; }
+  header.top { margin-bottom: 44px; }
+  .mast { display: flex; align-items: center; gap: 10px; margin: 0 0 36px; font: 600 15px/1.3 var(--sans); }
+  .mast img { width: 24px; height: 24px; flex: none; border-radius: 5px; box-shadow: 0 0 0 1px var(--icon-ring); }
+  h1 { margin: 0 0 8px; font: 600 44px/1.04 var(--sans); letter-spacing: -0.03em; }
+  header.top p { margin: 0; max-width: 44em; font: 400 18px/1.45 var(--sans); color: var(--ink-2); }
 
-  main { counter-reset: step; display: grid; gap: 20px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px;
-          box-shadow: var(--shadow); }
+  /* Notices: a ruled band with a bold label, no side stripe. */
+  .notice { margin: 0 0 36px; max-width: 46em; padding: 11px 0 12px; border-top: 1px solid var(--ink);
+            border-bottom: 1px solid var(--rule); font: 400 16px/1.5 var(--sans); }
+  .notice b { font-weight: 600; }
+
+  main { display: contents; }
+  .sheet { counter-reset: step; }
+  .pick { grid-column: 2; }
+  .later { grid-column: 4; display: flex; flex-direction: column; gap: 52px; }
+
   .step { counter-increment: step; }
-  .step-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
-  h2 { display: flex; align-items: flex-start; gap: 12px; font-size: 18px; line-height: 1.3; margin: 0; }
-  .num { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; margin-top: -2px; border-radius: 50%;
-         background: var(--tint); color: var(--accent); font-size: 14px; font-weight: 700; }
+  .step-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+  h2 { position: relative; margin: 0; font: 600 24px/1.2 var(--sans); letter-spacing: -0.015em; }
+  .num { position: absolute; right: calc(100% + 22px); top: 0; font: 600 24px/1.2 var(--sans); color: var(--ink); }
   .num::before { content: counter(step); }
-  .sub { margin: 0 0 18px; color: var(--muted); }
-  .saved { flex: none; color: var(--accent); font-size: 13.5px; font-weight: 600; opacity: 0; transition: opacity 150ms; }
+  .saved { flex: none; font: 600 13.5px var(--sans); color: var(--ink-2); opacity: 0; transition: opacity 150ms; }
   .saved.show { opacity: 1; }
+  .sub { margin: 0 0 18px; color: var(--ink-2); }
 
-  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .tile { position: relative; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch;
-          width: 100%; text-align: left; padding: 14px 16px 15px 48px;
-          font: inherit; color: var(--fg); background: var(--card); border: 1.5px solid var(--field-line);
-          border-radius: 12px; cursor: pointer; transition: border-color 120ms, background-color 120ms; }
-  .tile:hover { border-color: var(--muted); }
-  .tile[aria-pressed="true"] { border-color: var(--accent); background: var(--tint); }
-  .tick { position: absolute; left: 16px; top: 16px; width: 20px; height: 20px; border-radius: 6px;
-          border: 1.5px solid var(--muted); }
-  .tile[aria-pressed="true"] .tick { background: var(--accent); border-color: var(--accent); }
-  .tile[aria-pressed="true"] .tick::after { content: ""; position: absolute; left: 5.5px; top: 1.5px; width: 5px; height: 10px;
-          border: solid var(--accent-fg); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  .name { display: block; font-weight: 600; }
-  .note { display: block; margin-top: 3px; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
-  .empty { margin: 0 0 16px; padding: 11px 14px; border-radius: 10px; background: var(--tint); }
-  .notice { margin: 0; padding: 14px 18px; border-radius: 12px; border: 1.5px solid var(--accent); background: var(--tint);
-            font-weight: 600; }
+  .empty { margin: 0 0 16px; padding: 9px 0 10px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--rule);
+           font-weight: 600; }
+  .group + .group { margin-top: 26px; }
+  .group-label { margin: 0 0 6px; font: 600 13.5px/1.3 var(--sans); color: var(--ink-2); }
+  .group-note { margin: -2px 0 10px; font-size: 13.5px; color: var(--ink-2); }
+  .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); column-gap: 28px;
+          border-bottom: 1px solid var(--rule); }
+  .group.web .rows { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+  .group.copy .rows { grid-template-columns: minmax(0, 1fr); }
+  .tile { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 13px; align-items: start; align-content: start; width: 100%;
+          min-height: 44px; margin-bottom: -1px; padding: 11px 6px 12px 0; text-align: left; font: inherit; color: var(--ink);
+          cursor: pointer; background: none; border: 0; border-top: 1px solid var(--rule); border-radius: 0; }
+  .tick { position: relative; width: 18px; height: 18px; margin-top: 1px; border: 1.5px solid var(--line); border-radius: 3px; }
+  .tile:hover .tick { border-color: var(--ink); }
+  .tile[aria-pressed="true"] .tick { background: var(--ink); border-color: var(--ink); }
+  .tile[aria-pressed="true"] .tick::after { content: ""; position: absolute; left: 4.5px; top: 0.5px; width: 5px; height: 10px;
+          border: solid var(--paper); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .name { font-weight: 600; font-size: 16px; line-height: 1.3; }
+  .note { grid-column: 2; margin-top: 2px; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+  .note.dom { font: 13px/1.5 var(--mono); }
 
-  label { display: block; font-weight: 600; margin: 4px 0 6px; }
-  input { width: 100%; padding: 11px 13px; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg);
-          background: var(--field); border: 1.5px solid var(--field-line); border-radius: 10px; }
-  input::placeholder { color: var(--muted); opacity: 1; }
-  .hint { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+  label { display: block; margin: 18px 0 2px; font-weight: 600; font-size: 14px; }
+  input { width: 100%; padding: 9px 0 8px; font: 15px var(--mono); color: var(--ink); background: transparent;
+          border: 0; border-bottom: 1.5px solid var(--line); border-radius: 0; }
+  input::placeholder { color: var(--ink-2); opacity: 1; }
+  input:focus { border-bottom-color: var(--ink); }
+  .hint { margin: 12px 0 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+  .hint b { font-weight: 600; color: var(--ink); }
 
-  .try { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 14px; }
-  .try p { flex: 1 1 280px; margin: 0; }
-  .try + .hint { margin-top: 14px; }
-  .button { display: inline-block; padding: 11px 20px; border-radius: 10px; background: var(--accent);
-            color: var(--accent-fg); font-weight: 600; text-decoration: none; }
-  .button:hover { filter: brightness(1.08); }
-  .donate p { margin: 0 0 14px; }
-  .donate .button { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
-  .donate .small { margin: 14px 0 0; color: var(--muted); font-size: 13.5px; }
+  .button { display: inline-flex; align-items: center; min-height: 46px; padding: 12px 19px; border-radius: 3px;
+            background: var(--ink); color: var(--paper); font: 600 15px/1.25 var(--sans); text-decoration: none; text-wrap: balance; }
+  .button:hover { box-shadow: inset 0 -3px 0 var(--rubric); }
+  .try { margin-top: 14px; }
+  .try p { margin: 16px 0 0; }
+  .try-hint { margin: 12px 0 0; color: var(--ink-2); font-size: 14px; }
 
-  .tile:focus-visible, .button:focus-visible, a:focus-visible, input:focus {
-    outline: 3px solid var(--focus); outline-offset: 2px; }
-  input:focus { border-color: var(--accent); outline-offset: 1px; }
+  .donate { padding-top: 18px; border-top: 1px solid var(--rule); }
+  .donate p { margin: 0 0 18px; font: 400 16px/1.5 var(--sans); }
+  .donate .button { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .donate .button:hover { border-color: var(--rubric); box-shadow: none; }
+  .donate .small { margin: 14px 0 0; font: 400 13.5px/1.5 var(--sans); color: var(--ink-2); }
 
-  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; margin-top: 28px;
-           color: var(--muted); font-size: 13.5px; }
-  footer a { color: inherit; }
-  footer nav { display: flex; gap: 16px; }
+  .tile:focus-visible, .button:focus-visible, a:focus-visible, input:focus-visible {
+    outline: 3px solid var(--rubric); outline-offset: 3px; }
+  /* Room for the whole focus ring when a tab scrolls a control into view. */
+  .tile, .button, a, input { scroll-margin: 12px; }
 
-  @media (max-width: 520px) {
-    .wrap { padding: 28px 16px 32px; }
-    header { gap: 12px; }
-    header img { width: 40px; height: 40px; }
-    h1 { font-size: 21px; }
-    .card { padding: 18px; }
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; margin-top: 64px; padding-top: 14px;
+           border-top: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); }
+  footer nav { display: flex; gap: 18px; }
+
+  /* One column, step numbers still hanging. */
+  @media (max-width: 1099px) {
+    .sheet { grid-template-columns: 64px minmax(0, 700px); padding: 36px 32px 40px; }
+    .sheet > *, .pick, .later { grid-column: 2; }
+    .later { margin-top: 56px; }
+    .donate { margin-top: 8px; }
+    .num { right: calc(100% + 18px); }
+  }
+  /* Phones: step numbers sit in front of the headings. */
+  @media (max-width: 600px) {
+    .sheet { display: block; padding: 24px 16px 32px; }
+    header.top { margin-bottom: 32px; }
+    .mast { margin-bottom: 28px; }
+    h1 { font-size: 36px; }
+    header.top p { font-size: 17px; }
+    .later { margin-top: 48px; gap: 44px; }
+    h2 { font-size: 22px; }
+    .num { position: static; margin-right: 0.35em; font-size: 22px; }
+    .step-head { align-items: last baseline; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <img src="icons/icon48.png" alt="">
-    <div>
-      <h1>Open in AI Agent</h1>
-      <p>Right-click any email in Gmail to hand it to your AI.</p>
-    </div>
+<div class="sheet">
+  <header class="top">
+    <div class="mast"><img src="icons/icon48.png" alt=""><span>Open in AI Agent for Gmail</span></div>
+    <h1>Settings</h1>
+    <p>Choose what appears when you right-click an email in Gmail. Changes save as you go.</p>
   </header>
 
-  <main>
-    <p class="notice" id="new-notice" hidden>New in 1.1: you can also hand an email to Claude, ChatGPT, Gemini and
-      other AIs. Pick them below. Claude Code and Codex work as before.</p>
-    <p class="notice" id="reload-notice" hidden>Reload your Gmail tab, then right-click the email again. Gmail tabs that
-      were open before the extension was installed or updated need one reload.</p>
+  <p class="notice" id="new-notice" hidden><b>New in 1.1.</b> You can also open an email in Claude, ChatGPT, Gemini and
+    five other web AIs, or copy it for any AI. Pick them below. Claude Code and Codex work as before.</p>
+  <p class="notice" id="reload-notice" hidden><b>One more step.</b> Reload your Gmail tab, then right-click the email again.
+    Gmail tabs that were open before the extension was installed or updated need one reload.</p>
 
-    <section class="card step" aria-labelledby="pick-title">
+  <main>
+    <section class="pick step" aria-labelledby="pick-title">
       <div class="step-head">
-        <h2 id="pick-title"><span class="num" aria-hidden="true"></span>Pick the AI you use</h2>
+        <h2 id="pick-title"><span class="num" aria-hidden="true"></span>Pick the AIs you use</h2>
         <span class="saved" id="pick-saved" role="status"></span>
       </div>
-      <p class="sub">Pick one or more. Each one appears when you right-click in Gmail.</p>
-      <p class="empty" id="empty" hidden>Nothing picked yet, so your right-click menu will be empty. Pick at least one.</p>
-      <div class="tiles" id="tiles" role="group" aria-labelledby="pick-title"></div>
+      <p class="sub">Each one you pick appears when you right-click an email in Gmail, in this order.</p>
+      <p class="empty" id="empty" hidden>Nothing picked yet, so nothing will be added to your right-click menu. Pick at least one.</p>
+      <!-- options.js fills this from TARGETS, in three groups. -->
+      <div id="tiles" role="group" aria-labelledby="pick-title"></div>
     </section>
 
-    <section class="card step" id="folder-step" aria-labelledby="folder-title" hidden>
-      <div class="step-head">
-        <h2 id="folder-title"><span class="num" aria-hidden="true"></span>Where should desktop sessions start?</h2>
-        <span class="saved" id="folder-saved" role="status"></span>
-      </div>
-      <label for="folder">Working folder</label>
-      <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off"
-             aria-describedby="folder-hint">
-      <p class="hint" id="folder-hint">Recommended. Codex needs a folder to start on its own. On a Mac, right-click the
-        folder in Finder, hold Option and choose Copy as Pathname. On Windows, Shift+right-click it and choose Copy as path.</p>
-    </section>
+    <div class="later">
+      <section class="step" id="folder-step" aria-labelledby="folder-title" hidden>
+        <div class="step-head">
+          <h2 id="folder-title"><span class="num" aria-hidden="true"></span>Pick a working folder</h2>
+          <span class="saved" id="folder-saved" role="status"></span>
+        </div>
+        <p class="sub">Only Claude Code and Codex use this.</p>
+        <label for="folder">Working folder</label>
+        <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off"
+               aria-describedby="folder-hint">
+        <p class="hint" id="folder-hint"><b>Recommended.</b> Without one, Codex may ask you to pick a project and Claude Code uses
+          its default folder. On a Mac, right-click the folder in Finder, hold <kbd>Option</kbd> and choose Copy as Pathname. On
+          Windows, <span class="nw"><kbd>Shift</kbd>+right-click</span> it and choose Copy as path.</p>
+      </section>
 
-    <section class="card step" aria-labelledby="try-title">
-      <div class="step-head">
+      <section class="step" aria-labelledby="try-title">
         <h2 id="try-title"><span class="num" aria-hidden="true"></span>Try it</h2>
-      </div>
-      <div class="try">
-        <a class="button" href="https://mail.google.com/" target="_blank" rel="noopener">Open Gmail</a>
-        <p id="try-line">Right-click any email and pick your AI. Web AIs open with the email copied: press Cmd+V (Ctrl+V), then Enter.</p>
-      </div>
-      <p class="hint">Gmail already open? Reload that tab first.</p>
-    </section>
+        <div class="try">
+          <a class="button" href="https://mail.google.com/" target="_blank" rel="noopener">Open Gmail</a>
+          <p id="try-line">Right-click any email and pick your AI. Web AIs open with the thread copied: press Cmd+V (Ctrl+V), then Enter.</p>
+        </div>
+        <p class="try-hint">Gmail already open? Reload that tab first.</p>
+      </section>
 
-    <!-- Filled from DONATION in targets.js; stays hidden until both fields are set. -->
-    <section class="card donate" id="donate" hidden>
-      <p id="donate-text"></p>
-      <a class="button" id="donate-link" target="_blank" rel="noopener"></a>
-      <p class="small">Donations go straight to the charity. We never see the money.</p>
-    </section>
+      <!-- Filled from DONATION in targets.js; stays hidden while its charity or url is empty. -->
+      <section class="donate" id="donate" aria-label="Donation" hidden>
+        <p id="donate-text"></p>
+        <a class="button" id="donate-link" target="_blank" rel="noopener"></a>
+        <p class="small">Donations go straight to them. I never see the money. Paying by PayPal? Write &ldquo;AI Agent&rdquo; in the note so they know it came from here.</p>
+      </section>
+    </div>
   </main>
 
   <footer>
-    <span>Runs on your computer. Nothing is sent to us.</span>
+    <span>Runs on your computer. Nothing is sent to me.</span>
     <nav>
       <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
       <a href="https://thomasoclegg.github.io/gmail-to-agent/" target="_blank" rel="noopener">Help</a>

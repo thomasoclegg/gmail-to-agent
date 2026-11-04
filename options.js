@@ -68,14 +68,39 @@ function toggle(id, button) {
   });
 }
 
-function span(className, text) {
-  const el = document.createElement('span');
-  el.className = className;
+function element(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
   if (text) el.textContent = text;
   return el;
 }
+const span = (className, text) => element('span', className, text);
 
-function tile(target) {
+// "Cmd+V" becomes keycaps (the "+" stays in the text for screen readers); so does "Enter".
+function keycap(text) {
+  if (text === 'Enter') return element('kbd', '', text);
+  const [mod, key] = text.split('+');
+  const combo = element('kbd', 'combo');
+  combo.append(element('kbd', '', mod), span('plus', '+'), element('kbd', '', key));
+  return combo;
+}
+
+// A keycap stays on one line with the word before it and the punctuation after it.
+function keyGroup(part) {
+  const [, before, key, after] = part.match(/^(.*?)\b((?:Cmd|Ctrl)\+V|Enter)\b(.*)$/);
+  const group = span('nw');
+  group.append(before, keycap(key), after);
+  return group;
+}
+
+function withKeys(text) {
+  return text
+    .split(/((?:\S+ )?\b(?:(?:Cmd|Ctrl)\+V|Enter)\b\S*)/)
+    .map((part, i) => (i % 2 ? keyGroup(part) : document.createTextNode(part)))
+    .filter((node) => node.textContent);
+}
+
+function tile(target, groupNote) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'tile';
@@ -84,14 +109,45 @@ function tile(target) {
   const tick = span('tick');
   tick.setAttribute('aria-hidden', 'true');
   const name = span('name', target.name);
-  const note = span('note', target.note);
+  const note = span(target.kind === 'web' ? 'note dom' : 'note', target.note);
   name.id = `tile-${target.id}-name`;
   note.id = `tile-${target.id}-note`;
   button.setAttribute('aria-labelledby', name.id);
-  button.setAttribute('aria-describedby', note.id);
+  button.setAttribute('aria-describedby', groupNote ? `${note.id} ${groupNote.id}` : note.id);
   button.append(tick, name, note);
   button.addEventListener('click', () => toggle(target.id, button));
   return button;
+}
+
+// The tiles in three groups, in TARGETS order. Web AIs share one note with the paste keys.
+const GROUPS = [
+  { kind: 'app', label: 'On your desktop' },
+  {
+    kind: 'web',
+    label: 'In the browser',
+    note: `Each opens in a new tab next to Gmail with the thread copied. Press ${PASTE_KEYS}, then Enter.`,
+  },
+  { kind: 'copy', label: 'Anywhere' },
+];
+
+function group({ kind, label, note }) {
+  const box = element('div', `group ${kind}`);
+  box.setAttribute('role', 'group');
+  const title = element('p', 'group-label', label);
+  title.id = `group-${kind}`;
+  box.setAttribute('aria-labelledby', title.id);
+  box.append(title);
+  let noteEl = null;
+  if (note) {
+    noteEl = element('p', 'group-note');
+    noteEl.id = `group-${kind}-note`;
+    noteEl.append(...withKeys(note));
+    box.append(noteEl);
+  }
+  const rows = element('div', 'rows');
+  rows.append(...TARGETS.filter((t) => t.kind === kind).map((t) => tile(t, noteEl)));
+  box.append(rows);
+  return box;
 }
 
 // Strips quotes, and the backslash escapes Terminal adds when a folder is dragged in.
@@ -116,7 +172,8 @@ function saveFolder() {
 
 function showDonation() {
   if (!hasDonation() || !/^https:\/\//.test(DONATION.url)) return;
-  $('donate-text').textContent = `Free forever. If it saves you time, please give to ${DONATION.charity}.`;
+  const about = DONATION.about ? `, ${DONATION.about}` : '';
+  $('donate-text').textContent = `It's free. If it saves you time, please give something to ${DONATION.charity}${about}.`;
   $('donate-link').href = DONATION.url;
   $('donate-link').textContent = `Donate to ${DONATION.charity}`;
   $('donate').hidden = false;
@@ -147,13 +204,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
 chrome.storage.sync.get({ targets: DEFAULT_TARGETS, folder: '' }, (s) => {
   savedFolder = s.folder;
   $('folder').value = s.folder;
-  $('tiles').replaceChildren(...TARGETS.map(tile));
+  $('tiles').replaceChildren(...GROUPS.map(group));
   showTargets(s.targets);
 });
 // Opened by background.js after a menu click in a Gmail tab that needs a reload.
 $('reload-notice').hidden = location.hash !== '#reload';
 // Opened by background.js for upgrades from 1.0.
 $('new-notice').hidden = location.hash !== '#new';
-$('try-line').textContent =
-  `Right-click any email and pick your AI. Web AIs open with the email copied: press ${PASTE_KEYS}, then Enter.`;
+$('try-line').replaceChildren(
+  ...withKeys(`Right-click any email and pick your AI. Web AIs open with the thread copied: press ${PASTE_KEYS}, then Enter.`),
+);
 showDonation();

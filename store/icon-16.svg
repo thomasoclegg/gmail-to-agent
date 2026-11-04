@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- The 16 px toolbar icon, drawn pixel by pixel: a 10 x 7 envelope with a one-pixel flap, and a three-item menu with its top item in red. -->
+  <rect width="16" height="16" rx="3" fill="#15171a"/>
+  <g shape-rendering="crispEdges">
+    <rect x="1" y="4" width="10" height="7" fill="#fafaf8"/>
+    <path fill="#15171a" d="M1 4h1v1H1zM10 4h1v1h-1zM2 5h1v1H2zM9 5h1v1H9zM3 6h1v1H3zM8 6h1v1H8zM4 7h1v1H4zM7 7h1v1H7zM5 8h2v1H5z"/>
+    <rect x="12" y="4" width="3" height="2" fill="#fb3e36"/>
+    <rect x="12" y="7" width="3" height="2" fill="#fafaf8"/>
+    <rect x="12" y="10" width="3" height="2" fill="#fafaf8"/>
+  </g>
+</svg>

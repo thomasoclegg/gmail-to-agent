@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Inbox</title>
+<style>
+  body { margin: 0; font: 14px/1.4 Arial, sans-serif; background: #f6f8fc; color: #202124; }
+  #toolbar { padding: 8px 16px; background: #eaf1fb; }
+  #main { padding: 8px 16px; min-height: 420px; }
+  table { border-collapse: collapse; width: 100%; background: #fff; }
+  tr.zA td { padding: 6px 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+  tr.zE { font-weight: bold; }
+  .bx0 { color: #5f6368; margin-left: 4px; font-weight: normal; }
+  .thread-view { background: #fff; padding: 12px 16px; }
+  .ha { display: flex; gap: 16px; align-items: center; }
+  [role="list"] > [role="listitem"] { border-top: 1px solid #eee; padding: 8px 0; }
+  .gD { font-weight: bold; margin-right: 8px; }
+  .g3 { color: #5f6368; }
+  .iA { display: block; color: #5f6368; }
+  .a3s { margin-top: 6px; }
+  .kQ { padding: 4px 0; color: #1a73e8; }
+  .J-M { position: fixed; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.3); padding: 6px 0; min-width: 220px; z-index: 10; }
+  .J-N { padding: 6px 16px; cursor: pointer; }
+  .J-N-JT { background: #eee; }
+  .J-Kh { border-top: 1px solid #ddd; margin: 4px 0; }
+  #results, #summary { white-space: pre-wrap; font-size: 11px; margin: 16px; }
+  #results { display: none; }
+</style>
+</head>
+<body>
+<div id="toolbar">Inbox toolbar (Gmail shows no menu here)</div>
+<div id="main">
+  <div id="inbox"><table><tbody></tbody></table></div>
+</div>
+<pre id="summary"></pre>
+<pre id="results">PENDING</pre>
+<script src="stub.js"></script>
+<script src="data.js"></script>
+<!-- The real extension files, from the repository root (this page is tests/content/mail/u/1/index.html). -->
+<script src="../../../../../targets.js"></script>
+<script src="../../../../../content.js"></script>
+<script src="gmail.js"></script>
+<script src="driver.js"></script>
+</body>
+</html>

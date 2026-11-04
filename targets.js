@@ -1,4 +1,4 @@
-// Platforms a thread can be handed to. Plain script shared by content.js,
+// The AIs a thread can be opened in. Plain script shared by content.js,
 // background.js (importScripts) and options.js.
 
 // Cmd+V on a Mac, Ctrl+V elsewhere; both when the platform is unknown.
@@ -7,8 +7,11 @@ const PASTE_KEYS = (() => {
   if (!p) return 'Cmd+V (Ctrl+V)';
   return /mac/i.test(p) ? 'Cmd+V' : 'Ctrl+V';
 })();
-const PASTE_HINT = `Press ${PASTE_KEYS}, then Enter.`;
 
+// "https://www.perplexity.ai/" -> "perplexity.ai"
+const hostOf = (url) => url.replace(/^https:\/\/(?:www\.)?([^/]+).*$/, '$1');
+
+// A web AI's note is its address. The settings page gives the paste keys once for the group.
 const webTarget = (id, name, url) => ({
   id,
   name,
@@ -16,7 +19,7 @@ const webTarget = (id, name, url) => ({
   url,
   menu: `Ask ${name}`,
   chromeMenu: `Ask ${name} about this thread`,
-  note: `Opens ${name} with the email copied. ${PASTE_HINT}`,
+  note: hostOf(url),
 });
 
 const TARGETS = [
@@ -32,9 +35,9 @@ const TARGETS = [
     id: 'codex',
     name: 'Codex',
     kind: 'app',
-    menu: 'Open in Codex (GPT)',
-    chromeMenu: 'Open thread in Codex (GPT)',
-    note: 'ChatGPT desktop app. Reads the thread itself and starts straight away.',
+    menu: 'Open in Codex',
+    chromeMenu: 'Open thread in Codex',
+    note: 'ChatGPT desktop app. Reads the thread itself and starts straight away once a working folder is set.',
   },
   webTarget('claude', 'Claude', 'https://claude.ai/new'),
   webTarget('chatgpt', 'ChatGPT', 'https://chatgpt.com/'),
@@ -46,19 +49,23 @@ const TARGETS = [
   webTarget('deepseek', 'DeepSeek', 'https://chat.deepseek.com/'),
   {
     id: 'copy',
-    name: 'Copy for any AI',
+    name: 'Copy thread for any AI',
     kind: 'copy',
     menu: 'Copy thread for any AI',
     chromeMenu: 'Copy thread for any AI',
-    note: 'Copies the email so you can paste it into any AI.',
+    note: 'Copies the whole thread so you can paste it into any AI.',
   },
 ];
 
 const DEFAULT_TARGETS = ['claude', 'chatgpt']; // new installs
 const LEGACY_TARGETS = ['claude-code', 'codex']; // upgrades from 1.0.x with no targets setting
 
-// Fill in both to show the donation link; it stays hidden while either is empty.
-const DONATION = { charity: '', url: '' };
+// Shown on the settings page; empty charity or url hides it. "about" finishes the sentence after the name.
+const DONATION = {
+  charity: 'Friends of Larnaca Cats',
+  about: 'a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus',
+  url: 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent',
+};
 
 const targetById = (id) => TARGETS.find((t) => t.id === id);
 

@@ -1,4 +1,164 @@
-<!doctype html><html><head><meta charset="utf-8"><style>
-body{margin:0;width:440px;height:280px;background:#1f5135;color:#fff;font:16px/1.35 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;display:flex;align-items:center;gap:22px;padding:0 30px;box-sizing:border-box;overflow:hidden}
-h1{font:700 26px/1.15 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:0 0 10px}p{font:16px/1.35 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;margin:0;opacity:.92}
-</style></head><body><img src="icon.svg" width="96" height="96"><div><h1>Open in AI Agent</h1><p>Right-click any Gmail thread to hand it to Claude, ChatGPT, Gemini and more.</p></div></body></html>
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=440">
+<title>Store promo tile</title>
+<!-- 440 x 280 small promo tile. Built by store/build.py; the menu is the Gmail drawing from docs/index.html. -->
+<style>
+  @font-face { font-family: 'Libre Franklin'; font-weight: 400; font-style: normal; font-display: swap;
+               src: url(../docs/fonts/libre-franklin-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Libre Franklin'; font-weight: 600; font-style: normal; font-display: swap;
+               src: url(../docs/fonts/libre-franklin-latin-600-normal.woff2) format('woff2'); }
+
+  :root { --paper: #fafaf8; --ink: #15171a; --ink-2: #555a61; --rule: #dcdfe3; --rubric: #fb3e36;
+          --sans: 'Libre Franklin', -apple-system, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { position: relative; width: 440px; height: 280px; overflow: hidden; background: var(--paper); color: var(--ink);
+         -webkit-font-smoothing: antialiased; }
+  .left { position: absolute; left: 0; top: 0; bottom: 0; width: 198px; padding: 28px 14px 30px 26px;
+           display: flex; flex-direction: column; justify-content: space-between; }
+  .brand { display: flex; flex-direction: column; gap: 12px; font: 600 15px/1.25 var(--sans); text-wrap: balance; }
+  .brand svg { width: 34px; height: 34px; }
+  .line { margin: 0; font: 600 21px/1.14 var(--sans); letter-spacing: -0.02em; }
+  /* A crop of Gmail: the right-clicked row, then the top of the menu running off the right edge.
+     The menu is placed so the tile's bottom edge falls between two items, never through one. */
+  .crop { position: absolute; left: 198px; top: 0; right: 0; bottom: 0; }
+  .crop .gm { position: absolute; inset: 0; height: auto; border-radius: 0; }
+  .crop .gm-row.ctx { position: absolute; left: 0; right: -60px; top: 25px; }
+  .crop .gm-menu { left: 20px; right: auto; top: 63px; }
+  .crop .gm-cursor { left: 14px; right: auto; top: 58px; }
+
+  /* gm:start  A drawing of Gmail's inbox and menu, and the extension's note, as they ship. */
+  .gm { --gm-bg: #f6f8fc; --gm-panel: #ffffff; --gm-ink: #1f1f1f; --gm-icon: #444746; --gm-soft: #5e5e5e;
+        --gm-line: #edf0f3; --gm-search: #e9eef6; --gm-compose: #c2e7ff; --gm-on: #d3e3fd; --gm-read: #f2f6fc;
+        --gm-menu: #ffffff; --gm-hover: #eceef0; --gm-sep: #e3e3e3; --gm-tab: #0b57d0; --gm-box: #5f6368;
+        --mark-accent: #fb3e36;
+        position: relative; height: 482px; overflow: hidden; background: var(--gm-bg); color: var(--gm-ink);
+        font: 400 14px/20px Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: auto; border-radius: 10px; }
+  .gm svg { display: block; fill: currentColor; }
+  .gm-top { position: absolute; left: 0; right: 0; top: 0; height: 60px; }
+  .gm-burger { position: absolute; left: 20px; top: 18px; width: 24px; height: 24px; color: var(--gm-icon); }
+  .gm-search { position: absolute; left: 196px; top: 10px; width: min(540px, calc(100% - 220px)); height: 42px;
+               display: flex; align-items: center; gap: 14px; padding: 0 18px; border-radius: 21px;
+               background: var(--gm-search); color: var(--gm-soft); font-size: 15px; }
+  .gm-search svg { width: 22px; height: 22px; color: var(--gm-icon); }
+  .gm-nav { position: absolute; left: 0; top: 60px; width: 180px; padding: 4px 0 0 8px; }
+  .gm-compose { display: inline-flex; align-items: center; gap: 12px; height: 54px; padding: 0 22px 0 16px;
+                margin-bottom: 14px; border-radius: 16px; background: var(--gm-compose); font-weight: 500; }
+  .gm-compose svg { width: 22px; height: 22px; }
+  .gm-ni { display: flex; align-items: center; gap: 16px; height: 32px; padding: 0 14px 0 18px; border-radius: 0 16px 16px 0;
+           margin-right: 4px; }
+  .gm-ni svg { width: 20px; height: 20px; color: var(--gm-icon); }
+  .gm-ni b { margin-left: auto; font-size: 12px; }
+  .gm-ni.on { background: var(--gm-on); font-weight: 700; }
+  .gm-main { position: absolute; left: 188px; right: 0; top: 60px; bottom: 0; overflow: hidden;
+             border-radius: 16px 0 0 0; background: var(--gm-panel); }
+  .gm-tools { display: flex; align-items: center; gap: 22px; height: 46px; padding: 0 18px; color: var(--gm-icon); }
+  .gm-tools svg { width: 20px; height: 20px; }
+  .gm-tools .count { margin-left: auto; margin-right: 40px; font-size: 12px; color: var(--gm-soft); }
+  .gm-box { width: 16px; height: 16px; flex: none; border: 2px solid var(--gm-box); border-radius: 2px; }
+  .gm-tabs { display: flex; height: 46px; border-bottom: 1px solid var(--gm-line); }
+  .gm-tabs span { position: relative; display: flex; align-items: center; width: 196px; padding-left: 18px;
+                  font-weight: 500; color: var(--gm-soft); }
+  .gm-tabs span.on { color: var(--gm-tab); }
+  .gm-tabs span.on::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px;
+                            border-radius: 3px 3px 0 0; background: var(--gm-tab); }
+  .gm-row { position: relative; display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 16px 0 18px;
+            border-bottom: 1px solid var(--gm-line); background: var(--gm-read); white-space: nowrap; }
+  .gm-row.unread { background: var(--gm-panel); font-weight: 700; }
+  .gm-row .star { width: 20px; height: 20px; flex: none; color: #8e918f; }
+  .gm-row .from { width: 176px; flex: none; overflow: hidden; text-overflow: ellipsis; }
+  .gm-row .from i { font-style: normal; font-weight: 400; color: var(--gm-soft); font-size: 12px; }
+  .gm-row .subj { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .gm-row .subj span { font-weight: 400; color: var(--gm-soft); }
+  .gm-row .when { width: 52px; flex: none; text-align: right; font-size: 12px; }
+  .gm-row.ctx { z-index: 1; box-shadow: inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0,
+                0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15); }
+  .gm-menu { position: absolute; right: 6px; top: 188px; z-index: 5; width: 262px; padding: 8px 0;
+             border-radius: 4px; background: var(--gm-menu);
+             box-shadow: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 1px 2px 0 rgba(60, 64, 67, 0.3); }
+  .gm-mi { position: relative; display: flex; align-items: center; height: 32px; padding: 0 24px 0 56px;
+           white-space: nowrap; }
+  .gm-mi svg { position: absolute; left: 18px; top: 6px; width: 20px; height: 20px; color: var(--gm-icon); }
+  .gm-mi .chev { left: auto; right: 12px; }
+  .gm-mi.hover { background: var(--gm-hover); }
+  .gm-sep { height: 1px; margin: 8px 0; background: var(--gm-sep); }
+  .gm-cursor { position: absolute; z-index: 6; right: 255px; top: 184px; width: 16px; height: 22px; }
+  /* The extension's note in Gmail (content.js, #vpa-toast), at the bottom left of the same window.
+     On success its countdown line is neutral; red is kept for errors. */
+  .vpa-toast { position: absolute; left: 24px; bottom: 16px; z-index: 6; display: flex; align-items: center; gap: 10px;
+               max-width: min(470px, calc(100% - 320px)); padding: 11px 16px 11px 12px; border-radius: 8px; overflow: hidden;
+               background: #202124; color: #f1f1f1;
+               font: 400 14px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+               box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 4px 16px rgba(0, 0, 0, 0.3); }
+  .vpa-toast svg { width: 22px; height: 22px; flex: none; color: #f1f1f1; }
+  .vpa-toast kbd { min-width: 0; margin: 0 1px; padding: 0 6px 1px; vertical-align: baseline;
+                   font: 600 12.5px/17px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                   color: #ffffff; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.34);
+                   border-bottom-width: 2px; }
+  .vpa-toast .left { position: absolute; left: 0; bottom: 0; height: 2px; width: 58%; background: rgba(255, 255, 255, 0.45); }
+  /* gm:end */
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 20 20">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1.75" y="5.25" width="11.5" height="8.5" rx="1.25" stroke-width="1.5"/>
+      <path d="M2.9 6.4 7.5 10l4.6-3.6" stroke-width="1.3"/>
+    </g>
+    <rect x="15.5" y="4.5" width="3.5" height="2.2" rx="0.5" style="fill: var(--mark-accent)"/>
+    <rect x="15.5" y="8.4" width="3.5" height="2.2" rx="0.5"/>
+    <rect x="15.5" y="12.3" width="3.5" height="2.2" rx="0.5"/>
+  </symbol>
+  <symbol id="i-burger" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14c0 1.1.89 2 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H5V5h14v10z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 2a2 2 0 0 0-1.99 2L4 20c0 1.1.89 2 1.99 2H18a2 2 0 0 0 2-2V8l-6-6H6zm7 7V3.5L18.5 9H13z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></symbol>
+  <symbol id="i-replyall" viewBox="0 0 24 24"><path d="M7 8V5l-7 7 7 7v-3l-4-4 4-4zm6 1V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></symbol>
+  <symbol id="i-forward" viewBox="0 0 24 24"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></symbol>
+  <symbol id="i-attach" viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></symbol>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M20.54 5.23l-1.39-1.68A1.45 1.45 0 0 0 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.97 1.97 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5 6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
+  <symbol id="i-unread" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 16 22"><path d="M1 1v17.5l4.4-4.2 2.9 6.6 2.9-1.3-2.8-6.4H14L1 1z" fill="#000" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 14 14"><path d="M7 1.5v10M2.8 7.6 7 11.8l4.2-4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-snooze" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24"><path d="M22 5.18 10.59 16.6l-4.24-4.24 1.41-1.41 2.83 2.83 10-10L22 5.18zM12 20a8 8 0 1 1 4.28-14.75l1.45-1.45A10 10 0 1 0 16.78 20.78l-1.5-1.5c-1 .46-2.11.72-3.28.72zm7-5h-3v2h3v3h2v-3h3v-2h-3v-3h-2v3z"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M20 6h-8l-2-2H4a2 2 0 0 0-1.99 2L2 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 12H4V6h5.17l2 2H20v10zm-7.84-6H8v2h4.16l-1.59 1.59L11.99 17 16 13.01 11.99 9l-1.41 1.41L12.16 12z"/></symbol>
+  <symbol id="i-label" viewBox="0 0 24 24"><path d="M17.63 5.84A1.99 1.99 0 0 0 16 5L5 5.01A2 2 0 0 0 3 7v10a2 2 0 0 0 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16zM16 17H5V7h11l3.55 5L16 17z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></symbol>
+</svg>
+<div class="left">
+  <div class="brand">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><rect class="ig" width="16" height="16" rx="3.25" fill="#15171a"/><rect x="1" y="4" width="10" height="7" rx="0.5" fill="#fafaf8"/><path class="ik" d="M1.9 4.9 6 8.5l4.1-3.6" fill="none" stroke="#15171a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="4" width="3" height="2" rx="0.35" fill="#fb3e36"/><rect x="12" y="7" width="3" height="2" rx="0.35" fill="#fafaf8"/><rect x="12" y="10" width="3" height="2" rx="0.35" fill="#fafaf8"/></svg>
+    Open in AI Agent for Gmail
+  </div>
+  <p class="line">Your AIs,<br>in Gmail's<br>right-click menu</p>
+</div>
+<div class="crop" aria-hidden="true">
+  <div class="gm">
+    <div class="gm-row ctx"><span class="gm-box"></span><span class="from">Marta Ioannou</span></div>
+    <div class="gm-menu">
+        <div class="gm-mi "><svg><use href="#i-mark"/></svg>Open in Claude Code</div>
+        <div class="gm-mi "><svg><use href="#i-mark"/></svg>Ask Claude</div>
+        <div class="gm-mi hover"><svg><use href="#i-mark"/></svg>Ask ChatGPT</div>
+        <div class="gm-mi "><svg><use href="#i-mark"/></svg>Copy thread for any AI</div>
+        <div class="gm-sep"></div>
+        <div class="gm-mi "><svg><use href="#i-reply"/></svg>Reply</div>
+        <div class="gm-mi "><svg><use href="#i-replyall"/></svg>Reply all</div>
+    </div>
+    <svg class="gm-cursor"><use href="#i-cursor"/></svg>
+  </div>
+</div>
+</body>
+</html>
