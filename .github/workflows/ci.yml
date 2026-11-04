@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Actions are pinned to full commit SHAs, with the release they came from in a comment, because the
+# release job can write to the repository. All three run on Node 24. To update one, take the new
+# release's commit from its releases page and change both the SHA and the comment.
+
+jobs:
+  test:
+    name: Test and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # Ubuntu runners can restrict the user namespaces Chrome's sandbox uses. The suites only open
+      # local test pages and the extension under test, so Chrome runs without its sandbox here.
+      CHROME_FLAGS: --no-sandbox
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Find Chrome
+        run: |
+          chrome="$(command -v google-chrome)"
+          echo "CHROME=$chrome" >> "$GITHUB_ENV"
+          "$chrome" --version
+
+      - name: Run the test suites
+        run: node tests/run-all.mjs
+
+      - name: Build the package
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node scripts/package.mjs
+          sha256sum dist/*.zip
+
+      - name: Check the unpacked package
+        run: |
+          unzip -q dist/open-in-ai-agent.zip -d "$RUNNER_TEMP/unpacked"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked"
+          node tests/package/load.mjs "$RUNNER_TEMP/unpacked"
+          node tests/package/gmail-tab.mjs "$RUNNER_TEMP/unpacked"
+
+      - name: Upload the zips
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: open-in-ai-agent
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Upload test output
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-output
+          include-hidden-files: true
+          if-no-files-found: ignore
+          path: |
+            tests/.out/*.log
+            tests/.out/content/*.json
+            tests/.out/content/*.html
+            tests/.out/content/*.png
+            tests/.out/settings/results.json
+            tests/.out/settings/shots/
+            tests/.out/package/gmail-tab.json
+
+  release:
+    name: Attach the zips to a draft release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Check the tag matches manifest.json
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -p "require('./manifest.json').version")"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Tag $TAG does not match manifest.json version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build the package
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node scripts/package.mjs
+          sha256sum dist/*.zip
+
+      - name: Check the unpacked package
+        run: |
+          unzip -q dist/open-in-ai-agent.zip -d "$RUNNER_TEMP/unpacked"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked"
+
+      # A new release starts as a draft, so the notes can be reviewed before anyone downloads it.
+      # Publishing it on GitHub makes it the latest release. Re-running the job replaces the zips.
+      - name: Attach both zips to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          files=(dist/open-in-ai-agent.zip "dist/open-in-ai-agent-v$VERSION.zip")
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            gh release create "$TAG" "${files[@]}" --draft --verify-tag --title "$TAG" --generate-notes
+          fi
