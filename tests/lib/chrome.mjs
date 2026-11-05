@@ -12,7 +12,7 @@ export const OUT_ROOT = path.join(REPO, 'tests', '.out');
 const MAC_CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PATH_NAMES = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'];
 
-function isExecutable(file) {
+export function isExecutable(file) {
   try {
     fs.accessSync(file, fs.constants.X_OK);
     return fs.statSync(file).isFile();
@@ -21,7 +21,7 @@ function isExecutable(file) {
   }
 }
 
-function onPath(name) {
+export function onPath(name) {
   const exts = process.platform === 'win32' ? ['.exe', ''] : [''];
   for (const dir of (process.env.PATH || '').split(path.delimiter)) {
     if (!dir) continue;

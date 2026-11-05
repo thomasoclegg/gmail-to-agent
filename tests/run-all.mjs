@@ -23,10 +23,10 @@ const scenarioCount = (out) => {
 const SUITES = [
   {
     name: 'background',
-    what: 'background.js and offscreen.js in Node vm (node:test)',
+    what: 'background.js (as a Chrome service worker and as a Firefox or Safari background page), offscreen.js and the manifests scripts/package.mjs writes, in Node vm (node:test)',
     args: ['--test', '--test-reporter=spec', path.join('tests', 'background', 'background.test.js')],
     unit: 'tests',
-    min: 63,
+    min: 78,
     count: (out) => {
       const pass = out.match(/^\S*\s*pass (\d+)\s*$/m);
       const tests = out.match(/^\S*\s*tests (\d+)\s*$/m);

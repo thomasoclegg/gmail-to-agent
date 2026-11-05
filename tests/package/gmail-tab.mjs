@@ -1,5 +1,5 @@
 // Loads the extension into headless Chrome next to a Gmail tab that is already open, as it is for
-// someone who installs or updates it, and checks what only a real Chrome shows. Two runs, each with a
+// someone who installs or updates it, and checks what only a real Chrome shows. Four runs, each with a
 // new throwaway profile and package folder under tests/.out/package/tmp:
 //
 //   install  The Gmail tab is open first. The content script arrives without a reload, background.js
@@ -8,9 +8,14 @@
 //   update   1.1.1 is installed and running in the tab, then the same folder is loaded again with this
 //            version, so Chrome treats it as an update. The tab gets the new copy without a reload, the
 //            1.1.1 copy is left orphaned, and the menu shows the new items once.
+//   update from 1.2.0  1.2.0 runs in the tab and the user right-clicks a row; then this version replaces
+//            it, as the update Chrome users get now. The first right-click after the update must show the
+//            new copy's items, and picking one must work.
+//   next update  The same, from this code with a lower version number, as the update after this one.
 //
-// 1.1.1 is rebuilt from tests/content/oracle (its manifest, background.js, content.js and targets.js as
-// released) plus the settings page, offscreen document, icons and fonts of the copy under test.
+// 1.1.1 and 1.2.0 are rebuilt from tests/content/oracle (their manifest, background.js, content.js and
+// targets.js as released) plus the settings page, offscreen document, icons and fonts of the copy under
+// test.
 // Gmail is a mock: every https://mail.google.com/* request from the tab is answered locally through the
 // DevTools Fetch domain, and every other host is unresolvable, so nothing leaves the machine. Branded
 // Chrome ignores --load-extension, so this uses Extensions.loadUnpacked over --remote-debugging-pipe,
@@ -23,6 +28,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO, OUT_ROOT, findChrome, extraChromeFlags } from '../lib/chrome.mjs';
+import { TITLE, IK, GMAIL_PAGE, printView, SINGLE, BULK, TARGETS_SET } from './mock-gmail.mjs';
 
 const SRC = process.argv[2] ? path.resolve(process.argv[2]) : REPO;
 if (!fs.existsSync(path.join(SRC, 'manifest.json'))) {
@@ -54,9 +60,10 @@ function copyRuntime(from, to) {
     if (e.isDirectory() && (e.name === 'icons' || e.name === 'fonts')) fs.cpSync(path.join(from, e.name), path.join(to, e.name), { recursive: true });
   }
 }
-function copyV111(to) {
+// A released version: its four files from tests/content/oracle over the rest of the copy under test.
+function copyReleased(version, to) {
   copyRuntime(SRC, to);
-  for (const f of ['manifest.json', 'background.js', 'content.js', 'targets.js']) fs.copyFileSync(path.join(ORACLE, `v1.1.1-${f}`), path.join(to, f));
+  for (const f of ['manifest.json', 'background.js', 'content.js', 'targets.js']) fs.copyFileSync(path.join(ORACLE, `v${version}-${f}`), path.join(to, f));
 }
 const TMP = path.join(OUT, 'tmp');
 fs.mkdirSync(TMP, { recursive: true });
@@ -64,28 +71,6 @@ const tempDir = (name) => fs.mkdtempSync(path.join(TMP, `gmail-tab-${name}-`));
 
 // ---- Mock Gmail ----
 
-const TITLE = 'Inbox (3) - tester@example.com - Test Mail';
-const IK = 'a1b2c3d4e5';
-const GMAIL_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>${TITLE}</title>
-<script>window.GLOBALS = [null, 1, 2, 3, 4, 5, 6, 7, 8, '${IK}'];</script></head><body>
-<table><tbody>
-<tr class="zA" id="r1"><td><div role="checkbox" aria-checked="true"></div></td><td><span class="bog"><span class="bqe" data-legacy-thread-id="19a0b1c2d3e4f501">Re: Pallet order for Fernhill</span></span><span class="y2"><span>&nbsp;-&nbsp;</span>Could we get a mixed pallet</span></td></tr>
-<tr class="zA" id="r2"><td><div role="checkbox" aria-checked="true"></div></td><td><span class="bog"><span class="bqe" data-legacy-thread-id="19a0b1c2d3e4f502">Invoice 4471</span></span><span class="y2"><span>&nbsp;-&nbsp;</span>Please find attached</span></td></tr>
-<tr class="zA" id="r3"><td><div role="checkbox" aria-checked="false"></div></td><td><span class="bog"><span class="bqe" data-legacy-thread-id="19a0b1c2d3e4f503">Unselected row</span></span></td></tr>
-</tbody></table>
-<div class="J-M" role="menu" style="display:none; position:fixed; top:10px; left:10px"><div class="J-N" role="menuitem"><div class="J-N-Jz">Reply</div></div></div>
-<script>
-  const menu = document.querySelector('.J-M');
-  document.addEventListener('contextmenu', (e) => { if (!e.target.closest('tr.zA')) return; e.preventDefault(); setTimeout(() => (menu.style.display = 'block'), 20); });
-  document.body.addEventListener('keydown', (e) => { if (e.key === 'Escape') menu.style.display = 'none'; });
-</script></body></html>`;
-const printView = (th) =>
-  '<html><head><title>Gmail - x</title><style>b{}</style></head><body><table><tr><td><b>Tester &lt;tester@example.com&gt;</b></td></tr></table><hr>' +
-  `<div>Thread ${th}: Hello &amp; welcome.<br>Second line.</div></body></html>`;
-
-const SINGLE = ['Open in Claude Code', 'Open in Codex', 'Ask Claude', 'Copy thread for any AI'];
-const BULK = ['Open 2 in Claude Code', 'Open 2 in Codex (GPT)', 'Ask Claude about 2 emails', 'Copy 2 emails for any AI'];
-const TARGETS_SET = ['claude-code', 'codex', 'claude', 'copy'];
 // The copy goes through the offscreen document; a headless Chrome may refuse the clipboard, which still
 // shows the hand-off reached background.js.
 const COPIED = /^Copied 2 emails\. Paste them into any AI with (Cmd|Ctrl)\+V\.$|^Could not copy the emails/;
@@ -281,7 +266,7 @@ await withChrome('install', async (s) => {
 
 await withChrome('update', async (s) => {
   const pkg = tempDir('update');
-  copyV111(pkg);
+  copyReleased('1.1.1', pkg);
   await s.openTab();
   const { id } = await s.send('Extensions.loadUnpacked', { path: pkg });
   await sleep(1500);
@@ -316,6 +301,51 @@ await withChrome('update', async (s) => {
   step("update: the menu shows the new bulk items once (the orphan's items are replaced, not added)", JSON.stringify(run.labels) === JSON.stringify(BULK), run.labels);
   step('update: bulk copy works in the open tab with no reload', COPIED.test(run.toast), run.toast);
 });
+
+// ---- update from 1.2.0 and next update: a right-click, then this version replaces the one running ----
+
+// The new copy's first right-click must not take the old copy's items for its own: they are still in Gmail's
+// menu, and the old copy can no longer act on them. 1.2.0 marks the items it adds with the right-click's
+// number; from 1.3.0 on, each copy adds a mark of its own, since every copy counts from 1.
+const AFTER_RIGHT_CLICK = [
+  { label: 'update from 1.2.0', version: '1.2.0', what: '1.2.0 as released', make: (pkg) => copyReleased('1.2.0', pkg) },
+  {
+    label: 'next update',
+    version: '1.2.99',
+    what: '1.2.99 (this code, an earlier version number)',
+    make: (pkg) => {
+      copyRuntime(SRC, pkg);
+      fs.writeFileSync(path.join(pkg, 'manifest.json'), JSON.stringify({ ...manifest, version: '1.2.99' }, null, 2));
+    },
+  },
+];
+
+for (const before of AFTER_RIGHT_CLICK) {
+  await withChrome(before.label, async (s) => {
+    const pkg = tempDir(before.label.replaceAll(' ', '-').replaceAll('.', ''));
+    before.make(pkg);
+    await s.openTab();
+    const { id } = await s.send('Extensions.loadUnpacked', { path: pkg });
+    await sleep(1500);
+    const sw = await s.serviceWorker(id);
+    const running = await s.evalIn('chrome.runtime.getManifest().version', undefined, sw);
+    await s.evalIn(`chrome.storage.sync.set({ targets: ${JSON.stringify(TARGETS_SET)} })`, undefined, sw);
+    await s.front();
+    await s.openGmail();
+    await sleep(2000);
+    const old = await s.rightClick();
+    step(`${before.label}: ${before.what} runs and adds its bulk items once`, running === before.version && JSON.stringify(old.labels) === JSON.stringify(BULK), { running, labels: old.labels });
+    copyRuntime(SRC, pkg);
+    await s.send('Extensions.loadUnpacked', { path: pkg });
+    await sleep(3000);
+    await s.front();
+    const sw2 = await s.serviceWorker(id);
+    step(`${before.label}: ${manifest.version} now running`, (await s.evalIn('chrome.runtime.getManifest().version', undefined, sw2)) === manifest.version);
+    const run = await s.rightClick('Copy 2 emails for any AI');
+    step(`${before.label}: the first right-click after the update shows the bulk items once`, JSON.stringify(run.labels) === JSON.stringify(BULK), run.labels);
+    step(`${before.label}: picking one works at once (the new copy's item, not the old copy's)`, COPIED.test(run.toast), run.toast);
+  });
+}
 
 fs.writeFileSync(path.join(OUT, 'gmail-tab.json'), JSON.stringify(report, null, 2));
 const failed = report.steps.filter((x) => !x.ok).length;

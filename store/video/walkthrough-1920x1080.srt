@@ -1,0 +1,63 @@
+1
+00:00:00,000 --> 00:00:02,600
+Send a Gmail thread to your AI.
+
+2
+00:00:02,600 --> 00:00:06,000
+Free, open source, runs on your computer.
+
+3
+00:00:06,000 --> 00:00:08,800
+Tick the AIs you use.
+
+4
+00:00:08,800 --> 00:00:12,000
+Changes save straight away.
+
+5
+00:00:12,000 --> 00:00:14,967
+Right-click an email. Pick an AI.
+
+6
+00:00:14,967 --> 00:00:22,900
+It opens the email and copies the thread.
+
+7
+00:00:24,000 --> 00:00:28,800
+Paste and read it.
+
+8
+00:00:28,800 --> 00:00:34,367
+Nothing is sent until you press Enter.
+
+9
+00:00:34,367 --> 00:00:38,200
+Or tick several emails at once.
+
+10
+00:00:38,200 --> 00:00:41,300
+It reads each one without opening it.
+
+11
+00:00:41,300 --> 00:00:45,000
+It asks the AI to sort them into tasks.
+
+12
+00:00:45,000 --> 00:00:49,500
+Or copy it for any AI.
+
+13
+00:00:49,500 --> 00:00:52,900
+Claude Code and Codex read it themselves.
+
+14
+00:00:52,900 --> 00:00:56,700
+It gets the thread ID, not the message.
+
+15
+00:00:56,700 --> 00:00:59,800
+No server, no account, no tracking.
+
+16
+00:00:59,800 --> 00:01:03,000
+Change your AIs from the toolbar icon.

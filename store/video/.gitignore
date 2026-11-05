@@ -1,0 +1,3 @@
+# The YouTube upload is about 8 MB and only needed once per upload; every render committed would add
+# that much to the history. Make it with: node media/record.mjs walkthrough
+*.mp4

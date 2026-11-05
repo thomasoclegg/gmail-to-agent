@@ -1,5 +1,12 @@
 // Loads the REAL targets.js + background.js (and offscreen.js) from the repository
 // root into Node vm contexts with a fully stubbed chrome.* API. Read-only.
+//
+// By default background.js runs as Chrome runs it: a service worker with importScripts
+// and chrome.offscreen. createWorld({ page: true }) runs it as Firefox and Safari do:
+// a background page with a DOM, targets.js loaded first by the manifest, no
+// importScripts and no chrome.offscreen. page.clipboard picks what the Clipboard API
+// does there ('ok', 'reject' or 'missing'); page.firefox adds runtime.getBrowserInfo,
+// which only Firefox has.
 'use strict';
 const vm = require('node:vm');
 const fs = require('node:fs');
@@ -50,6 +57,61 @@ function dispatch(listeners, msg, sender, log) {
       resolve(undefined);
     }
   });
+}
+
+// The DOM and Clipboard API of a background page, as far as background.js uses them.
+function backgroundPage(world, { clipboard = 'ok' } = {}) {
+  world.page = { writeTextCalls: [], execCalls: [], textareas: [], bodyChildren: [] };
+  const log = world.log;
+  const body = {
+    append(el) {
+      world.page.bodyChildren.push(el);
+      el.parent = body;
+    },
+  };
+  const document = {
+    body,
+    createElement(tag) {
+      const el = {
+        tag,
+        value: '',
+        selectedValue: null,
+        parent: null,
+        select() {
+          this.selectedValue = this.value;
+          log.push({ ev: 'textarea.select', length: this.value.length });
+        },
+        remove() {
+          world.page.bodyChildren.splice(world.page.bodyChildren.indexOf(this), 1);
+          this.parent = null;
+          log.push({ ev: 'textarea.remove' });
+        },
+      };
+      world.page.textareas.push(el);
+      return el;
+    },
+    execCommand(cmd) {
+      if (world.execThrows) throw new Error('execCommand exploded');
+      const el = world.page.bodyChildren.find((c) => c.tag === 'textarea');
+      world.page.execCalls.push({ cmd, value: el?.value, selected: !!el && el.selectedValue === el.value, inBody: !!el?.parent });
+      log.push({ ev: 'execCommand', cmd, length: el?.value.length });
+      if (world.execResult && el) world.clipboard = el.value;
+      return world.execResult;
+    },
+  };
+  const navigator = {};
+  if (clipboard !== 'missing') {
+    navigator.clipboard = {
+      async writeText(text) {
+        world.page.writeTextCalls.push(text);
+        log.push({ ev: 'clipboard.writeText', length: String(text).length });
+        await tick(jitter());
+        if (clipboard === 'reject') throw new Error('Clipboard write was blocked due to lack of user activation.');
+        world.clipboard = String(text);
+      },
+    };
+  }
+  return { document, navigator };
 }
 
 function createWorld(opts = {}) {
@@ -332,13 +394,22 @@ function createWorld(opts = {}) {
     error: (...a) => world.warnings.push(a.map(String).join(' ')),
     warn: (...a) => world.warnings.push(a.map(String).join(' ')),
   };
-  const ctx = vm.createContext({ chrome, console: sandboxConsole, setTimeout, clearTimeout, queueMicrotask });
-  ctx.importScripts = (...files) => {
-    for (const f of files) {
-      world.log.push({ ev: 'importScripts', file: f });
-      vm.runInContext(read(f), ctx, { filename: f });
-    }
-  };
+  const globals = { chrome, console: sandboxConsole, setTimeout, clearTimeout, queueMicrotask };
+  if (opts.page) Object.assign(globals, backgroundPage(world, opts.page));
+  if (opts.page) delete chrome.offscreen;
+  if (opts.page?.firefox) chrome.runtime.getBrowserInfo = async () => ({ name: 'Firefox', vendor: 'Mozilla', version: '140.0' });
+  const ctx = vm.createContext(globals);
+  if (opts.page) {
+    // The manifest's background.scripts: targets.js, then background.js, in one page.
+    vm.runInContext(read('targets.js'), ctx, { filename: 'targets.js' });
+  } else {
+    ctx.importScripts = (...files) => {
+      for (const f of files) {
+        world.log.push({ ev: 'importScripts', file: f });
+        vm.runInContext(read(f), ctx, { filename: f });
+      }
+    };
+  }
   vm.runInContext(read('background.js'), ctx, { filename: 'background.js' });
 
   world.ctx = ctx;

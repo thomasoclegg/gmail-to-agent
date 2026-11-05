@@ -1,6 +1,6 @@
 # Privacy policy: Open in AI Agent for Gmail
 
-Last updated: 4 November 2026
+Last updated: 5 November 2026
 
 This extension runs entirely on your computer. It has no server, no analytics and no tracking. The only requests it makes itself go to Gmail, for the print view of emails you chose (see below). Nothing is sent to me.
 
@@ -36,7 +36,7 @@ Gmail requires a session key in that request. Each time you pick several emails 
 
 ## Where it goes
 
-**Desktop agents:** the items above are placed in a prompt and handed to the Claude desktop app or the ChatGPT desktop app on the same computer, through a `claude://` or `codex://` link. If you set a working folder, its path goes in the same link so the session starts there.
+**Desktop agents:** the items above are placed in a prompt and handed to the Claude desktop app or the ChatGPT desktop app on the same computer, through a `claude://` or `codex://` link that your browser passes to the app. If you set a working folder, its path goes in the same link so the session starts there.
 
 **Web AIs and "Copy":** the prompt, including the email text, is put on your computer's clipboard. For a web AI the extension then opens that AI's website in a new tab. The address it opens is fixed (for example `https://chatgpt.com/`) and carries no email content. The AI site receives only what you paste into it and send. "Copy" opens nothing.
 
@@ -48,15 +48,21 @@ The donate link on the settings page and website goes to Friends of Larnaca Cats
 
 ## What it stores
 
-Only your settings: which AIs appear in the menu and the working folder for desktop sessions. They are saved in Chrome's sync storage, so if Chrome sync is on they follow your Chrome profile to your other computers. No email content and no Gmail session key is stored. Uninstalling the extension removes the settings.
+Only your settings: which AIs appear in the menu and the working folder for desktop sessions. They are saved in the browser's sync storage, so if your browser syncs extension data (Chrome sync, for example, or Firefox Sync with add-ons included) they follow your profile to your other computers. No email content and no Gmail session key is stored. Uninstalling the extension removes the settings.
 
 ## Permissions
 
-- `contextMenus`: adds your chosen AIs to Chrome's right-click menu inside an open Gmail thread.
+The same in every browser, except where noted.
+
+- `contextMenus`: adds your chosen AIs to the browser's own right-click menu inside an open Gmail thread.
 - `storage`: saves your settings.
-- `offscreen` and `clipboardWrite`: put the prepared prompt on your clipboard.
-- `scripting` (from 1.2.0): adds the extension to Gmail tabs that are already open when you install or update it, so they need no reload, and reads Gmail's session key from the Gmail page when you pick several emails for a web AI or Copy.
+- `clipboardWrite`: puts the prepared prompt on your clipboard. In Chrome, Edge and the other Chromium browsers it works with `offscreen`, a hidden extension page that does the copying. Firefox has no such page and asks for no `offscreen` permission: the extension's background page copies by itself.
+- `scripting` (from 1.2.0): reads Gmail's session key from the Gmail page when you pick several emails for a web AI or Copy. In Chrome and the other Chromium browsers it also adds the extension to Gmail tabs that are already open when you install or update it, so they need no reload. Firefox does that by itself.
 - Access to `mail.google.com`: adds your chosen AIs to Gmail's right-click menu, reads the threads you pick, requests the print view of emails you ticked, and shows a short confirmation inside Gmail. From 1.2.0 this access is also listed as a host permission, which `scripting` needs. The extension already had it for Gmail's menu, so Chrome shows no new warning.
+
+## What Firefox shows at install
+
+Firefox asks add-ons to state which data they pass outside the add-on or the browser, and shows the answer when you install one. This one declares "personally identifying information" (your mailbox address), "personal communications" and "website content" (the email text), because what you pick leaves the browser: for a web AI or Copy, the prompt with the email text goes onto your clipboard, and for Claude Code and Codex, the details listed above go in the link to the desktop app. That is the hand-off described above, which you start each time. Nothing is sent to me or to anyone you did not pick.
 
 ## Sharing and sale
 

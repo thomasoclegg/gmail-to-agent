@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1200">
+<meta name="robots" content="noindex">
+<title>Share image</title>
+<!-- The 1200 x 630 share image (og.png) for the website. The Gmail drawing is the one on index.html, with a made-up row.
+     Render it from the repository root with headless Chrome and a throwaway profile, for example:
+       chrome --headless=new --hide-scrollbars --force-device-scale-factor=1 --window-size=1200,630 \
+              --user-data-dir="$(mktemp -d)" --screenshot=docs/og.png file://$PWD/docs/og.html -->
+<style>
+  @font-face { font-family: 'Libre Franklin'; font-weight: 400; font-style: normal; font-display: block;
+               src: url(fonts/libre-franklin-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Libre Franklin'; font-weight: 600; font-style: normal; font-display: block;
+               src: url(fonts/libre-franklin-latin-600-normal.woff2) format('woff2'); }
+
+  :root { --paper: #fafaf8; --ink: #15171a; --ink-2: #555a61; --rule: #dcdfe3; --rubric: #fb3e36;
+          --sans: 'Libre Franklin', -apple-system, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { position: relative; width: 1200px; height: 630px; overflow: hidden; background: var(--paper); color: var(--ink);
+         -webkit-font-smoothing: antialiased; font-kerning: normal; }
+
+  .left { position: absolute; left: 64px; top: 56px; bottom: 56px; width: 600px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 14px; font: 600 22px/1.2 var(--sans); }
+  .brand svg { width: 38px; height: 38px; flex: none; }
+  h1 { margin: auto 0 0; padding-top: 18px; border-top: 2px solid var(--ink);
+       font: 600 58px/1.04 var(--sans); letter-spacing: -0.03em; text-wrap: balance; }
+  .sub { margin: 22px 0 0; font: 400 22px/1.4 var(--sans); color: var(--ink-2); }
+
+  /* A crop of Gmail: the right-clicked row, then the top of the menu, then the extension's note. */
+  .crop { position: absolute; left: 720px; top: 0; right: 0; bottom: 0; overflow: hidden; }
+  .crop .gm { position: absolute; inset: 0; height: auto; border-radius: 0; zoom: 1.32; }
+  .crop .gm-row.ctx { position: absolute; left: 0; right: -40px; top: 50px; }
+  .crop .gm-menu { left: 26px; right: auto; top: 88px; }
+  .crop .gm-cursor { left: 20px; right: auto; top: 83px; }
+  .crop .vpa-toast { left: 16px; bottom: 22px; max-width: 330px; }
+
+  /* The Gmail drawing, as on index.html (light only). */
+  .gm { --gm-bg: #f6f8fc; --gm-panel: #ffffff; --gm-ink: #1f1f1f; --gm-icon: #444746; --gm-soft: #5e5e5e;
+        --gm-line: #edf0f3; --gm-menu: #ffffff; --gm-hover: #eceef0; --gm-sep: #e3e3e3; --gm-box: #5f6368; --gm-read: #f2f6fc;
+        --mark-accent: #fb3e36;
+        position: relative; overflow: hidden; background: var(--gm-bg); color: var(--gm-ink);
+        font: 400 14px/20px Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: auto; }
+  .gm svg { display: block; fill: currentColor; }
+  .gm-box { width: 16px; height: 16px; flex: none; border: 2px solid var(--gm-box); border-radius: 2px; }
+  .gm-row { display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 16px 0 18px;
+            border-bottom: 1px solid var(--gm-line); background: var(--gm-read); white-space: nowrap; }
+  .gm-row .from { width: 120px; flex: none; overflow: hidden; text-overflow: ellipsis; }
+  .gm-row .subj { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .gm-row.ctx { z-index: 1; box-shadow: inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0,
+                0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15); }
+  .gm-menu { position: absolute; z-index: 5; width: 262px; padding: 8px 0; border-radius: 4px; background: var(--gm-menu);
+             box-shadow: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 1px 2px 0 rgba(60, 64, 67, 0.3); }
+  .gm-mi { position: relative; display: flex; align-items: center; height: 32px; padding: 0 24px 0 56px; white-space: nowrap; }
+  .gm-mi svg { position: absolute; left: 18px; top: 6px; width: 20px; height: 20px; color: var(--gm-icon); }
+  .gm-mi.hover { background: var(--gm-hover); }
+  .gm-sep { height: 1px; margin: 8px 0; background: var(--gm-sep); }
+  .gm-cursor { position: absolute; z-index: 6; width: 16px; height: 22px; }
+  .vpa-toast { position: absolute; z-index: 6; display: flex; align-items: center; gap: 10px;
+               padding: 11px 16px 11px 12px; border-radius: 8px; overflow: hidden; background: #202124; color: #f1f1f1;
+               font: 400 14px/20px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+               box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14), 0 4px 16px rgba(0, 0, 0, 0.3); }
+  .vpa-toast svg { width: 22px; height: 22px; flex: none; color: #f1f1f1; }
+  .vpa-toast kbd { display: inline-block; margin: 0 1px; padding: 0 6px 1px;
+                   font: 600 12.5px/17px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                   color: #ffffff; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.34);
+                   border-bottom-width: 2px; border-radius: 4px; }
+  .vpa-toast .nw { white-space: nowrap; }
+  .vpa-toast .left-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 58%; background: rgba(255, 255, 255, 0.45); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 20 20">
+    <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1.75" y="5.25" width="11.5" height="8.5" rx="1.25" stroke-width="1.5"/>
+      <path d="M2.9 6.4 7.5 10l4.6-3.6" stroke-width="1.3"/>
+    </g>
+    <rect x="15.5" y="4.5" width="3.5" height="2.2" rx="0.5" style="fill: var(--mark-accent)"/>
+    <rect x="15.5" y="8.4" width="3.5" height="2.2" rx="0.5"/>
+    <rect x="15.5" y="12.3" width="3.5" height="2.2" rx="0.5"/>
+  </symbol>
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></symbol>
+  <symbol id="i-replyall" viewBox="0 0 24 24"><path d="M7 8V5l-7 7 7 7v-3l-4-4 4-4zm6 1V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></symbol>
+  <symbol id="i-forward" viewBox="0 0 24 24"><path d="M14 9V5l7 7-7 7v-4.1c-5 0-8.5 1.6-11 5.1 1-5 4-10 11-11z"/></symbol>
+  <symbol id="i-cursor" viewBox="0 0 16 22"><path d="M1 1v17.5l4.4-4.2 2.9 6.6 2.9-1.3-2.8-6.4H14L1 1z" fill="#000" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></symbol>
+</svg>
+
+<div class="left">
+  <div class="brand">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="3.25" fill="#15171a"/><rect x="1" y="4" width="10" height="7" rx="0.5" fill="#fafaf8"/><path d="M1.9 4.9 6 8.5l4.1-3.6" fill="none" stroke="#15171a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="4" width="3" height="2" rx="0.35" fill="#fb3e36"/><rect x="12" y="7" width="3" height="2" rx="0.35" fill="#fafaf8"/><rect x="12" y="10" width="3" height="2" rx="0.35" fill="#fafaf8"/></svg>
+    Open in AI Agent for Gmail
+  </div>
+  <h1>Right-click a Gmail thread to open it in Claude, ChatGPT or Codex.</h1>
+  <p class="sub">A free browser extension that runs on your computer.</p>
+</div>
+
+<div class="crop" aria-hidden="true">
+  <div class="gm">
+    <div class="gm-row ctx"><span class="gm-box"></span><span class="from">Marta Ioannou</span><span class="subj">Lease renewal for flat 4B</span></div>
+    <div class="gm-menu">
+      <div class="gm-mi"><svg><use href="#i-mark"/></svg>Open in Claude Code</div>
+      <div class="gm-mi"><svg><use href="#i-mark"/></svg>Ask Claude</div>
+      <div class="gm-mi hover"><svg><use href="#i-mark"/></svg>Ask ChatGPT</div>
+      <div class="gm-mi"><svg><use href="#i-mark"/></svg>Copy thread for any AI</div>
+      <div class="gm-sep"></div>
+      <div class="gm-mi"><svg><use href="#i-reply"/></svg>Reply</div>
+      <div class="gm-mi"><svg><use href="#i-replyall"/></svg>Reply all</div>
+      <div class="gm-mi"><svg><use href="#i-forward"/></svg>Forward</div>
+    </div>
+    <svg class="gm-cursor"><use href="#i-cursor"/></svg>
+    <div class="vpa-toast"><svg><use href="#i-mark"/></svg><span>Copied. Opening ChatGPT: <span class="nw">press <kbd>Cmd</kbd><kbd>V</kbd>,</span> <span class="nw">then <kbd>Enter</kbd>.</span></span><span class="left-bar"></span></div>
+  </div>
+</div>
+</body>
+</html>

@@ -3,7 +3,12 @@
 // icon, first-run settings, the content script for Gmail tabs that were already
 // open, Gmail's session key for bulk reads, and the clipboard hand-off for web
 // and copy targets.
-importScripts('targets.js');
+//
+// One file for every browser. Chrome, Edge and the other Chromium browsers run it
+// as a service worker, which loads targets.js here. Firefox and Safari run it as a
+// background page that lists targets.js before it (scripts/package.mjs writes their
+// manifests), so there is no importScripts to call.
+if (typeof importScripts === 'function') importScripts('targets.js');
 
 const GMAIL = 'https://mail.google.com/';
 // Page contexts only: 'all' would also add the items to the toolbar icon's menu.
@@ -34,13 +39,23 @@ async function firstRun({ reason, previousVersion }) {
   if (legacy) chrome.tabs.create({ url: chrome.runtime.getURL('options.html#new') });
 }
 
+// getBrowserInfo exists only in Firefox, which differs from Chrome in two ways
+// that matter here. It adds the manifest's content scripts to matching tabs that
+// are already open when the extension is installed or updated; Chrome does not.
+// And tabs.update with a claude:// or codex:// link that no app on the computer
+// handles puts Firefox's error page in place of Gmail, while the same link clicked
+// in the page leaves Gmail open.
+const FIREFOX = typeof chrome.runtime.getBrowserInfo === 'function';
+
 // Gmail tabs that were open before an install or update get the content script
 // now, so they need no reload. content.js runs once per tab; a tab that cannot
 // take it keeps the reload fallback (needsReload). A tab still loading gets the
 // manifest's copy as well: the second targets.js then logs a harmless "already
 // declared" error in that tab's console. Skipping loading tabs would avoid it, but
 // would also skip a Gmail tab whose status reads loading for another reason.
+// Firefox has already added it, so a second copy there would only log that error.
 async function injectIntoGmailTabs() {
+  if (FIREFOX) return;
   const tabs = await chrome.tabs.query({ url: `${GMAIL}*` });
   const inject = (tab) =>
     chrome.scripting
@@ -95,11 +110,17 @@ function needsReload(tab) {
   return openNextTo(tab, chrome.runtime.getURL('options.html#reload'));
 }
 
+// Desktop targets: in Chrome the content script replies with the link and it
+// opens here, as it always has. In Firefox the content script clicks the link
+// itself (msg.launch), as it does from Gmail's row menu, so Gmail stays open even
+// when no app handles the link. A reply with a link, from a copy of content.js
+// that does not know launch, still opens here.
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   // pageUrl is missing for clicks outside a page, such as the toolbar icon's menu.
   if (!tab?.id || !info.pageUrl?.startsWith(GMAIL)) return;
   const msg = { target: 'content', action: 'run', platform: info.menuItemId };
   if (info.frameId) msg.fromFrame = true;
+  if (FIREFOX) msg.launch = true;
   let reply;
   try {
     reply = await chrome.tabs.sendMessage(tab.id, msg, { frameId: 0 });
@@ -110,6 +131,10 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 // ---- Clipboard hand-off (web and copy targets) ----
+
+// A service worker has no DOM, so Chrome and the other Chromium browsers copy in
+// an offscreen document. Firefox and Safari have no offscreen documents, but they
+// run this file as a background page, which can copy by itself (copyInPage).
 
 let creatingOffscreen = null;
 
@@ -134,7 +159,32 @@ async function ensureOffscreen() {
   await creatingOffscreen;
 }
 
+// The Clipboard API first: the clipboardWrite permission lets a background page
+// use it with no click in the page. If it is missing or refused, the textarea and
+// execCommand route that offscreen.js uses.
+async function copyInPage(text) {
+  if (typeof document === 'undefined' || !document.body) throw new Error('No page to copy from');
+  const clipboard = globalThis.navigator?.clipboard;
+  try {
+    if (clipboard?.writeText) return await clipboard.writeText(text);
+  } catch {
+    // Fall through to execCommand.
+  }
+  const box = document.createElement('textarea');
+  box.value = text;
+  document.body.append(box);
+  box.select();
+  let ok = false;
+  try {
+    ok = document.execCommand('copy');
+  } finally {
+    box.remove();
+  }
+  if (!ok) throw new Error('Copy was blocked');
+}
+
 async function copyText(text) {
+  if (!chrome.offscreen) return copyInPage(text);
   await ensureOffscreen();
   const res = await chrome.runtime.sendMessage({ target: 'offscreen', action: 'copy', text });
   if (!res?.ok) throw new Error(res?.error || 'Copy failed');

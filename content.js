@@ -48,6 +48,10 @@ if (globalThis.vpaContentLoaded !== true) {
   let lastTarget = null;
   let lastBatch = null; // the selection at the last right-click (selectedBatch), or null
   let menuRound = 0; // one per right-click; marks the menu items injected for it
+  // Tells this copy's items from those of the copy an update replaced, whose rounds also count from 1
+  // and whose items stay in Gmail's menu until this copy replaces them.
+  const copyMark = Math.random().toString(36).slice(2, 10);
+  const liveMark = () => `${copyMark}-${menuRound}`;
   let bulkBusy = false; // a bulk read is under way
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -872,7 +876,7 @@ if (globalThis.vpaContentLoaded !== true) {
     const el = document.createElement('div');
     el.className = 'J-N vpa-item';
     el.setAttribute('role', 'menuitem');
-    el.dataset.vpaLive = String(menuRound);
+    el.dataset.vpaLive = liveMark();
     el.style.position = 'relative';
     const inner = document.createElement('div');
     inner.className = 'J-N-Jz';
@@ -898,10 +902,11 @@ if (globalThis.vpaContentLoaded !== true) {
 
   // The open menu holds this right-click's items and nobody else's: none from an
   // earlier right-click, none from an older copy of this script that an update
-  // orphaned (1.1.1 and earlier keep adding theirs).
+  // orphaned (1.1.1 and earlier keep adding theirs; later ones leave theirs from
+  // before the update).
   function menuIsCurrent() {
     const menu = visibleMenu();
-    return !!menu?.querySelector('.vpa-item') && !menu.querySelector(`.vpa-item:not([data-vpa-live="${menuRound}"])`);
+    return !!menu?.querySelector('.vpa-item') && !menu.querySelector(`.vpa-item:not([data-vpa-live="${liveMark()}"])`);
   }
 
   function injectIntoGmailMenu() {
@@ -943,8 +948,9 @@ if (globalThis.vpaContentLoaded !== true) {
     true,
   );
 
-  // Chrome's own menu (background.js). Desktop targets reply with the deep link
-  // for the background to open; web and copy targets hand off from here.
+  // The browser's own menu (background.js). Desktop targets reply with the deep
+  // link for the background to open, or in Firefox (msg.launch) click it here, as
+  // Gmail's row menu does; web and copy targets hand off from here.
   globalThis.chrome?.runtime?.onMessage?.addListener((msg, _sender, reply) => {
     if (msg?.target !== 'content' || msg.action !== 'run') return;
     const target = targetById(msg.platform);
@@ -956,7 +962,12 @@ if (globalThis.vpaContentLoaded !== true) {
       toast(ERRORS.noThread, true);
       return reply({});
     }
-    if (target.kind === 'app') return reply({ url: desktopUrl(target, thread) });
+    if (target.kind === 'app') {
+      const url = desktopUrl(target, thread);
+      if (!msg.launch || !url) return reply({ url });
+      launch(url);
+      return reply({});
+    }
     handOff(target, thread);
     reply({});
   });

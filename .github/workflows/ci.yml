@@ -45,27 +45,73 @@ jobs:
           echo "CHROME=$chrome" >> "$GITHUB_ENV"
           "$chrome" --version
 
+      # The runner image installs the current Firefox release from the Mozilla Team PPA as a normal
+      # package, not the snap, whose confinement keeps it out of hidden folders such as tests/.out. The
+      # image is rebuilt about once a week, so it tests the Firefox most people run. That is why the
+      # version is not pinned: the log records it, and tests/package/firefox.mjs fails if it is older than
+      # the package's strict_min_version. If an image ever ships without it (or with the snap), Firefox
+      # comes from Mozilla's own APT repository, after its signing key is checked against the fingerprint
+      # Mozilla publishes on support.mozilla.org. The snap shows up in two ways: as /snap/bin/firefox, a
+      # link to /usr/bin/snap, or as Ubuntu's transitional firefox package, whose /usr/bin/firefox is a
+      # script that starts the snap and whose version contains "snap".
+      - name: Find Firefox
+        run: |
+          firefox="$(command -v firefox || true)"
+          install_firefox=false
+          case "$firefox:$(readlink -f "$firefox" 2>/dev/null)" in
+            :*|/snap/*|*:/snap/*|*:/usr/bin/snap) install_firefox=true ;;
+          esac
+          if dpkg-query -W -f='${Version}' firefox 2>/dev/null | grep -q snap; then install_firefox=true; fi
+          if [ "$install_firefox" = true ]; then
+            sudo install -d -m 0755 /etc/apt/keyrings
+            curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
+            fingerprint="$(gpg -n -q --import --import-options import-show /etc/apt/keyrings/packages.mozilla.org.asc | awk '/pub/{getline; gsub(/^ +| +$/, ""); print}')"
+            if [ "$fingerprint" != "35BAA0B33E9EB396F59CA838C0BA5CE6DC6315A3" ]; then
+              echo "::error::Mozilla's APT signing key has fingerprint $fingerprint, not the published one"
+              exit 1
+            fi
+            echo "deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main" | sudo tee /etc/apt/sources.list.d/mozilla.list > /dev/null
+            printf 'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000\n' | sudo tee /etc/apt/preferences.d/mozilla > /dev/null
+            sudo apt-get update -q
+            sudo apt-get install -y -q firefox
+            firefox="$(command -v firefox)"
+          fi
+          echo "FIREFOX=$firefox" >> "$GITHUB_ENV"
+          "$firefox" --version
+
       - name: Run the test suites
         run: node tests/run-all.mjs
 
-      - name: Build the package
+      - name: Build the packages (Chrome, Firefox, Safari source)
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          node scripts/package.mjs
+          node scripts/package.mjs --target all
           sha256sum dist/*.zip
 
-      - name: Check the unpacked package
+      - name: Check the unpacked Chrome package
         run: |
           unzip -q dist/open-in-ai-agent.zip -d "$RUNNER_TEMP/unpacked"
-          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked" --target chrome
           node tests/package/load.mjs "$RUNNER_TEMP/unpacked"
           node tests/package/gmail-tab.mjs "$RUNNER_TEMP/unpacked"
 
-      - name: Upload the zips
+      - name: Check the unpacked Firefox package in Firefox
+        run: |
+          unzip -q dist/open-in-ai-agent-firefox.zip -d "$RUNNER_TEMP/unpacked-firefox"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked-firefox" --target firefox
+          node tests/package/firefox.mjs "$RUNNER_TEMP/unpacked-firefox"
+
+      # Safari needs Xcode to go further (platform/safari/README.md), so the folder is only checked.
+      - name: Check the Safari source folder
+        run: node scripts/package.mjs --check dist/safari-src --target safari
+
+      - name: Upload the packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: open-in-ai-agent
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/safari-src/
           if-no-files-found: error
 
       - name: Upload test output
@@ -83,9 +129,10 @@ jobs:
             tests/.out/settings/results.json
             tests/.out/settings/shots/
             tests/.out/package/gmail-tab.json
+            tests/.out/package/firefox.json
 
   release:
-    name: Attach the zips to a draft release
+    name: Attach the Chrome and Firefox zips to a draft release
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
@@ -114,27 +161,30 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Build the package
+      - name: Build the Chrome and Firefox packages
         run: |
           export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
-          node scripts/package.mjs
+          node scripts/package.mjs --target chrome --target firefox
           sha256sum dist/*.zip
 
-      - name: Check the unpacked package
+      - name: Check the unpacked packages
         run: |
           unzip -q dist/open-in-ai-agent.zip -d "$RUNNER_TEMP/unpacked"
-          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked" --target chrome
+          unzip -q dist/open-in-ai-agent-firefox.zip -d "$RUNNER_TEMP/unpacked-firefox"
+          node scripts/package.mjs --check "$RUNNER_TEMP/unpacked-firefox" --target firefox
 
       # A new release starts as a draft, so the notes can be reviewed before anyone downloads it.
       # Publishing it on GitHub makes it the latest release. Re-running the job replaces the zips.
-      - name: Attach both zips to the release
+      # The test job has already loaded both packages in Chrome and Firefox from the same commit.
+      - name: Attach the Chrome and Firefox zips to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          files=(dist/open-in-ai-agent.zip "dist/open-in-ai-agent-v$VERSION.zip")
+          files=(dist/open-in-ai-agent.zip "dist/open-in-ai-agent-v$VERSION.zip" dist/open-in-ai-agent-firefox.zip "dist/open-in-ai-agent-firefox-v$VERSION.zip")
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${files[@]}" --clobber
           else

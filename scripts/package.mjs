@@ -1,15 +1,28 @@
-// Builds the extension zip with only the files Chrome loads at runtime.
+// Builds the extension packages from one set of sources, with only the files each browser loads at runtime.
 //
-//   node scripts/package.mjs              build dist/open-in-ai-agent.zip and dist/open-in-ai-agent-v<version>.zip
-//   node scripts/package.mjs --check DIR  check an unpacked copy (for example the unzipped release) in DIR
+//   node scripts/package.mjs                    Chrome: dist/open-in-ai-agent.zip and dist/open-in-ai-agent-v<version>.zip
+//   node scripts/package.mjs --target chrome    the same. The Chrome package also installs in Edge, Brave, Opera,
+//                                               Vivaldi, Arc and Perplexity Comet.
+//   node scripts/package.mjs --target firefox   dist/open-in-ai-agent-firefox.zip and dist/open-in-ai-agent-firefox-v<version>.zip
+//   node scripts/package.mjs --target safari    dist/safari-src/, a folder for Xcode's Safari converter (see platform/safari/README.md)
+//   node scripts/package.mjs --target all       all three
+//   node scripts/package.mjs --check DIR [--target NAME]
+//                                               check an unpacked copy (for example the unzipped release) in DIR; the
+//                                               target is read from its manifest unless given
+//
+// manifest.json is the Chrome manifest and ships unchanged. Firefox and Safari get a copy written here: no
+// offscreen documents (neither browser has them), so background.js runs as a background page with targets.js
+// listed before it, and Firefox gets its add-on id, minimum version and data-collection statement.
 //
 // The file list comes from the manifest and from what the pages and scripts reference (script tags, icons,
 // font URLs, importScripts, the offscreen document and runtime.getURL pages), plus LICENSE, fonts/OFL.txt
 // for the bundled fonts and every icons/*.png. The build fails if a referenced file is missing or if
-// anything outside the allow-list would be packed. The zip is written by the small deflate writer below
-// (no dependencies), with manifest.json first, the other entries in code-point order (the same whatever
-// the locale) and a fixed timestamp: SOURCE_DATE_EPOCH when set, otherwise 1980-01-01, so the same
-// sources always give the same bytes.
+// anything outside the target's allow-list would be packed. The zip is written by the small deflate writer
+// below (no dependencies), with manifest.json first, the other entries in code-point order (the same
+// whatever the locale) and a fixed timestamp: SOURCE_DATE_EPOCH when set, otherwise 1980-01-01, so the same
+// sources always give the same bytes. The Safari folder gets the same files and the same timestamp; the
+// script never deletes anything, so it stops if the folder holds a file this build did not write (Finder's
+// .DS_Store aside).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,10 +33,75 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = path.join(REPO, 'dist');
 const NAME = 'open-in-ai-agent';
 
+// ---------- targets ----------
+
+// Firefox add-on id, in the email-like form MDN recommends. It cannot change once the add-on is listed.
+const GECKO_ID = 'open-in-ai-agent@thomasoclegg.github.io';
+// 140 is the first Firefox to show the data-collection statement at install, and the 140 ESR line. The
+// APIs used need less: scripting.executeScript in the page's main world (128), options_page (126) and
+// host permissions granted at install for Manifest V3 (127).
+//
+// Firefox on desktop only. Firefox for Android has no menus API and gets Gmail's mobile site, which has
+// no row menu, so the manifest has no gecko_android key (its presence offers the add-on there) and the
+// Developer Hub's Android box stays unticked. web-ext lint still warns that 140 is below 142, the first
+// Firefox for Android with data_collection_permissions; that warning is about Android only. It also
+// warns about chrome.offscreen, which background.js checks for before use and Firefox never reaches.
+const FIREFOX_MIN = '140.0';
+// What Firefox shows at install. Mozilla counts data handled outside the add-on or the browser as data
+// transmission. The extension hands the threads you pick (message text, so personalCommunications and
+// websiteContent) and your mailbox address (personallyIdentifyingInfo) to the AI app you pick (a claude://
+// or codex:// link) and to the clipboard, so it declares those, matching the Chrome and Edge disclosures,
+// rather than "none", although nothing is sent to the developer.
+const FIREFOX_DATA_COLLECTION = { required: ['personallyIdentifyingInfo', 'personalCommunications', 'websiteContent'] };
+
+// Only the Chrome service worker uses the offscreen document.
+const OFFSCREEN = ['offscreen.html', 'offscreen.js'];
+
+const TARGETS = {
+  chrome: { name: 'Chrome', zip: NAME, skipRefs: [] },
+  firefox: { name: 'Firefox', zip: `${NAME}-firefox`, skipRefs: OFFSCREEN },
+  safari: { name: 'Safari', folder: 'safari-src', skipRefs: OFFSCREEN },
+};
+
+// The service worker's importScripts files, then the worker itself: the background page's script list.
+function backgroundScripts(root, m) {
+  const worker = m.background?.service_worker;
+  if (!worker) throw new Error('manifest.json: no background.service_worker to turn into background scripts');
+  const imports = jsRefs(worker, fs.readFileSync(path.join(root, worker), 'utf8'), { importsOnly: true }).map((r) => r.ref);
+  return [...imports, worker];
+}
+
+// The Chrome manifest with a background page in place of the service worker and no offscreen permission.
+// Keys keep their order, so the files are easy to compare.
+function pageManifest(root, m, extra) {
+  const out = {};
+  for (const [key, value] of Object.entries(m)) {
+    if (key === 'minimum_chrome_version') continue;
+    if (key === 'permissions') out.permissions = value.filter((p) => p !== 'offscreen');
+    else if (key === 'background') out.background = { scripts: backgroundScripts(root, m), ...extra.background };
+    else out[key] = value;
+  }
+  return { ...out, ...extra.keys };
+}
+
+const MANIFESTS = {
+  chrome: (_root, m) => m,
+  firefox: (root, m) =>
+    pageManifest(root, m, {
+      keys: { browser_specific_settings: { gecko: { id: GECKO_ID, strict_min_version: FIREFOX_MIN, data_collection_permissions: FIREFOX_DATA_COLLECTION } } },
+    }),
+  // A non-persistent background page: MDN's compatibility data lists it as the only kind Safari on iOS
+  // runs, and it is what Firefox runs too. Not yet tried with Xcode's converter (platform/safari/README.md).
+  safari: (root, m) => pageManifest(root, m, { background: { persistent: false } }),
+};
+
+// Which build an unpacked folder is, from its manifest.
+const targetOf = (m) => (m?.browser_specific_settings?.gecko ? 'firefox' : m?.background?.service_worker ? 'chrome' : 'safari');
+
 // ---------- what may ship ----------
 
-// Runtime files only: the manifest, root scripts, the two extension pages, PNG icons,
-// woff2 fonts (only those a page references), the font licence and the MIT licence.
+// Runtime files only: the manifest, root scripts, the extension pages, PNG icons, woff2 fonts (only those a
+// page references), the font licence and the MIT licence. The offscreen document ships for Chrome only.
 const ALLOWED = [
   (f) => f === 'manifest.json',
   (f) => f === 'LICENSE',
@@ -33,7 +111,7 @@ const ALLOWED = [
   (f) => /^fonts\/[^/]+\.woff2$/.test(f),
   (f) => f === 'fonts/OFL.txt',
 ];
-const allowed = (f) => ALLOWED.some((ok) => ok(f));
+const allowed = (f, target = 'chrome') => ALLOWED.some((ok) => ok(f)) && !TARGETS[target].skipRefs.includes(f);
 
 // ---------- references ----------
 
@@ -81,9 +159,10 @@ function htmlRefs(file, text) {
   return refs;
 }
 
-function jsRefs(file, text) {
+function jsRefs(file, text, { importsOnly = false } = {}) {
   const refs = [];
   for (const m of text.matchAll(/importScripts\(([^)]*)\)/g)) for (const s of m[1].matchAll(/['"]([^'"]+)['"]/g)) addRef(refs, file, s[1]);
+  if (importsOnly) return refs;
   for (const m of text.matchAll(/getURL\(\s*['"]([^'"]+)['"]/g)) addRef(refs, file, m[1]);
   // chrome.offscreen.createDocument({ url: 'offscreen.html', ... }) and similar page URLs.
   for (const m of text.matchAll(/\burl\s*:\s*['"]([^'":]+\.html(?:[?#][^'"]*)?)['"]/g)) addRef(refs, file, m[1]);
@@ -91,16 +170,24 @@ function jsRefs(file, text) {
 }
 
 // Follows references from the manifest through every page and script found.
-function collect(root) {
+// target: which build the files are for (references it leaves out are skipped, not packed). manifest: the
+// manifest to start from, when it is not the root's manifest.json (the Firefox and Safari builds).
+function collect(root, target = 'chrome', manifest = null) {
   const read = (f) => fs.readFileSync(path.join(root, f), 'utf8');
-  if (!fs.existsSync(path.join(root, 'manifest.json'))) return { manifest: null, files: new Set(), refs: [], missing: [{ from: '(root)', ref: 'manifest.json' }] };
-  const manifest = JSON.parse(read('manifest.json'));
+  const none = { manifest: null, files: new Set(), refs: [], missing: [{ from: '(root)', ref: 'manifest.json' }], skipped: [] };
+  if (!manifest && !fs.existsSync(path.join(root, 'manifest.json'))) return none;
+  manifest ??= JSON.parse(read('manifest.json'));
   const files = new Set(['manifest.json']);
   const refs = [];
   const missing = [];
+  const skipped = new Set();
   const queue = manifestRefs(manifest);
   while (queue.length) {
     const r = queue.shift();
+    if (TARGETS[target].skipRefs.includes(r.ref)) {
+      skipped.add(r.ref);
+      continue;
+    }
     refs.push(r);
     if (files.has(r.ref)) continue;
     if (r.ref.startsWith('..') || !fs.existsSync(path.join(root, r.ref)) || !fs.statSync(path.join(root, r.ref)).isFile()) {
@@ -121,7 +208,7 @@ function collect(root) {
   }
   const iconDir = path.join(root, 'icons');
   if (fs.existsSync(iconDir)) for (const f of fs.readdirSync(iconDir)) if (f.endsWith('.png')) files.add(`icons/${f}`);
-  return { manifest, files, refs, missing };
+  return { manifest, files, refs, missing, skipped: [...skipped] };
 }
 
 const walk = (dir, base = dir) =>
@@ -130,11 +217,47 @@ const walk = (dir, base = dir) =>
     return e.isDirectory() ? walk(p, base) : [path.relative(base, p).split(path.sep).join('/')];
   });
 
-function problems({ manifest, files, missing }) {
+// Finder writes a .DS_Store file into any folder it shows, such as dist/safari-src or an unzipped package.
+// It is never packed (the zips are written from the file list), so the folder checks pass over it.
+const isFinderFile = (f) => path.posix.basename(f) === '.DS_Store';
+const walkFolder = (dir) => walk(dir).filter((f) => !isFinderFile(f));
+
+function problems({ manifest, files, missing }, target = 'chrome') {
   const out = [];
   for (const m of missing) out.push(`missing: ${m.ref} (referenced by ${m.from})`);
-  for (const f of files) if (!allowed(f)) out.push(`outside the allow-list: ${f}`);
-  if (manifest && !/^\d+(\.\d+){0,3}$/.test(String(manifest.version))) out.push(`manifest.json: version "${manifest.version}" is not a Chrome version string`);
+  for (const f of files) if (!allowed(f, target)) out.push(`outside the ${TARGETS[target].name} allow-list: ${f}`);
+  if (!manifest) return out;
+  if (!/^\d+(\.\d+){0,3}$/.test(String(manifest.version))) out.push(`manifest.json: version "${manifest.version}" is not a Chrome version string`);
+  out.push(...manifestProblems(manifest, target).map((p) => `manifest.json (${TARGETS[target].name}): ${p}`));
+  return out;
+}
+
+// What each browser needs from its manifest, so a hand-edited or wrongly built one fails here, not in review.
+function manifestProblems(m, target) {
+  const out = [];
+  const bg = m.background || {};
+  if (target === 'chrome') {
+    if (!bg.service_worker) out.push('needs background.service_worker');
+    return out;
+  }
+  if (bg.service_worker) out.push('has background.service_worker; this build runs background.js as a page (background.scripts)');
+  if (!Array.isArray(bg.scripts) || !bg.scripts.length) out.push('needs background.scripts');
+  if ((m.permissions || []).includes('offscreen')) out.push('asks for "offscreen", which this browser does not have');
+  if (m.minimum_chrome_version) out.push('has minimum_chrome_version, which only Chrome reads');
+  if (target === 'firefox') {
+    const gecko = m.browser_specific_settings?.gecko || {};
+    if (!/^[a-zA-Z0-9-._]*@[a-zA-Z0-9-._]+$/.test(gecko.id || '') || gecko.id.length > 80) out.push(`gecko.id "${gecko.id || ''}" is not an email-like id of 80 characters or fewer`);
+    if (!/^\d+\.\d+$/.test(gecko.strict_min_version || '')) out.push('needs gecko.strict_min_version, such as "140.0"');
+    const req = gecko.data_collection_permissions?.required;
+    if (!Array.isArray(req) || !req.length) out.push('needs gecko.data_collection_permissions.required (["none"] or the categories collected)');
+    if (bg.persistent !== undefined) out.push('has background.persistent, which Firefox rejects in Manifest V3');
+    if (m.browser_specific_settings?.gecko_android) out.push('has gecko_android, which offers the add-on on Firefox for Android; it needs desktop Gmail');
+  }
+  if (target === 'safari') {
+    if (bg.persistent !== false) out.push('needs background.persistent: false, the only background page Safari on iOS runs');
+    const bss = m.browser_specific_settings || {};
+    if (bss.gecko || bss.gecko_android) out.push('has browser_specific_settings.gecko, which only Firefox reads');
+  }
   return out;
 }
 
@@ -151,10 +274,16 @@ function crc32(buf) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-function dosDateTime() {
+// SOURCE_DATE_EPOCH when set, otherwise 1980-01-01 (the earliest time a zip can hold).
+function fixedTime() {
   const epoch = process.env.SOURCE_DATE_EPOCH;
   const d = epoch ? new Date(Number(epoch) * 1000) : new Date(Date.UTC(1980, 0, 1));
   if (Number.isNaN(d.getTime()) || d.getUTCFullYear() < 1980) throw new Error(`SOURCE_DATE_EPOCH "${epoch}" is not a time from 1980 on`);
+  return { time: d };
+}
+
+function dosDateTime() {
+  const { time: d } = fixedTime();
   const time = (d.getUTCHours() << 11) | (d.getUTCMinutes() << 5) | (d.getUTCSeconds() >> 1);
   const date = ((d.getUTCFullYear() - 1980) << 9) | ((d.getUTCMonth() + 1) << 5) | d.getUTCDate();
   return { time, date };
@@ -248,44 +377,141 @@ function fail(lines) {
   process.exit(1);
 }
 
-const args = process.argv.slice(2);
-if (args[0] === '--check') {
-  const dir = path.resolve(args[1] || '');
-  if (!args[1] || !fs.existsSync(dir)) fail([`--check needs an unpacked extension folder (got "${args[1] || ''}")`]);
-  const found = collect(dir);
-  const errors = problems(found);
-  const present = walk(dir);
-  for (const f of present) if (!allowed(f)) errors.push(`outside the allow-list: ${f}`);
-  for (const f of present) if (allowed(f) && !found.files.has(f)) errors.push(`not referenced by the manifest or pages: ${f}`);
-  if (errors.length) fail(errors);
-  console.log(`OK  ${dir}: manifest.json at the root, ${found.refs.length} references resolve, ${present.length} files, nothing outside the allow-list.`);
-  process.exit(0);
-}
-if (args.length) fail([`unknown arguments: ${args.join(' ')}`]);
-
-const found = collect(REPO);
-const errors = problems(found);
-if (errors.length) fail(errors);
-
-// Root scripts nothing references are left out; say so, so a forgotten reference is noticed.
-const rootJs = fs.readdirSync(REPO).filter((f) => f.endsWith('.js'));
-for (const f of rootJs) if (!found.files.has(f)) console.warn(`NOTE  ${f} is not referenced by the manifest or pages, so it is not packed.`);
-
-const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-const names = [...found.files].sort((a, b) => (a === 'manifest.json' ? -1 : b === 'manifest.json' ? 1 : byCodePoint(a, b)));
-const entries = names.map((name) => ({ name, data: fs.readFileSync(path.join(REPO, name)) }));
-const buf = zip(entries);
-
-const back = unzip(buf);
-if (back.map((e) => e.name).join('\n') !== names.join('\n')) fail(['zip check: entries read back differ from the file list']);
-for (const [i, e] of back.entries()) if (!e.data.equals(entries[i].data)) fail([`zip check: ${e.name} differs from the source file`]);
-
-const version = found.manifest.version;
-fs.mkdirSync(DIST, { recursive: true });
-const outputs = [path.join(DIST, `${NAME}.zip`), path.join(DIST, `${NAME}-v${version}.zip`)];
-for (const out of outputs) fs.writeFileSync(out, buf);
-
 const kb = (n) => `${(n / 1024).toFixed(1)} KB`;
-console.log(`Packed ${found.manifest.name} ${version}: ${names.length} files, ${kb(buf.length)} zipped.`);
-for (const e of entries) console.log(`  ${e.name.padEnd(46)} ${kb(e.data.length).padStart(9)}`);
-for (const out of outputs) console.log(`Wrote ${path.relative(REPO, out)}`);
+const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const rel = (p) => path.relative(REPO, p) || '.';
+
+// Checks an unpacked copy as the browser would load it.
+function checkDir(dir, target) {
+  const found = collect(dir, target);
+  const errors = problems(found, target);
+  const present = walkFolder(dir);
+  for (const f of present) if (!allowed(f, target)) errors.push(`outside the ${TARGETS[target].name} allow-list: ${f}`);
+  for (const f of present) if (allowed(f, target) && !found.files.has(f)) errors.push(`not referenced by the manifest or pages: ${f}`);
+  return { found, errors, present };
+}
+
+// The files of one target's package, in packing order, read from the repository. Throws if the build has
+// problems. tests/package/firefox.mjs uses it to test the Firefox files without writing to dist/.
+function packageFiles(target) {
+  const source = JSON.parse(fs.readFileSync(path.join(REPO, 'manifest.json'), 'utf8'));
+  const manifest = MANIFESTS[target](REPO, source);
+  const found = collect(REPO, target, manifest);
+  const errors = problems(found, target);
+  if (errors.length) throw Object.assign(new Error(errors.join('\n')), { problems: errors });
+  // Chrome's manifest ships byte for byte; the others are written from it.
+  const manifestData = target === 'chrome' ? fs.readFileSync(path.join(REPO, 'manifest.json')) : Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  const names = [...found.files].sort((a, b) => (a === 'manifest.json' ? -1 : b === 'manifest.json' ? 1 : byCodePoint(a, b)));
+  const entries = names.map((name) => ({ name, data: name === 'manifest.json' ? manifestData : fs.readFileSync(path.join(REPO, name)) }));
+  return { manifest, found, names, entries };
+}
+
+function build(target) {
+  const t = TARGETS[target];
+  let pkg;
+  try {
+    pkg = packageFiles(target);
+  } catch (e) {
+    fail(e.problems || [e.message]);
+  }
+  const { manifest, found, names, entries } = pkg;
+
+  // Root scripts nothing references are left out; say so, so a forgotten reference is noticed.
+  for (const f of fs.readdirSync(REPO).filter((n) => n.endsWith('.js'))) {
+    if (!found.files.has(f) && !t.skipRefs.includes(f)) console.warn(`NOTE  ${f} is not referenced by the manifest or pages, so it is not packed.`);
+  }
+
+  const version = manifest.version;
+  fs.mkdirSync(DIST, { recursive: true });
+
+  let outputs;
+  let size;
+  if (t.zip) {
+    const buf = zip(entries);
+    const back = unzip(buf);
+    if (back.map((e) => e.name).join('\n') !== names.join('\n')) fail([`${t.name} zip check: entries read back differ from the file list`]);
+    for (const [i, e] of back.entries()) if (!e.data.equals(entries[i].data)) fail([`${t.name} zip check: ${e.name} differs from the source`]);
+    outputs = [path.join(DIST, `${t.zip}.zip`), path.join(DIST, `${t.zip}-v${version}.zip`)];
+    for (const out of outputs) fs.writeFileSync(out, buf);
+    size = `${kb(buf.length)} zipped`;
+  } else {
+    const dir = path.join(DIST, t.folder);
+    // Nothing is deleted: a file an earlier build left that this one would not write stops the build.
+    const stale = fs.existsSync(dir) ? walkFolder(dir).filter((f) => !names.includes(f)) : [];
+    if (stale.length) fail([`${rel(dir)} holds files this build does not write: ${stale.join(', ')}. Move the folder aside and build again.`]);
+    const { time } = fixedTime();
+    for (const e of entries) {
+      const file = path.join(dir, e.name);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, e.data);
+      fs.utimesSync(file, time, time);
+    }
+    for (const e of entries) if (!fs.readFileSync(path.join(dir, e.name)).equals(e.data)) fail([`${t.name} folder check: ${e.name} differs from the source`]);
+    const check = checkDir(dir, target);
+    if (check.errors.length) fail(check.errors.map((x) => `${rel(dir)}: ${x}`));
+    outputs = [dir];
+    size = `${kb(entries.reduce((n, e) => n + e.data.length, 0))} in all`;
+  }
+
+  console.log(`Packed ${manifest.name} ${version} for ${t.name}: ${names.length} files, ${size}.`);
+  if (t.skipRefs.length) console.log(`  left out: ${t.skipRefs.join(', ')} (the offscreen document, which only Chrome uses)`);
+  for (const e of entries) console.log(`  ${e.name.padEnd(46)} ${kb(e.data.length).padStart(9)}`);
+  for (const out of outputs) console.log(`Wrote ${rel(out)}${t.folder ? '/' : ''}`);
+  if (target === 'safari') {
+    console.log('Next, on a Mac with Xcode installed (steps in platform/safari/README.md):');
+    console.log(`  xcrun safari-web-extension-converter ${rel(outputs[0])} --app-name "Open in AI Agent" --bundle-identifier <a reverse-DNS id you own> --macos-only --copy-resources`);
+  }
+}
+
+// ---------- command line ----------
+
+// The tests import this file (tests/background checks the manifests, tests/package/firefox.mjs takes the
+// Firefox files), so the command line runs only when the script is run itself.
+export { TARGETS, MANIFESTS, manifestProblems, targetOf, packageFiles, GECKO_ID, FIREFOX_MIN, FIREFOX_DATA_COLLECTION };
+
+function main() {
+  const args = process.argv.slice(2);
+  const targets = [];
+  let checkPath = null;
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--check') {
+      checkPath = args[++i];
+      if (!checkPath || checkPath.startsWith('--')) fail([`--check needs an unpacked extension folder (got "${checkPath || ''}")`]);
+    } else if (a === '--target' || a.startsWith('--target=')) {
+      const v = a.includes('=') ? a.slice(a.indexOf('=') + 1) : args[++i];
+      if (v === 'all') targets.push(...Object.keys(TARGETS));
+      else if (Object.hasOwn(TARGETS, v || '')) targets.push(v);
+      else fail([`--target must be ${Object.keys(TARGETS).join(', ')} or all (got "${v || ''}")`]);
+    } else fail([`unknown argument: ${a}`]);
+  }
+
+  if (checkPath !== null) {
+    const dir = path.resolve(checkPath);
+    if (!fs.existsSync(dir)) fail([`--check needs an unpacked extension folder (got "${checkPath}")`]);
+    if (targets.length > 1) fail(['--check takes one --target']);
+    let target = targets[0];
+    if (!target) {
+      try {
+        target = targetOf(JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')));
+      } catch {
+        target = 'chrome'; // the check below reports the missing or broken manifest
+      }
+    }
+    const { found, errors, present } = checkDir(dir, target);
+    if (errors.length) fail(errors);
+    console.log(`OK  ${dir} (${TARGETS[target].name}): manifest.json at the root, ${found.refs.length} references resolve, ${present.length} files, nothing outside the allow-list.`);
+    process.exit(0);
+  }
+
+  for (const target of [...new Set(targets.length ? targets : ['chrome'])]) build(target);
+}
+
+const realpath = (f) => {
+  try {
+    return fs.realpathSync(f);
+  } catch {
+    return path.resolve(f);
+  }
+};
+if (process.argv[1] && realpath(process.argv[1]) === realpath(fileURLToPath(import.meta.url))) main();

@@ -4,17 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Open in AI Agent for Gmail</title>
-<meta name="description" content="A free Chrome extension. Right-click an email in Gmail and open the thread in Claude, ChatGPT, Gemini, Claude Code, Codex or another AI. Runs on your computer.">
+<title>Send Gmail threads to ChatGPT, Claude or Claude Code</title>
+<meta name="description" content="Free browser extension: right-click a Gmail thread to send it to ChatGPT, Claude or Gemini, or open it in Claude Code or Codex, for a summary and a draft reply.">
+<link rel="canonical" href="https://thomasoclegg.github.io/gmail-to-agent/">
+<meta name="author" content="Thomas Clegg">
 <meta property="og:type" content="website">
+<meta property="og:site_name" content="Open in AI Agent for Gmail">
+<meta property="og:locale" content="en_GB">
 <meta property="og:url" content="https://thomasoclegg.github.io/gmail-to-agent/">
 <meta property="og:title" content="Open in AI Agent for Gmail">
-<meta property="og:description" content="Right-click a Gmail thread to open it in Claude, ChatGPT, Codex or another AI. Free and open source, and it runs on your computer.">
-<meta property="og:image" content="https://thomasoclegg.github.io/gmail-to-agent/shot-menu.png">
-<meta property="og:image:width" content="1280">
-<meta property="og:image:height" content="800">
-<meta property="og:image:alt" content="Gmail's right-click menu with the extension's four items at the top, and the note it shows after a click">
+<meta property="og:description" content="Right-click a Gmail thread to send it to ChatGPT, Claude, Claude Code or another AI. Free and open source, and it runs on your computer.">
+<meta property="og:image" content="https://thomasoclegg.github.io/gmail-to-agent/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The headline 'Right-click a Gmail thread to open it in Claude, ChatGPT or Codex' beside Gmail's right-click menu with the extension's four items at the top">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Open in AI Agent for Gmail">
+<meta name="twitter:description" content="Right-click a Gmail thread to send it to ChatGPT, Claude, Claude Code or another AI. Free and open source, and it runs on your computer.">
+<meta name="twitter:image" content="https://thomasoclegg.github.io/gmail-to-agent/og.png">
+<meta name="twitter:image:alt" content="The headline 'Right-click a Gmail thread to open it in Claude, ChatGPT or Codex' beside Gmail's right-click menu with the extension's four items at the top">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Open in AI Agent for Gmail",
+  "alternateName": "Open in AI Agent",
+  "description": "A browser extension that adds Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat, DeepSeek, Claude Code and Codex to Gmail's right-click menu. Pick one and it gets the email thread, or several ticked threads, to summarise and draft replies. Runs on your computer.",
+  "url": "https://thomasoclegg.github.io/gmail-to-agent/",
+  "applicationCategory": "BrowserApplication",
+  "operatingSystem": "Windows, macOS, Linux, ChromeOS",
+  "softwareRequirements": "Chrome 116 or later, Microsoft Edge, Firefox 140 or later, or another browser that installs Chrome Web Store extensions",
+  "softwareVersion": "1.3.0",
+  "downloadUrl": "https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip",
+  "license": "https://github.com/thomasoclegg/gmail-to-agent/blob/main/LICENSE",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "image": "https://thomasoclegg.github.io/gmail-to-agent/og.png",
+  "screenshot": "https://thomasoclegg.github.io/gmail-to-agent/shot-menu.png",
+  "author": { "@type": "Person", "name": "Thomas Clegg", "url": "https://github.com/thomasoclegg" },
+  "sameAs": "https://github.com/thomasoclegg/gmail-to-agent"
+}
+</script>
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="icon" href="icon.png" sizes="128x128">
 <link rel="apple-touch-icon" href="icon.png">
@@ -75,6 +106,7 @@
   .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
   .brand svg { width: 24px; height: 24px; flex: none; }
   .mast p { margin: 0; }
+  .mast p a + a { margin-left: 18px; }
 
   /* ---- Opening: the headline, the lede, and the download in the right-hand columns ---- */
   .hero { padding-top: 72px; align-items: start; }
@@ -97,7 +129,31 @@
   /* ---- The figure: Gmail's menu and the note, then one caption ---- */
   .fig1 { margin-top: 56px; row-gap: 0; }
   .stage { grid-column: 1 / 10; }
-  .fig1 figcaption { grid-column: 1 / 8; margin-top: 14px; font-size: 15.5px; line-height: 1.55; color: var(--ink-2); }
+  .fig1 figcaption { grid-column: 1 / 8; grid-row: 2; margin-top: 14px; font-size: 15.5px; line-height: 1.55; color: var(--ink-2); }
+
+  /* The hero loop and the clips (docs/media). The recordings are always light, so a hairline keeps their edge
+     on either background. From 600 px up the loop replaces the drawing; on a phone the drawing stays. */
+  .hv, .clip video { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 800; border-radius: 10px;
+                     background: #f6f8fc; box-shadow: 0 0 0 1px var(--rule); }
+  .fig1 .gm, .gm-only { display: none; }
+  /* The script adds no-video when the loop cannot play here. */
+  .fig1.no-video .hv, .fig1.no-video .hv-ctl, .fig1.no-video .hv-only { display: none !important; }
+  .fig1.no-video .gm { display: block; }
+  .fig1.no-video .gm-only { display: inline; }
+  /* Pause and play, under the loop's right-hand edge, level with the caption. */
+  .hv-ctl { grid-column: 8 / 10; grid-row: 2; justify-self: end; align-self: start; margin-top: 12px;
+            display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px 6px 9px; border: 1.5px solid var(--line);
+            border-radius: 3px; background: transparent; color: var(--ink); font: 600 13.5px/1.25 var(--sans); cursor: pointer; }
+  .hv-ctl:hover { border-color: var(--ink); }
+  .hv-ctl:focus-visible { outline: 2px solid var(--rubric); outline-offset: 3px; }
+  .hv-ctl svg { width: 12px; height: 12px; flex: none; fill: currentColor; }
+
+  /* A clip where it teaches: the video in columns 1 to 9, its caption in the notes column beside it. */
+  .clip { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: start; margin: 8px 0 30px; }
+  .clip video { grid-column: 1 / 10; }
+  .clip figcaption { grid-column: 10 / 13; padding-top: 10px; border-top: 1px solid var(--ink); font-size: 14.5px;
+                     line-height: 1.5; color: var(--ink-2); }
+  .clip figcaption .label { display: block; margin-bottom: 4px; }
 
   /* gm:start  A drawing of Gmail's inbox and menu, and the extension's note, as they ship. */
   .gm { --gm-bg: #f6f8fc; --gm-panel: #ffffff; --gm-ink: #1f1f1f; --gm-icon: #444746; --gm-soft: #5e5e5e;
@@ -199,6 +255,7 @@
   .platforms tbody:first-of-type tr.grp th { padding-top: 16px; }
   .platforms tr.why td { padding: 10px 0 12px; font-size: 15px; color: var(--ink-2); }
   .platforms tr.why span { display: block; max-width: 46em; }
+  .platforms .clip { margin-top: 40px; }
   .platforms .dom { font: 13.5px/1.55 var(--mono); color: var(--ink-2); }
   .platforms .where { color: var(--ink-2); }
   .platforms .gkeys { display: block; margin-top: 3px; font: 400 15px/1.5 var(--sans); color: var(--ink-2); white-space: normal; }
@@ -238,8 +295,36 @@
   .ledger li { padding: 9px 0 10px; border-top: 1px solid var(--rule); }
   .ledger.yes li { font-size: 15.5px; }
 
-  /* Install */
+  /* Install: the visitor's browser first (filled in by the script at the end), then every browser, then the steps */
   #install { padding-top: 120px; }
+  .pick { grid-column: 1 / 9; margin: 0 0 44px; padding-top: 12px; border-top: 1px solid var(--ink); }
+  .pick .label { margin: 0 0 16px; }
+  .pick-do { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
+  .pick-note { margin: 16px 0 0; max-width: 38em; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); }
+  .pick-note + .pick-note { margin-top: 8px; }
+  /* A store that is not live yet: the same shape as a button, but quiet and not a link. */
+  .btn.off { padding: 11.5px 16px 11.5px 18px; background: transparent; color: var(--ink-2); border: 1.5px dashed var(--line);
+             cursor: default; }
+  .btn.off:hover { box-shadow: none; }
+  .soon { display: inline-block; padding: 2px 7px 3px; border-radius: 3px; background: var(--tint); color: var(--ink-2);
+          font: 600 12px/1.3 var(--sans); white-space: nowrap; vertical-align: 0.06em; }
+  .btn .soon { margin-left: 2px; }
+  .browsers { grid-column: 1 / -1; width: 100%; margin: 0 0 56px; border-collapse: collapse; font-size: 15.5px; line-height: 1.45; }
+  .browsers col.b1 { width: 32%; }
+  .browsers col.b2 { width: 26%; }
+  .browsers thead th { padding: 0 18px 8px 0; border-bottom: 1px solid var(--ink); text-align: left;
+                       font: 600 13.5px/1.3 var(--sans); color: var(--ink-2); }
+  .browsers tbody th, .browsers td { padding: 10px 18px 11px 0; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  .browsers tbody th { font-weight: 600; }
+  .browsers td { color: var(--ink-2); }
+  .browsers td.store { color: var(--ink); }
+  .browsers .soon { margin-left: 4px; }
+  .browsers tr.here > * { background: var(--tint); }
+  .browsers tr.here th { padding-left: 10px; }
+  .browsers .yours { display: block; margin-top: 2px; font: 400 13px/1.4 var(--sans); color: var(--ink-2); }
+  #install h3 { grid-column: 1 / 9; margin: 0 0 12px; }
+  /* The settings drawing sits beside the steps; the clip after them runs the full width. */
+  #install .fig2 { grid-row: 5 / span 2; }
   .steps { grid-column: 1 / 9; margin: 0 0 26px; padding: 0; list-style: none; counter-reset: step; }
   .steps li { position: relative; padding: 14px 0 14px 40px; border-top: 1px solid var(--rule); counter-increment: step; }
   .steps li:last-child { border-bottom: 1px solid var(--rule); }
@@ -263,6 +348,12 @@
   /* Several emails at once: the text on the left, the ticked rows and the menu on the right (.fig2) */
   .bulk { padding-top: 112px; }
 
+  /* Questions: the same ruled list as the privacy ledger, one question and its answer per rule */
+  #faq { padding-top: 112px; }
+  .faq { grid-column: 1 / 9; margin: 0; border-bottom: 1px solid var(--rule); }
+  .faq h3 { margin: 0; padding: 14px 0 4px; border-top: 1px solid var(--rule); font: 600 17px/1.4 var(--sans); }
+  .faq p { margin: 0 0 14px; max-width: 38em; }
+
   /* ---- Footer, with the donation. The only heavy rule on the page sits above it. ---- */
   .foot { margin-top: 72px; padding-bottom: 64px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
   .foot::before { content: ""; grid-column: 1 / -1; height: 2px; background: var(--ink); margin-bottom: 22px; }
@@ -283,6 +374,10 @@
     .get { grid-column: 9 / 13; }
     .stage { grid-column: 1 / -1; }
     .fig1 figcaption { grid-column: 1 / 10; }
+    .hv-ctl { grid-column: 10 / 13; }
+    /* Too narrow for a notes column beside the clip: the caption goes under it. */
+    .clip video { grid-column: 1 / -1; }
+    .clip figcaption { grid-column: 1 / 9; max-width: 40em; margin-top: 14px; }
   }
   @media (max-width: 899px) {
     .page { padding-left: 32px; padding-right: 32px; }
@@ -296,6 +391,12 @@
     .bulk { padding-top: 88px; }
     #privacy { padding-top: 80px; }
     #install { padding-top: 96px; }
+    #faq { padding-top: 88px; }
+    .browsers { margin-bottom: 44px; }
+    /* The store column is narrow here, so "Coming soon" goes under the store's name, flush left. */
+    .browsers .soon { display: table; margin: 4px 0 0; }
+    /* In one column the settings drawing would land under the steps and read like a fifth step. */
+    #install .fig2 { display: none; }
     .prompt { display: flex; flex-direction: column; }
     .prompt .pn { order: 2; margin-top: 12px; padding: 0; font-size: 15px; }
     details .prompt { display: flex; }
@@ -322,6 +423,11 @@
     .hero { padding-top: 40px; }
     .lede { font-size: 18px; }
     .fig1 { margin-top: 40px; }
+    /* The loop's captions would be too small to read here, so the drawing stays and the loop is never fetched. */
+    .hv, .hv-ctl, .hv-only { display: none !important; }
+    .fig1 .gm { display: block; }
+    .gm-only { display: inline; }
+    .clip video { border-radius: 8px; }
     .stage .gm { zoom: 0.9; height: auto; padding-top: 192px; border-radius: 8px; }
     .gm-scene { position: absolute; left: 0; right: 0; top: -151px; height: 482px; clip-path: inset(151px 0 139px 0); }
     .gm-menu .gm-sep ~ * { display: none; }
@@ -343,6 +449,18 @@
     .platforms tr.why td { display: block; }
     .prompt { font-size: 12.5px; }
     .fig2 { display: none; }
+    /* Every browser becomes a list: the name, then its store, then the download. */
+    .browsers, .browsers tbody, .browsers tr { display: block; }
+    .browsers thead, .browsers colgroup { display: none; }
+    .browsers { border-top: 1px solid var(--ink); }
+    .browsers tr { padding: 11px 0 12px; border-bottom: 1px solid var(--rule); }
+    .browsers tbody th, .browsers td { display: block; padding: 0; border: 0; }
+    .browsers td { margin-top: 5px; }
+    .browsers .soon { display: inline-block; margin: 0 0 0 4px; }
+    .browsers tr.here { padding-left: 10px; padding-right: 10px; background: var(--tint); }
+    .browsers tr.here > * { background: none; }
+    .browsers tr.here th { padding-left: 0; }
+    .pick-do .btn { white-space: normal; }
     .foot { margin-top: 56px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -387,7 +505,7 @@
     <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect class="ig" width="16" height="16" rx="3.25" fill="#15171a"/><rect x="1" y="4" width="10" height="7" rx="0.5" fill="#fafaf8"/><path class="ik" d="M1.9 4.9 6 8.5l4.1-3.6" fill="none" stroke="#15171a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="4" width="3" height="2" rx="0.35" fill="#fb3e36"/><rect x="12" y="7" width="3" height="2" rx="0.35" fill="#fafaf8"/><rect x="12" y="10" width="3" height="2" rx="0.35" fill="#fafaf8"/></svg>
     Open in AI Agent for Gmail
   </a>
-  <p><a href="#install">Install</a></p>
+  <p><a href="#install">Install</a><a href="#faq">Questions</a></p>
 </header>
 
 <main id="main">
@@ -397,15 +515,25 @@
     Gmail, with the whole thread on your clipboard. Claude Code and Codex open on your desktop instead and read the thread
     through their own Gmail connection. Tick <a href="#bulk">several emails</a> first and the AI sorts them into tasks.</p>
   <aside class="get" aria-label="Download">
-    <p class="ver">Version 1.2.0, 4 Nov 2026</p>
+    <p class="ver">Version 1.3.0, November 2026</p>
     <a class="btn" id="download" href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip">Download for Chrome <svg aria-hidden="true"><use href="#i-down"/></svg></a>
-    <p>A zip you load in Chrome's developer mode, <a href="#install">four steps below</a>. The Chrome Web Store listing is coming soon.</p>
-    <p>MIT licence. Chrome 116 or later. Tested on macOS only.</p>
+    <p id="get-note">A zip you load in Chrome's developer mode, <a href="#install">four steps below</a>. The Chrome Web Store listing is coming soon.</p>
+    <p>Free, MIT licence. Tested in Chrome on macOS.</p>
   </aside>
 </section>
 
 <figure class="fig1 page grid" aria-labelledby="fig1-cap">
   <div class="stage">
+    <!-- The hero loop, recorded from the real extension by media/record.mjs. From 600 px up it takes the drawing's
+         place. It has no autoplay attribute: the script at the end of the page starts it, so a phone (which keeps
+         the drawing) and anyone who asks for reduced motion fetch only the poster. Without scripts it keeps its
+         controls. -->
+    <video class="hv" id="hero-video" muted loop playsinline controls preload="none" width="1280" height="800"
+           poster="media/hero-poster.png" aria-describedby="fig1-cap"
+           aria-label="Video, 13 seconds, on a loop. In Gmail, an email is right-clicked and Ask ChatGPT picked from the top of the menu. The extension copies the whole thread and says so in a note at the bottom left. ChatGPT opens in a new tab, the thread is pasted in, and a caption says to check it, then press Enter.">
+      <source src="media/hero.webm" type="video/webm">
+      <source src="media/hero.mp4" type="video/mp4">
+    </video>
     <!-- gm:start -->
     <div class="gm" role="img" aria-label="Gmail's inbox with one row right-clicked. Gmail's menu lists Open in Claude Code, Ask Claude, Ask ChatGPT and Copy thread for any AI, each with a small envelope mark, above Reply, Reply all and Forward. At the bottom left, the extension's note says: Copied. Opening ChatGPT: press Command V, then Enter.">
       <div class="gm-scene" aria-hidden="true">
@@ -454,10 +582,12 @@
     </div>
     <!-- gm:end -->
   </div>
-  <figcaption id="fig1-cap">Your picks sit at the top of Gmail's right-click menu, or in Chrome's menu inside an open thread. Click
+  <button type="button" class="hv-ctl" id="hero-toggle" aria-controls="hero-video" hidden></button>
+  <figcaption id="fig1-cap">Your picks sit at the top of Gmail's right-click menu, or in the browser's menu inside an open thread. Click
     one and the note at the bottom left shows the keys: <span class="nw"><kbd>Cmd</kbd><kbd>V</kbd>,</span>
     <span class="nw">then <kbd>Enter</kbd></span> (<span class="nw">Ctrl+V</span> on Windows). A moment later the AI opens in a
-    new tab next to Gmail. The inbox is made up.</figcaption>
+    new tab next to Gmail, ready for you to paste and check. <span class="hv-only">An illustration: the inbox and the AI page are
+    made up.</span><span class="gm-only">The inbox is made up.</span></figcaption>
 </figure>
 
 <section class="sec platforms page grid" id="how" aria-labelledby="where-title">
@@ -488,6 +618,14 @@
       <tr><th scope="row">Copy thread for any AI</th><td class="where">Nothing opens</td><td class="press"><span class="nw"><kbd>Cmd</kbd><kbd>V</kbd></span> wherever you like</td></tr>
     </tbody>
   </table>
+  <figure class="clip">
+    <video controls playsinline preload="none" width="1280" height="800" poster="media/clip-desktop-agent-poster.png"
+           aria-label="Video: opening an email in Claude Code" aria-describedby="clip-desktop-cap">
+      <source src="media/clip-desktop-agent.webm" type="video/webm">
+      <source src="media/clip-desktop-agent.mp4" type="video/mp4">
+    </video>
+    <figcaption id="clip-desktop-cap"><span class="label">13 seconds, no sound</span>Open in Claude Code from Gmail's menu. The first time, the browser asks whether to open the Claude app: tick Always allow, then Open. Claude Code gets the subject, the thread ID and the Gmail link, never the message text, and reads the thread through its own Gmail connection.</figcaption>
+  </figure>
 </section>
 
 <section class="sec pasted page grid" aria-labelledby="prompt-title">
@@ -555,6 +693,14 @@
   <p class="t">A web AI, or Copy, gets the full text of every thread, with the most urgent task asked for first. The extension reads each one from Gmail's print view in the background, four at a time, without opening or clicking anything, so an unread email stays unread. I checked that in a real Gmail account on 4 November 2026.</p>
   <p class="t">Claude Code and Codex get a list instead: each thread's ID and Gmail link, plus its subject for Claude Code, whose session is named "Inbox triage: 3 emails". They read the threads through their own Gmail connection, group them into tasks and work each one as far as they can, but send, post, book, pay or change nothing without your approval.</p>
   <p class="t small">With more than 25 ticked, it takes the first 25 in the list and the note says so. A web AI gets up to 60,000 characters in all and up to 6,000 per thread. When they don't all fit, each thread gets a fair share, and a long one keeps its opening and its newest messages. A thread it can't read goes as Gmail's preview, marked as such. This works from the inbox list, not from inside an open thread.</p>
+  <figure class="clip">
+    <video controls playsinline preload="none" width="1280" height="800" poster="media/clip-bulk-poster.png"
+           aria-label="Video: several emails at once" aria-describedby="clip-bulk-cap">
+      <source src="media/clip-bulk.webm" type="video/webm">
+      <source src="media/clip-bulk.mp4" type="video/mp4">
+    </video>
+    <figcaption id="clip-bulk-cap"><span class="label">12 seconds, no sound</span>Three emails ticked, then Ask Claude about 3 emails. The extension reads each thread without opening it, Claude opens in a new tab, and the pasted prompt asks it to sort them into tasks.</figcaption>
+  </figure>
   <details class="t">
     <summary>Show the prompt for three emails</summary>
     <div class="prompt" role="group" aria-label="The prompt for several emails, line by line, with notes">
@@ -596,7 +742,7 @@
       <li>A web AI gets the text when you paste it and press Enter. Email text never goes into a web address.</li>
       <li>Claude Code and Codex get the mailbox address, thread IDs and Gmail links, plus your working folder if you set one. Claude Code also gets the subject, to name the session. They read the email text through their own Gmail connection.</li>
       <li>For several emails, it asks Gmail for each thread's print view with a session key it reads from the Gmail page. The key goes only to Gmail and is not stored.</li>
-      <li>Attachments are skipped. The only things it stores are your picks and your working folder, in Chrome's sync storage.</li>
+      <li>Attachments are skipped. The only things it stores are your picks and your working folder, in the browser's sync storage.</li>
     </ul>
   </div>
   <div class="ledger yes">
@@ -611,13 +757,43 @@
 
 <section class="sec page grid" id="install" aria-labelledby="install-title">
   <h2 id="install-title">Install</h2>
-  <p class="t">Four steps until the Chrome Web Store listing is live.</p>
+  <p class="intro">It runs in Chrome and the browsers that install from the Chrome Web Store, in Microsoft Edge and in Firefox. Install it from your browser's store where the listing is live, or from the download on GitHub.</p>
+  <!-- The script at the end of the page rewrites this block for the visitor's browser. Without it, this is the Chrome version. -->
+  <div class="pick" id="pick" aria-live="polite">
+    <p class="label" id="pick-for">For Chrome and browsers built on it</p>
+    <div class="pick-do" id="pick-do">
+      <a class="btn" href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip">Download the zip <svg aria-hidden="true"><use href="#i-down"/></svg></a>
+      <span class="btn off" aria-disabled="true">Chrome Web Store <span class="soon">Coming soon</span></span>
+    </div>
+    <p class="pick-note" id="pick-note">Load it in developer mode with the <a href="#steps-title">four steps below</a>.</p>
+  </div>
+  <table class="browsers" id="browsers">
+    <caption class="vh">Where to get it for each browser</caption>
+    <colgroup><col class="b1"><col class="b2"><col></colgroup>
+    <thead><tr><th scope="col">Browser</th><th scope="col">Store</th><th scope="col">Download from GitHub</th></tr></thead>
+    <tbody>
+      <tr data-family="chromium"><th scope="row">Chrome, Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet</th><td class="store" data-store="chrome">Chrome Web Store <span class="soon">Coming soon</span></td><td><a href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip">The zip</a>, loaded unpacked with the <a href="#steps-title">steps below</a></td></tr>
+      <tr data-family="edge"><th scope="row">Microsoft Edge</th><td class="store" data-store="edge">Edge Add-ons <span class="soon">Coming soon</span></td><td>The same zip, loaded unpacked in <code>edge://extensions</code></td></tr>
+      <tr data-family="firefox"><th scope="row">Firefox 140 or later</th><td class="store" data-store="firefox">Firefox Add-ons <span class="soon">Coming soon</span></td><td><a href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-firefox.zip">The Firefox zip</a>, as a temporary add-on: open <code>about:debugging</code>, click This Firefox, then Load Temporary Add-on. Firefox removes it when it restarts.</td></tr>
+      <tr data-family="safari"><th scope="row">Safari</th><td class="store" data-store="safari">Planned</td><td id="safari-get">Not yet. A Safari version needs Apple's paid developer programme and Xcode.</td></tr>
+      <tr data-family="ie"><th scope="row">Internet Explorer</th><td class="store">No</td><td>Microsoft retired Internet Explorer in June 2022, and it never ran extensions like this one. Use Edge, which comes with Windows.</td></tr>
+    </tbody>
+  </table>
+  <h3 class="label" id="steps-title">From the download, in Chrome, Edge and other Chromium browsers</h3>
   <ol class="steps">
-    <li><a href="#download">Download the zip</a> and unzip it somewhere it will stay.</li>
-    <li>Open <code>chrome://extensions</code>, switch on Developer mode, click Load unpacked and pick the unzipped folder.</li>
+    <li><a href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip">Download the zip</a> and unzip it somewhere it will stay.</li>
+    <li>Open <code id="ext-page">chrome://extensions</code><span id="ext-edge"> (<code>edge://extensions</code> in Edge)</span>, switch on Developer mode, click Load unpacked and pick the unzipped folder.</li>
     <li>The settings page opens by itself. Pick your AIs. If you pick Claude Code or Codex, add a working folder.</li>
-    <li>Right-click an email in Gmail. Tabs that were already open need no reload. The first time Claude Code or Codex opens, Chrome asks whether to open the app: tick Always allow, then click Open.</li>
+    <li>Right-click an email in Gmail. Tabs that were already open need no reload. The first time Claude Code or Codex opens, the browser asks whether to open the app: tick Always allow, then click Open.</li>
   </ol>
+  <figure class="clip">
+    <video controls playsinline preload="none" width="1280" height="800" poster="media/clip-pick-ais-poster.png"
+           aria-label="Video: picking your AIs" aria-describedby="clip-pick-cap">
+      <source src="media/clip-pick-ais.webm" type="video/webm">
+      <source src="media/clip-pick-ais.mp4" type="video/mp4">
+    </video>
+    <figcaption id="clip-pick-cap"><span class="label">10 seconds, no sound</span>The extension's icon in the toolbar opens the settings page at any time. Tick the AIs you use and they appear at the top of Gmail's right-click menu, in the same order.</figcaption>
+  </figure>
   <figure class="fig2">
     <div class="mini" aria-hidden="true">
       <p class="h">1 Pick the AIs you use</p>
@@ -630,8 +806,27 @@
     </div>
     <figcaption>The top of the settings page. Each tick saves straight away; the toolbar icon brings the page back.</figcaption>
   </figure>
-  <p class="t small">Web AIs need only Chrome, and a sign-in where the site asks for one. Claude Code needs the Claude desktop app and Codex the ChatGPT desktop app, each with Gmail connected for the same mailbox. I have only tested it on macOS.</p>
-  <p class="t small">To update, unzip the new version over the old folder, then press reload on the extension's card in <code>chrome://extensions</code>. Open Gmail tabs pick up the new version by themselves. What changed in each version is in the <a href="https://github.com/thomasoclegg/gmail-to-agent/releases">release notes</a>.</p>
+  <p class="t small">It needs Chrome 116 or later (or a browser built on the same version) or Firefox 140 or later, and Gmail in a desktop browser rather than the Gmail app. Web AIs need only the browser, and a sign-in where the site asks for one. Claude Code needs the Claude desktop app and Codex the ChatGPT desktop app, each with Gmail connected for the same mailbox. I have tested it with real Gmail only in Chrome on macOS.</p>
+  <p class="t small">To update a download, unzip the new version over the old folder, then press reload on the extension's card in your browser's extensions page. Open Gmail tabs pick up the new version by themselves. A store install updates itself. What changed in each version is in the <a href="https://github.com/thomasoclegg/gmail-to-agent/releases">release notes</a>.</p>
+</section>
+
+<section class="sec page grid" id="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions</h2>
+  <!-- Keep these answers word for word in step with the FAQPage data in the script after this section. -->
+  <div class="faq">
+    <h3>Which browsers does it work in?</h3>
+    <p>Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. It works with Gmail in a desktop browser, not in the Gmail app.</p>
+    <h3>Which AIs can it send an email to?</h3>
+    <p>Claude Code and Codex on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else.</p>
+    <h3>Is it free?</h3>
+    <p>Yes. There is no account, no subscription and no paid version, and the source is open under the MIT licence. The AIs themselves may ask you to sign in, on their own terms.</p>
+    <h3>Does it read my email?</h3>
+    <p>Only the threads you pick it for, and only after you pick an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste it and press Enter. Claude Code and Codex read it through their own Gmail connection.</p>
+    <h3>Does it mark emails as read?</h3>
+    <p>Only in one case. Picking a web AI or Copy for a single inbox row opens the thread, so Gmail marks it read, as it does whenever you open one. Ticked emails are read from Gmail's print view without opening them, so they stay unread.</p>
+    <h3>Does it work in Internet Explorer?</h3>
+    <p>No. Microsoft retired Internet Explorer in June 2022, and it never ran extensions like this one. On Windows, use Microsoft Edge.</p>
+  </div>
 </section>
 </main>
 
@@ -645,7 +840,283 @@
     <p>If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. Donations go straight to them; I never see the money. Paying by PayPal? Write &ldquo;AI Agent&rdquo; in the note so they know it came from here.</p>
     <a class="btn ghost" id="donate-link" href="https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent" target="_blank" rel="noopener">Donate to Friends of Larnaca Cats</a>
   </div>
-  <p class="f2">Not affiliated with or endorsed by Google, Anthropic, OpenAI, Microsoft, Perplexity, xAI, Mistral AI or DeepSeek. Chrome, Gmail, Gemini, Claude, ChatGPT, Codex, Copilot, Perplexity, Grok, Le Chat and DeepSeek are trademarks of their owners.</p>
+  <p class="f2">Not affiliated with or endorsed by Google, Anthropic, OpenAI, Microsoft, Perplexity, xAI, Mistral AI, DeepSeek, Mozilla, Apple or any other browser maker. Gmail, Gemini, Claude, ChatGPT, Codex, Copilot, Perplexity, Grok, Le Chat, DeepSeek and the browser names on this page are trademarks of their owners.</p>
 </footer>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Which browsers does it work in?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. It works with Gmail in a desktop browser, not in the Gmail app." } },
+    { "@type": "Question", "name": "Which AIs can it send an email to?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else." } },
+    { "@type": "Question", "name": "Is it free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. There is no account, no subscription and no paid version, and the source is open under the MIT licence. The AIs themselves may ask you to sign in, on their own terms." } },
+    { "@type": "Question", "name": "Does it read my email?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Only the threads you pick it for, and only after you pick an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste it and press Enter. Claude Code and Codex read it through their own Gmail connection." } },
+    { "@type": "Question", "name": "Does it mark emails as read?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Only in one case. Picking a web AI or Copy for a single inbox row opens the thread, so Gmail marks it read, as it does whenever you open one. Ticked emails are read from Gmail's print view without opening them, so they stay unread." } },
+    { "@type": "Question", "name": "Does it work in Internet Explorer?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Microsoft retired Internet Explorer in June 2022, and it never ran extensions like this one. On Windows, use Microsoft Edge." } }
+  ]
+}
+</script>
+
+<script>
+/* ==== Store listings: the one place to edit when a listing goes live ====
+   Paste a listing's address between its quotes and publish. While a value is empty, that store's button
+   says "Coming soon" and the download from GitHub stays the working option. Nothing else on this page needs
+   editing; the README's Install section does, by hand.
+   The Chrome Web Store listing also serves Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. */
+var STORES = {
+  chrome:  '',  // Chrome Web Store, like https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmail/<item ID>
+  edge:    '',  // Edge Add-ons, like https://microsoftedge.microsoft.com/addons/detail/<product ID>
+  firefox: '',  // Firefox Add-ons, like https://addons.mozilla.org/firefox/addon/<slug>/
+  safari:  ''   // Planned. The App Store address, once a Safari version exists.
+};
+
+/* The downloads on GitHub, as the release job in .github/workflows/ci.yml names them. The release that
+   carries the Firefox zip has to be published before this page reaches main, or the Firefox link breaks. */
+var ZIP = 'https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip';
+var FIREFOX_ZIP = 'https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-firefox.zip';
+
+/* No trackers and nothing loaded from elsewhere: this only reads the browser's own name, here on the page,
+   to put the right button first. Client hints first, then the user agent string. Written for old browsers too. */
+(function () {
+  var NAMES = { chrome: 'Chrome Web Store', edge: 'Edge Add-ons', firefox: 'Firefox Add-ons', safari: 'the App Store' };
+
+  function detect() {
+    var ua = navigator.userAgent || '';
+    var hints = navigator.userAgentData;
+    var brands = '';
+    if (hints && hints.brands) {
+      for (var i = 0; i < hints.brands.length; i++) brands += hints.brands[i].brand + '|';
+    }
+    var mobile = hints && typeof hints.mobile === 'boolean' ? hints.mobile : /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    /* A tablet that asks for desktop sites sends a desktop user agent. On an iPad it says Mac, and no Mac has a
+       touch screen. On an Android tablet it says Linux, and the only pointer is a finger. Windows and ChromeOS
+       tablets do run extensions, so they are left out. */
+    var touch = navigator.maxTouchPoints || 0;
+    var media = function (q) { return !!(window.matchMedia && window.matchMedia(q).matches); };
+    var tablet = (/Macintosh/.test(ua) && touch > 1) ||
+      (touch > 0 && media('(any-pointer: coarse)') && !media('(any-pointer: fine)') && !/Windows|CrOS/.test(ua));
+    if (/Trident\/|MSIE /.test(ua)) return { kind: 'ie' };
+    if (mobile || tablet) return { kind: 'mobile' };
+    if (/Microsoft Edge/.test(brands) || /Edg\//.test(ua)) return { kind: 'edge', name: 'Edge', page: 'edge://extensions' };
+    if (/Opera/.test(brands) || /OPR\//.test(ua)) return { kind: 'chromium', name: 'Opera', page: 'opera://extensions' };
+    if (/Brave/.test(brands) || navigator.brave) return { kind: 'chromium', name: 'Brave', page: 'brave://extensions' };
+    if (/Vivaldi/.test(brands + ua)) return { kind: 'chromium', name: 'Vivaldi', page: 'vivaldi://extensions' };
+    if (/Google Chrome/.test(brands)) return { kind: 'chromium', name: 'Chrome' };
+    if (/Chromium/.test(brands) || /Chrome\//.test(ua)) return { kind: 'chromium' };
+    var firefox = /Firefox\/(\d+)/.exec(ua);
+    if (firefox) return { kind: 'firefox', name: 'Firefox', version: +firefox[1] };
+    if (/Safari\//.test(ua) && /Version\//.test(ua)) return { kind: 'safari', name: 'Safari' };
+    return { kind: 'unknown' };
+  }
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+  var DOWN = ' <svg aria-hidden="true"><use href="#i-down"/></svg>';
+  function go(href, text, icon) { return '<a class="btn" href="' + esc(href) + '">' + text + (icon ? DOWN : '') + '</a>'; }
+  function soon(store) { return '<span class="btn off" aria-disabled="true">' + NAMES[store] + ' <span class="soon">Coming soon</span></span>'; }
+  var STEPS = 'Load it in developer mode with the <a href="#steps-title">four steps below</a>.';
+
+  /* What to show for each kind of browser: a heading, the buttons, notes, and the line for the top of the page. */
+  function plan(b) {
+    var p = { title: '', buttons: '', notes: [], top: null };
+    if (b.kind === 'edge') {
+      p.title = 'For Microsoft Edge';
+      if (STORES.edge) {
+        p.buttons = go(STORES.edge, 'Get it from Edge Add-ons');
+        p.top = { href: STORES.edge, text: 'Get it for Edge', note: 'Free from Edge Add-ons.' };
+      } else if (STORES.chrome) {
+        p.buttons = go(STORES.chrome, 'Get it from the Chrome Web Store') + soon('edge');
+        p.notes.push('Edge installs Chrome Web Store extensions once you click Allow extensions from other stores.');
+        p.top = { href: STORES.chrome, text: 'Get it for Edge', note: 'From the Chrome Web Store, which Edge can install from. The Edge Add-ons listing is coming soon.' };
+      } else {
+        p.buttons = go(ZIP, 'Download for Edge', true) + soon('edge');
+        p.notes.push(STEPS);
+        p.top = { href: ZIP, text: 'Download for Edge', icon: true, note: 'A zip you load in Edge\'s developer mode, <a href="#install">four steps below</a>. The Edge Add-ons listing is coming soon.' };
+      }
+    } else if (b.kind === 'firefox') {
+      p.title = 'For Firefox';
+      if (STORES.firefox) {
+        p.buttons = go(STORES.firefox, 'Get it from Firefox Add-ons');
+        p.top = { href: STORES.firefox, text: 'Get it for Firefox', note: 'Free from Firefox Add-ons.' };
+      } else {
+        p.buttons = go(FIREFOX_ZIP, 'Download for Firefox', true) + soon('firefox');
+        p.notes.push('Until the listing is live, Firefox runs it only as a temporary add-on, which it removes when it restarts. Download the Firefox zip, open <code>about:debugging</code>, click This Firefox, then Load Temporary Add-on and pick the zip.');
+        p.top = { href: FIREFOX_ZIP, text: 'Download for Firefox', icon: true, note: 'The Firefox Add-ons listing is coming soon. Until then Firefox runs it as a temporary add-on: <a href="#install">see Install</a>.' };
+      }
+      if (b.version && b.version < 140) {
+        var old = 'It needs Firefox 140 or later, and this is Firefox ' + b.version + '. Update Firefox first.';
+        p.notes.unshift(old);
+        p.top.note = old + ' ' + p.top.note;
+      }
+    } else if (b.kind === 'safari') {
+      p.title = 'For Safari';
+      if (STORES.safari) {
+        p.buttons = go(STORES.safari, 'Get it for Safari');
+        p.top = { href: STORES.safari, text: 'Get it for Safari', note: 'Free from the App Store.' };
+      } else {
+        p.notes.push('A Safari version is planned. Until then, use it in Chrome, Edge, Firefox or another desktop browser from the list below.');
+        p.top = { note: 'A Safari version is planned. Until then, it runs in Chrome, Edge, Firefox and <a href="#install">other desktop browsers</a>.' };
+      }
+    } else if (b.kind === 'mobile') {
+      p.title = 'On a phone or tablet';
+      p.notes.push('It works with Gmail in a desktop browser, not in the Gmail app. Open this page on your computer to install it.');
+      p.top = { note: 'It works with Gmail in a desktop browser, not in the Gmail app. Open this page on your computer to install it.' };
+    } else if (b.kind === 'ie') {
+      p.title = 'For Internet Explorer';
+      p.notes.push('Internet Explorer can\'t run it. Microsoft retired Internet Explorer in June 2022, and it never ran extensions like this one. Use Microsoft Edge, which comes with Windows.');
+      p.top = { note: 'Internet Explorer can\'t run it. Use Microsoft Edge, which comes with Windows.' };
+    } else {
+      /* Chrome, Chromium and every browser built on it, and anything not recognised. */
+      var named = b.name && b.name !== 'Chrome';
+      p.title = named ? 'For ' + b.name : 'For Chrome and browsers built on it';
+      var label = b.name || 'Chrome';
+      /* Opera asks for its own Install Chrome Extensions add-on before it takes one from the Chrome Web Store. */
+      var opera = b.name === 'Opera';
+      if (STORES.chrome) {
+        p.buttons = go(STORES.chrome, 'Get it from the Chrome Web Store');
+        if (named) p.notes.push(b.name + ' installs extensions from the Chrome Web Store' + (opera ? ' once you add its Install Chrome Extensions add-on' : '') + '.');
+        p.top = { href: STORES.chrome, text: 'Get it for ' + label, note: 'Free from the Chrome Web Store.' };
+      } else {
+        p.buttons = go(ZIP, named ? 'Download for ' + b.name : 'Download the zip', true) + soon('chrome');
+        p.notes.push(STEPS);
+        if (named) p.notes.push(b.name + ' will install it from the Chrome Web Store once the listing is live' + (opera ? ', through its Install Chrome Extensions add-on' : '') + '.');
+        p.top = { href: ZIP, text: 'Download for ' + label, icon: true, note: 'A zip you load in ' + label + '\'s developer mode, <a href="#install">four steps below</a>. The Chrome Web Store listing is coming soon.' };
+      }
+    }
+    return p;
+  }
+
+  var b = detect();
+  var p = plan(b);
+  var $ = function (id) { return document.getElementById(id); };
+
+  $('pick-for').textContent = p.title;
+  $('pick-do').innerHTML = p.buttons;
+  $('pick-do').hidden = !p.buttons;
+  var first = $('pick-note');
+  first.innerHTML = p.notes[0] || '';
+  first.hidden = !p.notes.length;
+  for (var i = 1; i < p.notes.length; i++) {
+    var extra = document.createElement('p');
+    extra.className = 'pick-note';
+    extra.innerHTML = p.notes[i];
+    $('pick').appendChild(extra);
+  }
+
+  /* The download at the top of the page */
+  var topButton = $('download');
+  if (p.top && p.top.href) {
+    topButton.href = p.top.href;
+    topButton.innerHTML = p.top.text + (p.top.icon ? DOWN : '');
+  } else {
+    topButton.hidden = true;
+  }
+  if (p.top) $('get-note').innerHTML = p.top.note;
+
+  /* The extensions page in step 2 */
+  if (b.page) {
+    $('ext-page').textContent = b.page;
+    if (b.kind === 'edge') $('ext-edge').hidden = true;
+  }
+
+  /* Every browser: switch on the stores that are live, and mark the visitor's own row */
+  var cells = document.querySelectorAll('#browsers td[data-store]');
+  for (var c = 0; c < cells.length; c++) {
+    var key = cells[c].getAttribute('data-store');
+    if (STORES[key]) cells[c].innerHTML = '<a href="' + esc(STORES[key]) + '">' + (key === 'safari' ? 'App Store' : NAMES[key]) + '</a>';
+  }
+  if (STORES.safari) $('safari-get').textContent = 'None: Safari installs it from the App Store.';
+  var family = { chromium: 'chromium', edge: 'edge', firefox: 'firefox', safari: 'safari', ie: 'ie' }[b.kind];
+  var row = family && document.querySelector('#browsers tr[data-family="' + family + '"]');
+  if (row) {
+    row.className = 'here';
+    var tag = document.createElement('span');
+    tag.className = 'yours';
+    tag.textContent = 'Your browser';
+    row.querySelector('th').appendChild(tag);
+  }
+})();
+
+/* The hero loop. From 600 px up it plays muted on a loop in the drawing's place, with the Mac keys on a Mac, and
+   rests while it is off screen. With reduced motion asked for, only the poster shows until you press Play. Below
+   600 px the drawing stays and the loop is never fetched. Once you press Pause, it stays paused. */
+(function () {
+  var v = document.getElementById('hero-video');
+  var b = document.getElementById('hero-toggle');
+  if (!v || !b || !window.matchMedia || typeof v.play !== 'function') return;
+  var wide = window.matchMedia('(min-width: 600px)');
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var sources = v.getElementsByTagName('source');
+  var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  var mac = /^mac/i.test(platform);
+  var choice = null; /* 'play' or 'pause' once the visitor presses the button */
+  var inView = true;
+  var failed = false;
+  v.controls = false;
+  b.hidden = false;
+
+  /* The source was chosen when the page was read, so the Mac one needs a fresh load. Chrome fetches on load()
+     even with preload="none", so that waits for the first play. */
+  function useMacKeys() {
+    for (var i = 0; i < sources.length; i++) sources[i].src = sources[i].getAttribute('src').replace('media/hero.', 'media/hero-mac.');
+    v.load();
+    mac = false;
+  }
+  /* Drawn here rather than in the sprite at the top, which store/build.py copies into the store images. */
+  var ICON = {
+    play: '<path d="M3 1.6v8.8a.6.6 0 0 0 .9.5l7-4.4a.6.6 0 0 0 0-1L3.9 1.1a.6.6 0 0 0-.9.5z"/>',
+    pause: '<rect x="2" y="1.5" width="2.6" height="9" rx="0.6"/><rect x="7.4" y="1.5" width="2.6" height="9" rx="0.6"/>'
+  };
+  function label() {
+    var paused = v.paused;
+    b.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true">' + ICON[paused ? 'play' : 'pause'] + '</svg>' +
+      (paused ? 'Play' : 'Pause') + '<span class="vh"> the video</span>';
+  }
+  function update() {
+    var run = !failed && wide.matches && inView && (choice ? choice === 'play' : !still.matches);
+    if (run && v.paused) {
+      if (mac) useMacKeys();
+      var p = v.play();
+      /* A browser that blocks autoplay, in a power-saving mode say, leaves Play showing. */
+      if (p && p.catch) p.catch(function (e) { if (e && e.name === 'NotSupportedError') fallBack(); else label(); });
+    } else if (!run && !v.paused) {
+      v.pause();
+    }
+  }
+  /* If the browser cannot fetch or decode the loop, the drawing comes back in its place. */
+  function fallBack() {
+    if (failed) return;
+    failed = true;
+    v.parentNode.parentNode.className += ' no-video';
+    b.hidden = true;
+  }
+  v.addEventListener('error', fallBack);
+  if (sources.length) sources[sources.length - 1].addEventListener('error', fallBack);
+
+  b.addEventListener('click', function () {
+    choice = v.paused ? 'play' : 'pause';
+    update();
+  });
+  v.addEventListener('play', label);
+  v.addEventListener('pause', label);
+  if (window.IntersectionObserver) {
+    new IntersectionObserver(function (entries) {
+      inView = entries[entries.length - 1].isIntersecting;
+      update();
+    }).observe(v);
+  }
+  var watch = function (q) { if (q.addEventListener) q.addEventListener('change', update); else if (q.addListener) q.addListener(update); };
+  watch(wide);
+  watch(still);
+  label();
+  update();
+})();
+</script>
 </body>
 </html>

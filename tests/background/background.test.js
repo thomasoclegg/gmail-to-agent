@@ -68,11 +68,12 @@ describe('static: manifest, targets, offscreen.html', () => {
     eq(keyFor({ platform: '' })[0], 'Cmd+V (Ctrl+V)');
   });
 
-  // 1.2.0 adds "scripting" and a host permission for Gmail only.
-  test('manifest matches the v1.2.0 spec', () => {
+  // 1.2.0 added "scripting" and a host permission for Gmail only. 1.3.0 keeps the same Chrome manifest;
+  // scripts/package.mjs writes the Firefox and Safari ones from it.
+  test('manifest matches the v1.3.0 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.2.0');
+    assert.equal(m.version, '1.3.0');
     assert.equal(m.name, 'Open in AI Agent for Gmail');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -794,6 +795,162 @@ describe("background: Gmail's session key (ik) for bulk reads", () => {
     await afterOpenDelay();
     assert.equal(w.clipboard, prompt);
     eq(w.tabsCreated, [{ url: 'https://gemini.google.com/app', index: 3, openerTabId: 7, windowId: 3 }]);
+  });
+});
+
+// ---- Firefox and Safari: background.js as a background page ----
+
+describe('background page (Firefox and Safari builds)', () => {
+  test('loads after targets.js with no importScripts or chrome.offscreen; every listener registers at top level', () => {
+    const w = createWorld({ page: { firefox: true } });
+    eq(w.log.filter((e) => e.ev === 'importScripts'), [], 'importScripts is not called in a page');
+    assert.equal(w.chrome.offscreen, undefined);
+    const c = w.chrome;
+    for (const ev of [c.runtime.onInstalled, c.runtime.onStartup, c.storage.onChanged, c.action.onClicked, c.contextMenus.onClicked, c.runtime.onMessage]) {
+      assert.equal(ev.listeners.length, 1, ev.name);
+    }
+  });
+
+  test('install builds the same menus and opens settings, as in Chrome', async () => {
+    const w = createWorld({ page: { firefox: true } });
+    await w.chrome.runtime.onInstalled.fire({ reason: 'install' });
+    await w.settle();
+    assert.equal(w.optionsOpened, 1);
+    eq(w.storage.targets, ['claude', 'chatgpt']);
+    expectMenus(w, ['claude', 'chatgpt']);
+  });
+
+  test('web target: copies with the Clipboard API, no offscreen document, then opens the AI next to Gmail', async () => {
+    const w = createWorld({ page: { firefox: true } });
+    const r = await w.fromContent({ target: 'background', action: 'handoff', platform: 'claude', prompt: PROMPT }, GMAIL_SENDER);
+    eq(r, { ok: true });
+    eq(w.page.writeTextCalls, [PROMPT], 'the exact prompt, once');
+    eq(w.page.execCalls, [], 'no execCommand when the Clipboard API works');
+    eq(w.createDocCalls, []);
+    eq(w.getContextsCalls, []);
+    assert.equal(w.clipboard, PROMPT);
+    eq(w.tabsCreated, [], 'reply first, so the paste hint shows in Gmail before the tab opens');
+    await afterOpenDelay();
+    eq(w.tabsCreated, [{ url: 'https://claude.ai/new', index: 3, openerTabId: 7, windowId: 3 }]);
+  });
+
+  for (const clipboard of ['reject', 'missing']) {
+    test(`Clipboard API ${clipboard === 'reject' ? 'refuses' : 'is missing'}: falls back to a textarea and execCommand, then removes the textarea`, async () => {
+      const w = createWorld({ page: { clipboard } });
+      const r = await w.fromContent({ target: 'background', action: 'handoff', platform: 'copy', prompt: PROMPT }, GMAIL_SENDER);
+      eq(r, { ok: true });
+      eq(w.page.execCalls, [{ cmd: 'copy', value: PROMPT, selected: true, inBody: true }], 'selected in the page body at copy time');
+      eq(w.page.bodyChildren, [], 'textarea removed');
+      assert.equal(w.clipboard, PROMPT);
+      eq(w.tabsCreated, []);
+    });
+  }
+
+  test('both routes refused: the hand-off fails with "Copy was blocked" and no tab opens', async () => {
+    const w = createWorld({ page: { clipboard: 'reject' } });
+    w.execResult = false;
+    const r = await w.fromContent({ target: 'background', action: 'handoff', platform: 'chatgpt', prompt: PROMPT }, GMAIL_SENDER);
+    eq(r, { ok: false, error: 'Copy was blocked' });
+    eq(w.page.bodyChildren, [], 'textarea removed');
+    await afterOpenDelay();
+    eq(w.tabsCreated, []);
+  });
+
+  test('execCommand throwing still removes the textarea and reports the error', async () => {
+    const w = createWorld({ page: { clipboard: 'missing' } });
+    w.execThrows = true;
+    const r = await w.fromContent({ target: 'background', action: 'handoff', platform: 'copy', prompt: 'x' }, GMAIL_SENDER);
+    eq(r, { ok: false, error: 'execCommand exploded' });
+    eq(w.page.bodyChildren, []);
+  });
+
+  test('a service worker without chrome.offscreen (no DOM either) fails cleanly instead of throwing', async () => {
+    const w = createWorld();
+    delete w.chrome.offscreen;
+    const r = await w.fromContent({ target: 'background', action: 'handoff', platform: 'copy', prompt: 'x' }, GMAIL_SENDER);
+    eq(r, { ok: false, error: 'No page to copy from' });
+  });
+
+  test('Firefox adds the content script to open Gmail tabs itself: install and update inject nothing more', async () => {
+    for (const details of [{ reason: 'install' }, { reason: 'update', previousVersion: '1.2.0' }]) {
+      const w = createWorld({ page: { firefox: true } });
+      w.openTabs = [...GMAIL_TABS, ...OTHER_TABS];
+      await w.chrome.runtime.onInstalled.fire(details);
+      await w.settle();
+      eq(w.scriptCalls, [], details.reason);
+      eq(w.queryCalls, [], details.reason);
+      eq(w.warnings, []);
+    }
+  });
+
+  test('Safari (a background page without getBrowserInfo) still injects into open Gmail tabs, as Chrome does', async () => {
+    const w = createWorld({ page: {} });
+    w.openTabs = [...GMAIL_TABS, ...OTHER_TABS];
+    await w.chrome.runtime.onInstalled.fire({ reason: 'install' });
+    await w.settle();
+    eq(injections(w).map((c) => c.target.tabId), GMAIL_TABS.map((t) => t.id));
+  });
+
+  test("Gmail's session key is read the same way (MAIN world, frame 0 of the sender tab)", async () => {
+    const w = createWorld({ page: { firefox: true } });
+    w.pageGlobals[7] = { GLOBALS: [0, 1, 2, 3, 4, 5, 6, 7, 8, 'AbC-123_x'] };
+    eq(await w.fromContent({ target: 'background', action: 'ik' }, GMAIL_SENDER), { ok: true, ik: 'AbC-123_x' });
+    eq(w.scriptCalls.map((c) => ({ target: c.target, world: c.world })), [{ target: { tabId: 7, frameIds: [0] }, world: 'MAIN' }]);
+  });
+});
+
+describe('scripts/package.mjs: the Firefox and Safari manifests', () => {
+  const load = () => import(require('node:url').pathToFileURL(require('node:path').join(__dirname, '..', '..', 'scripts', 'package.mjs')).href);
+  const REPO_ROOT = require('node:path').join(__dirname, '..', '..');
+
+  test('Chrome ships manifest.json unchanged', async () => {
+    const pkg = await load();
+    const m = JSON.parse(read('manifest.json'));
+    eq(pkg.MANIFESTS.chrome(REPO_ROOT, m), m);
+    eq(pkg.manifestProblems(m, 'chrome'), []);
+    assert.equal(pkg.targetOf(m), 'chrome');
+  });
+
+  test('Firefox: background page with targets.js first, no offscreen, add-on id, minimum version and data collection; the rest as Chrome', async () => {
+    const pkg = await load();
+    const m = JSON.parse(read('manifest.json'));
+    const f = pkg.MANIFESTS.firefox(REPO_ROOT, m);
+    eq(f.background, { scripts: ['targets.js', 'background.js'] });
+    eq(f.permissions, ['contextMenus', 'storage', 'clipboardWrite', 'scripting']);
+    eq(f.browser_specific_settings, {
+      gecko: { id: 'open-in-ai-agent@thomasoclegg.github.io', strict_min_version: '140.0', data_collection_permissions: { required: ['personallyIdentifyingInfo', 'personalCommunications', 'websiteContent'] } },
+    });
+    assert.equal(f.minimum_chrome_version, undefined);
+    const same = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !['background', 'permissions', 'minimum_chrome_version', 'browser_specific_settings'].includes(k)));
+    eq(same(f), same(m), 'name, version, description, icons, action, host permissions, options page and content scripts unchanged');
+    eq(Object.keys(f).filter((k) => k !== 'browser_specific_settings'), Object.keys(m).filter((k) => k !== 'minimum_chrome_version'), 'key order kept');
+    eq(pkg.manifestProblems(f, 'firefox'), []);
+    assert.equal(pkg.targetOf(f), 'firefox');
+    assert.equal(f.version, m.version);
+  });
+
+  test('Safari: non-persistent background page, no offscreen, no Firefox or Chrome-only keys', async () => {
+    const pkg = await load();
+    const m = JSON.parse(read('manifest.json'));
+    const sf = pkg.MANIFESTS.safari(REPO_ROOT, m);
+    eq(sf.background, { scripts: ['targets.js', 'background.js'], persistent: false });
+    eq(sf.permissions, ['contextMenus', 'storage', 'clipboardWrite', 'scripting']);
+    assert.equal(sf.browser_specific_settings, undefined);
+    assert.equal(sf.minimum_chrome_version, undefined);
+    eq(sf.content_scripts, m.content_scripts);
+    eq(sf.host_permissions, m.host_permissions);
+    eq(pkg.manifestProblems(sf, 'safari'), []);
+    assert.equal(pkg.targetOf(sf), 'safari');
+  });
+
+  test('the checks catch a wrongly built manifest', async () => {
+    const pkg = await load();
+    const m = JSON.parse(read('manifest.json'));
+    const f = pkg.MANIFESTS.firefox(REPO_ROOT, m);
+    const broken = { ...f, permissions: [...f.permissions, 'offscreen'], background: { service_worker: 'background.js', persistent: false }, browser_specific_settings: { gecko: { id: 'not an id' } } };
+    const p = pkg.manifestProblems(broken, 'firefox').join(' | ');
+    for (const want of ['service_worker', 'background.scripts', '"offscreen"', 'gecko.id', 'strict_min_version', 'data_collection_permissions', 'persistent']) assert.ok(p.includes(want), `${want} in: ${p}`);
+    assert.match(pkg.manifestProblems({ background: {} }, 'chrome').join(), /service_worker/);
   });
 });
 
