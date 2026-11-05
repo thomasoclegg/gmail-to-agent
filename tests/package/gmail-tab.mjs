@@ -31,6 +31,8 @@ import path from 'node:path';
 import { REPO, OUT_ROOT, findChrome, extraChromeFlags } from '../lib/chrome.mjs';
 import { TITLE, IK, GMAIL_PAGE, printView, SINGLE, BULK, BULK_RELEASED, TARGETS_SET, SINGLE_HINT, SHORTCUTS_OK, SELECTED_TEXT } from './mock-gmail.mjs';
 
+// The same JSON whatever order the keys come back in (Chrome's storage returns them sorted).
+const canon = (v) => JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x));
 const SRC = process.argv[2] ? path.resolve(process.argv[2]) : REPO;
 if (!fs.existsSync(path.join(SRC, 'manifest.json'))) {
   console.error(`Usage: node tests/package/gmail-tab.mjs [DIR], where DIR holds an unpacked extension (got "${process.argv[2] || ''}").`);
@@ -299,18 +301,27 @@ await withChrome('install', async (s) => {
   const refused = await s.evalIn(`chrome.runtime.sendMessage({ target: 'background', action: 'run', platform: 'copy' })`, iso[0]?.id).catch((e) => ({ error: e.message }));
   step('install: the same message from the content script gets no answer (only extension pages may send it)', refused === undefined || refused?.error, refused);
 
-  // Your own instructions on the real settings page, in real Chrome storage.sync, reach the prompt the content script builds.
+  // A saved prompt (1.5.0) made on the real settings page, in real Chrome storage.sync, reaches the prompt the content
+  // script builds when the toolbar list picks it for one send; with no style, the default (Resolve fully) is used.
   const OWN_TEXT = 'Settle each matter before drafting.\n- Check Sent mail first.';
-  await s.evalIn(`(() => { const f = document.getElementById('own-desktop'); f.focus(); f.value = ${JSON.stringify(`${OWN_TEXT}\nMailbox: someone@example.org`)}; f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`, undefined, settings);
+  await s.evalIn(`(() => { document.getElementById('add-prompt').click(); const f = document.getElementById('sp1-desktop'); f.focus(); f.value = ${JSON.stringify(`${OWN_TEXT}\nMailbox: someone@example.org`)}; f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`, undefined, settings);
   await sleep(300);
-  const ownStored = await s.evalIn(`chrome.storage.sync.get({ desktopInstructions: null }).then((x) => x.desktopInstructions)`, undefined, settings);
-  step('install: text typed in the settings page box is saved in storage.sync as the prompts use it (the Mailbox line left out)', ownStored === OWN_TEXT, ownStored);
-  const ownLink = await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => chrome.tabs.sendMessage(tab.id, { target: 'content', action: 'run', platform: 'codex', current: true }, { frameId: 0 })).then((r) => r && r.url)`, undefined, settings);
-  const ownPrompt = typeof ownLink === 'string' ? new URL(ownLink).searchParams.get('prompt') || '' : '';
-  step('install: the Codex link for the two ticked emails starts with that text and ends on the approval sentence; one Mailbox line', ownPrompt.startsWith(`${OWN_TEXT}\n\nMailbox: `) && /outside your working folder without my explicit approval; .*its risks\.$/.test(ownPrompt) && ownPrompt.split('Mailbox:').length === 2, ownPrompt.slice(0, 120));
-  // Chrome's own per-item limit, as the settings page counts it: "<" takes six bytes (Chromium's JSON writer escapes it).
-  const quota = await s.evalIn(`(async () => { const tryIt = (n) => chrome.storage.sync.set({ webInstructions: '<'.repeat(n) }).then(() => 'ok', (e) => String(e && e.message)); const r = [await tryIt(1360), await tryIt(1363)]; await chrome.storage.sync.set({ webInstructions: '', desktopInstructions: '' }); return r; })()`, undefined, settings);
-  step('install: Chrome takes 1,360 "<" in one setting and refuses 1,363 (8,177 and 8,195 bytes with "<" as six), as the settings page counts them', quota?.[0] === 'ok' && /quota/i.test(quota?.[1] || ''), quota);
+  const ownStored = await s.evalIn(`chrome.storage.sync.get({ savedPrompt1: null }).then((x) => x.savedPrompt1)`, undefined, settings);
+  step('install: a saved prompt added and typed on the settings page is saved in storage.sync as its own item, as the prompts use it (the Mailbox line left out)', canon(ownStored) === canon({ name: 'Saved prompt 1', desktop: OWN_TEXT, web: '' }), ownStored);
+  const codexPrompt = async (style) => {
+    const url = await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => chrome.tabs.sendMessage(tab.id, { target: 'content', action: 'run', platform: 'codex', current: true${style ? `, style: '${style}'` : ''} }, { frameId: 0 })).then((r) => r && r.url)`, undefined, settings);
+    return typeof url === 'string' ? new URL(url).searchParams.get('prompt') || '' : '';
+  };
+  const ownPrompt = await codexPrompt('saved1');
+  step('install: the Codex link for the two ticked emails with saved prompt 1 picked for this send starts with its text and ends on the approval sentence; one Mailbox line', ownPrompt.startsWith(`${OWN_TEXT}\n\nMailbox: `) && /outside your working folder without my explicit approval; .*its risks\.$/.test(ownPrompt) && ownPrompt.split('Mailbox:').length === 2, ownPrompt.slice(0, 120));
+  const defaultPrompt = await codexPrompt('');
+  step('install: the next pick with no style (the shortcut, or the list left on the default): the default, Resolve fully', defaultPrompt.startsWith('Work through these 2 Gmail threads as one batch.') && !defaultPrompt.includes(OWN_TEXT), defaultPrompt.slice(0, 120));
+  // Chrome's own per-item limit for one saved prompt, where the settings page's count (fitsSync) puts it: "<" takes six
+  // bytes (Chromium's JSON writer escapes it), so 1,357 fit in { name: 'x', desktop, web: '' } and 1,358 do not.
+  const quota = await s.evalIn(`(async () => { const item = (n) => ({ name: 'x', desktop: '<'.repeat(n), web: '' }); let n = 0; while (fitsSync('savedPrompt3', item(n + 1))) n++;
+    const tryIt = (k) => chrome.storage.sync.set({ savedPrompt3: item(k) }).then(() => 'ok', (e) => String(e && e.message)); const r = [n, await tryIt(n), await tryIt(n + 1)];
+    await chrome.storage.sync.remove(['savedPrompt3', 'savedPrompt1']); return r; })()`, undefined, settings);
+  step('install: Chrome takes a saved prompt of 1,357 "<" and refuses 1,358 (8,188 and 8,194 bytes with "<" as six), exactly where the settings page\'s count puts the limit', quota?.[0] === 1357 && quota?.[1] === 'ok' && /quota/i.test(quota?.[2] || ''), quota);
 
   // The shortcut's route: send-to-last with Copy as the AI used last.
   await s.evalIn(CLOSE_TOAST);
@@ -342,8 +353,25 @@ await withChrome('install', async (s) => {
         labels: [...document.querySelectorAll('.ai .label')].map((l) => l.textContent), enabled: [...document.querySelectorAll('.ai')].every((b) => !b.disabled) }) : setTimeout(t, 50); t(); })`, undefined, ps)
     : null;
   step('install: the toolbar list opens as a real popup with the Gmail tab in front (action.openPopup): "For the 2 emails you ticked." and the bulk labels, every AI pickable', opened === 'opened' && real?.context === 'For the 2 emails you ticked.' && JSON.stringify(real.labels) === JSON.stringify(BULK) && real.enabled, { opened, real, type: popupTarget?.type });
+  // 1.5.0: its style picker, changed from the keyboard ("d" for Draft replies only), and the run message the content
+  // script gets for the pick, recorded in the content script's own world.
+  const PICKER = `(() => { const p = document.getElementById('style-pick'); const s = document.getElementById('style'); return { shown: !p.hidden && !!p.offsetParent, value: s.value,
+    groups: [...s.children].map((g) => g.label + ': ' + [...g.children].map((o) => o.textContent).join(', ')) }; })()`;
+  const pickerBefore = ps ? await s.evalIn(PICKER, undefined, ps) : null;
+  step('install: the popup shows the style picker on the default, with the built-in styles in their group', pickerBefore?.shown && pickerBefore.value === 'resolve' && pickerBefore.groups[0] === 'Built-in: Resolve fully (default), Quick summary and reply, Draft replies only', pickerBefore);
+  if (ps) {
+    await s.evalIn(`document.getElementById('style').focus(); 1`, undefined, ps);
+    await s.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'd', code: 'KeyD', text: 'd', windowsVirtualKeyCode: 68 }, ps);
+    await s.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'd', code: 'KeyD', windowsVirtualKeyCode: 68 }, ps);
+    await sleep(100);
+  }
+  const pickerAfter = ps ? await s.evalIn(PICKER, undefined, ps) : null;
+  step('install: typing "d" in the popup\'s picker chooses Draft replies only', pickerAfter?.value === 'drafts', pickerAfter);
+  await s.evalIn(`globalThis.__runs = []; chrome.runtime.onMessage.addListener((m) => { if (m && m.action === 'run') globalThis.__runs.push(m); }); 1`, iso[0]?.id);
   if (ps) await s.evalIn(`document.querySelector('.ai[data-id="copy"]').click(); 1`, undefined, ps).catch(() => {});
   const popupToast = await s.waitToast(COPIED);
+  const runs = await s.evalIn(`globalThis.__runs`, iso[0]?.id);
+  step('install: the pick reaches the content script through the real service worker with the style picked, for that send', canon(runs) === canon([{ target: 'content', action: 'run', platform: 'copy', current: true, style: 'drafts' }]), runs);
   await sleep(300);
   const popupLeft = (await s.send('Target.getTargets')).targetInfos.some((t) => t.url === popupUrl);
   step('install: Copy picked in the popup copies the two ticked emails in the Gmail tab (the note there says so), and the popup closes', COPIED.test(popupToast) && !popupLeft, { popupToast, popupLeft });
@@ -375,6 +403,8 @@ await withChrome('update', async (s) => {
   const before = await s.rightClick();
   step('update: the 1.1.1 menu has the single-thread items only', JSON.stringify(before.labels) === JSON.stringify(SINGLE), before.labels);
 
+  // 1.4.0's own instructions, as an update from 1.4.0 finds them in storage.sync.
+  await s.evalIn(`chrome.storage.sync.set({ desktopInstructions: 'Old desktop steps.', webInstructions: '' })`, undefined, sw);
   copyRuntime(SRC, pkg);
   const seen = s.contexts.length;
   const errors = report.exceptions.length;
@@ -394,6 +424,8 @@ await withChrome('update', async (s) => {
   const run = await s.rightClick('Copy 2 emails for any AI');
   step("update: the menu shows the new bulk items once (the orphan's items are replaced, not added)", JSON.stringify(run.labels) === JSON.stringify(BULK), run.labels);
   step('update: bulk copy works in the open tab with no reload', COPIED.test(run.toast), run.toast);
+  const moved = await s.evalIn(`chrome.storage.sync.get(null).then((x) => ({ saved: x.savedPrompt1 ?? null, style: x.promptStyle ?? null, old: ['desktopInstructions', 'webInstructions'].filter((k) => k in x) }))`, undefined, sw2);
+  step('update: 1.4.0\'s own instructions moved by the real service worker into saved prompt 1, "My instructions", the default style; the old keys gone', canon(moved) === canon({ saved: { name: 'My instructions', desktop: 'Old desktop steps.', web: '' }, style: 'saved1', old: [] }), moved);
 });
 
 // ---- update from 1.2.0 and next update: a right-click, then this version replaces the one running ----

@@ -1,16 +1,17 @@
 // Stub chrome.* for testing the REAL options.js and popup.js outside an extension.
-// In-memory storage.sync (seeded from window.__seed) with onChanged, and a tabs.create recorder. window.__env
+// In-memory storage.sync (seeded from window.__seed) with set, remove and onChanged, and a tabs.create recorder. window.__env
 // (optional) sets the rest: activeTab (tabs.query for the active tab), gmailTabs (tabs.query by url),
 // answers ({ tabId: { action: reply or 'reject' } } for tabs.sendMessage), runReply (runtime.sendMessage) and
 // runReplies ({ action: reply }, which wins for that action, such as the toolbar list's 'selection'),
-// answerDelay (ms before a tab answers), local (storage.local), version (runtime.getManifest), commands (commands.getAll; none means no commands
+// answerDelay (ms before a tab answers), local (storage.local, which keeps removals), version (runtime.getManifest), commands (commands.getAll; none means no commands
 // API, as in a page outside an extension) and openShortcutSettings (Firefox's commands method).
 (() => {
   const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
   const store = clone(window.__seed || {});
   const env = clone(window.__env || {});
   const listeners = [];
-  const log = { sets: [], gets: [], tabsCreate: [], lastErrorReads: 0, tabsQuery: [], tabsMessages: [], runtimeMessages: [], optionsOpened: 0, closed: 0, shortcutSettings: 0 };
+  const local = clone(env.local || {});
+  const log = { sets: [], removes: [], gets: [], tabsCreate: [], lastErrorReads: 0, tabsQuery: [], tabsMessages: [], runtimeMessages: [], optionsOpened: 0, closed: 0, shortcutSettings: 0, localRemoves: [] };
   const later = (fn) => setTimeout(fn, 2);
   let failing;
   const getFrom = (keys) => {
@@ -55,6 +56,27 @@
       if (typeof cb === 'function') return void p.then(() => cb());
       return p;
     },
+    // As Chrome does: a removed key's change has its oldValue and no newValue; keys that were not there change nothing.
+    // window.__failNextRemove: the next removal fails with that message, removing nothing.
+    remove(keys, cb) {
+      if (window.__failNextRemove) {
+        const message = window.__failNextRemove;
+        window.__failNextRemove = null;
+        log.failedRemoves = (log.failedRemoves || 0) + 1;
+        if (typeof cb === 'function') return void later(() => { failing = { message }; try { cb(); } finally { failing = undefined; } });
+        return Promise.reject(new Error(message));
+      }
+      const list = (Array.isArray(keys) ? keys : [keys]).filter((k) => k in store);
+      const changes = {};
+      for (const k of list) {
+        changes[k] = { oldValue: clone(store[k]) };
+        delete store[k];
+      }
+      log.removes.push({ t: Math.round(performance.now()), keys: clone(Array.isArray(keys) ? keys : [keys]) });
+      const p = new Promise((r) => later(() => (list.length && fireChanged(changes), r())));
+      if (typeof cb === 'function') return void p.then(() => cb());
+      return p;
+    },
   };
   const stub = {
     runtime: {
@@ -76,7 +98,15 @@
     },
     storage: {
       sync,
-      local: { get: (keys) => Promise.resolve({ ...clone(keys || {}), ...clone(env.local || {}) }) },
+      // storage.local: env.local seeds it; remove is logged (the settings page clears its promptsMoved note).
+      local: {
+        get: (keys) => Promise.resolve({ ...clone(keys || {}), ...clone(local) }),
+        remove: (keys) => {
+          for (const k of Array.isArray(keys) ? keys : [keys]) delete local[k];
+          log.localRemoves.push(clone(keys));
+          return Promise.resolve();
+        },
+      },
       onChanged: { addListener: (fn) => listeners.push(fn) },
     },
     tabs: {

@@ -290,7 +290,7 @@ writeOrphan('orphan-111.js', [path.join(HERE, 'oracle/v1.1.1-targets.js'), path.
 // ---- Run ----
 
 const started = Date.now();
-const main = runSuite('main');
+const main = runSuite('main', 180000); // one thread at a time, and (1.5.0) the prompt styles
 const defaults = runSuite('defaults');
 const bulk = runSuite('bulk', 600000); // bulk selection, print view and caps (15 s timeouts in virtual time)
 const guard = runSuite('guard'); // content.js loaded twice

@@ -123,15 +123,161 @@ const NO_FOLLOWING =
 // for emails, built in or the user's own. A web AI with a mail connector can still act, so it is never left out.
 const WEB_APPROVAL = 'Do not send, post, pay, change or delete anything in Gmail or elsewhere without my explicit approval.';
 
-// Your own instructions (settings): the storage.sync key for each group and the most it may hold. 4,000 characters
-// keep a Claude Code batch of 25 threads inside the apps' link limit (PROMPT_CAP in content.js) with every subject
-// whole for any real mailbox, and with the subjects shortened or dropped for a mailbox name of up to about 6,900
-// characters. They also fit storage.sync's 8,192 bytes an item in most alphabets (options.js checks the bytes).
-// Triage unread and selected text always keep the built-in prompts.
+// The most text of the user's own a prompt takes for each group: 'desktop' (Claude Code and Codex) and 'web' (the
+// web AIs and Copy). 4,000 characters keep a Claude Code batch of 25 threads inside the apps' link limit (PROMPT_CAP
+// in content.js) with every subject whole for any real mailbox, and with the subjects shortened or dropped for a
+// mailbox name of up to about 6,900 characters. key: where 1.4.0 kept "Your own instructions" in storage.sync; since
+// 1.5.0 they move into the first empty saved prompt (promptMigration). Triage unread and selected text always keep the built-in
+// prompts.
 const OWN = {
   desktop: { key: 'desktopInstructions', max: 4000 },
   web: { key: 'webInstructions', max: 4000 },
 };
+
+// ---- Prompt styles and saved prompts (1.5.0) ----
+
+// The built-in styles, in the order the settings page and the toolbar list show them. Resolve fully is 1.4.0's
+// prompts and the default; content.js holds the wording of each. Every style keeps the fixed lines (the
+// information line, NO_FOLLOWING, CODEX_LIMIT, APPROVAL and WEB_APPROVAL), and Triage unread and selected text keep
+// their own tasks whatever the style.
+const PRESETS = [
+  { id: 'resolve', name: 'Resolve fully', note: 'Does the work behind each email first, then drafts, and sets aside what cannot be finished now. The most thorough.' },
+  { id: 'quick', name: 'Quick summary and reply', note: 'Where each email stands and what is asked of you, then a draft reply where one is needed. No deeper work.' },
+  { id: 'drafts', name: 'Draft replies only', note: 'Just a draft reply for each email that needs one, in as few words as will do.' },
+];
+const DEFAULT_STYLE = 'resolve';
+
+// Saved prompts: up to three of the user's own, each a storage.sync item of its own ({ name, desktop, web }), so each
+// stays within the 8,192 bytes storage.sync allows an item. Their style ids are saved1 to saved3; promptStyle holds
+// the default style. A name is a label for the settings page and the toolbar list; it never goes into a prompt.
+const SAVED = { count: 3, nameMax: 40, key: (n) => `savedPrompt${n}`, styleKey: 'promptStyle' };
+const savedStyle = (n) => `saved${n}`;
+// What 1.4.0's "Your own instructions" are called once they are a saved prompt: in saved prompt 1, as for nearly
+// everyone, plain "My instructions"; in another, which happens only when saved prompt 1 was taken first (a computer
+// still on 1.4.0 wrote them after another had moved them), with where they came from, so two of the same name never
+// show side by side.
+const LEGACY_NAME = 'My instructions';
+const legacyName = (n) => (n === 1 ? LEGACY_NAME : `${LEGACY_NAME} (from 1.4.0)`);
+const LEGACY_KEYS = Object.values(OWN).map((o) => o.key);
+
+// Everything the prompts read from storage.sync, with the defaults readers pass to get(): the default style, the
+// saved prompts and 1.4.0's own instructions, which count as saved prompt 1 until they are moved.
+const PROMPT_KEYS = {
+  [SAVED.styleKey]: null,
+  ...Object.fromEntries(Array.from({ length: SAVED.count }, (_, i) => [SAVED.key(i + 1), null])),
+  ...Object.fromEntries(LEGACY_KEYS.map((k) => [k, ''])),
+};
+
+const isPreset = (id) => PRESETS.some((p) => p.id === id);
+
+// storage.sync refuses an item over 8,192 bytes, counted as its key plus its value as JSON in UTF-8. Chromium's
+// JSON writer also escapes "<" and the line and paragraph separators as six-character \u escapes, so they count six
+// bytes each here. Counted by hand, so it works where TextEncoder is missing.
+const SYNC_ITEM_BYTES = 8192;
+function utf8Bytes(text) {
+  let n = 0;
+  for (const ch of text) {
+    const c = ch.codePointAt(0);
+    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4;
+  }
+  return n;
+}
+const syncBytes = (key, value) => utf8Bytes(key + JSON.stringify(value).replace(/[<\u2028\u2029]/g, '\\u003C'));
+const fitsSync = (key, value, limit = SYNC_ITEM_BYTES) => syncBytes(key, value) <= limit;
+
+// A saved prompt's name as the settings page and the toolbar list show it: one line, nothing a reader cannot see,
+// at most nameMax characters, never half an emoji. '' when blank (savedName then shows "Saved prompt N").
+function promptName(text, max = SAVED.nameMax) {
+  let name = visibleText(typeof text === 'string' ? text : '').replace(/\s+/g, ' ').trim();
+  if (name.length > max) name = name.slice(0, max).replace(/[\uD800-\uDBFF]$/, '').trimEnd();
+  return name;
+}
+const savedName = (prompt, n) => prompt?.name || `Saved prompt ${n}`;
+
+// A stored saved prompt, cleaned as the prompts use it (ownInstructions), or null when the slot is empty or holds
+// something else.
+function cleanSaved(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return { name: promptName(value.name), desktop: ownInstructions(value.desktop, OWN.desktop.max), web: ownInstructions(value.web, OWN.web.max) };
+}
+
+// 1.4.0's own instructions, cleaned ({ desktop, web }), or null when both boxes were empty.
+function legacyTexts(s) {
+  const desktop = ownInstructions(s?.[OWN.desktop.key], OWN.desktop.max);
+  const web = ownInstructions(s?.[OWN.web.key], OWN.web.max);
+  return desktop || web ? { desktop, web } : null;
+}
+
+const slotNumbers = () => Array.from({ length: SAVED.count }, (_, i) => i + 1);
+
+// Where 1.4.0's own instructions stand, or null when there are none: { texts, slot, copy }. slot: the saved prompt they
+// count as until they move, the first empty one, as promptMigration would put them, or 0 when every slot is taken.
+// copy: a saved prompt already holds the same text (they were moved before, here or on another computer, and the old
+// keys are still on their way out), so they count as nothing and only the old keys go.
+function legacyPlace(s) {
+  const texts = legacyTexts(s);
+  if (!texts) return null;
+  const copy = slotNumbers().some((n) => {
+    const p = cleanSaved(s?.[SAVED.key(n)]);
+    return !!p && p.desktop === texts.desktop && p.web === texts.web;
+  });
+  const slot = copy ? 0 : slotNumbers().find((n) => s?.[SAVED.key(n)] == null) || 0;
+  return { texts, slot, copy };
+}
+
+const styleIn = (id, saved) => isPreset(id) || saved.some((p, i) => p && savedStyle(i + 1) === id);
+
+// The prompt settings as stored, cleaned: { style, saved, legacy, stranded }. saved holds the three slots (null when
+// empty). Until 1.4.0's own instructions are moved (promptMigration), every reader counts them as the saved prompt they
+// will become (legacy: its number, else 0), so nothing hides them and nothing changes when they move: in saved prompt
+// 1 they are also the default style when none was chosen, as in 1.4.0. stranded: they are still stored but count as
+// nothing because every slot is taken; the settings page says so and offers to delete them. A default that names an
+// empty slot falls back to Resolve fully.
+function promptSettings(s = {}) {
+  const place = legacyPlace(s);
+  const at = place?.slot || 0;
+  const saved = slotNumbers().map((n) => (n === at ? { name: legacyName(n), ...place.texts } : cleanSaved(s?.[SAVED.key(n)])));
+  const chosen = s?.[SAVED.styleKey];
+  const raw = typeof chosen === 'string' ? chosen : at === 1 ? savedStyle(1) : DEFAULT_STYLE;
+  return { style: styleIn(raw, saved) ? raw : DEFAULT_STYLE, saved, legacy: at, stranded: !!place && !place.copy && !at };
+}
+
+// What a pick uses for each group: a preset's built-in task ({ preset, own: '' }) or the user's own text in its place
+// ({ preset, own }). pick: the style the toolbar list chose for this pick only, or undefined for the default (the
+// menus, Gmail's toolbar button and the shortcut). A pick this version cannot find (a saved prompt deleted meanwhile,
+// or anything else) gives null, and the caller refuses it rather than put another style in its place. A saved prompt's
+// empty group uses what the default style uses for that group: a preset's task, or the default saved prompt's own text
+// for it, or Resolve fully's when that is empty too.
+function promptPlan(settings, pick) {
+  const { style, saved } = settings;
+  if (pick !== undefined && !(typeof pick === 'string' && styleIn(pick, saved))) return null;
+  const id = pick ?? style;
+  const slot = (styleId) => (isPreset(styleId) ? null : saved[Number(styleId.slice(5)) - 1]);
+  const own = slot(id);
+  const byDefault = slot(style);
+  const fallback = (g) => (isPreset(style) ? { preset: style, own: '' } : { preset: DEFAULT_STYLE, own: byDefault?.[g] || '' });
+  const group = (g) => (!own ? { preset: id, own: '' } : own[g] ? { preset: isPreset(style) ? style : DEFAULT_STYLE, own: own[g] } : fallback(g));
+  return { style: id, desktop: group('desktop'), web: group('web') };
+}
+
+// Moves 1.4.0's own instructions into the first empty saved prompt (legacyName), and makes it the default style if
+// none was ever chosen and it is saved prompt 1, so existing users keep their prompts; another slot never becomes the
+// default by itself. Returns the storage changes ({ set, remove }), or null when there is nothing to move or it cannot
+// move yet: every slot taken, or the two texts together too long for one item (they then stay where they are and still
+// count as that saved prompt, until the user shortens them on the settings page, which says so). When a saved prompt
+// already holds the same text, only the old keys go, so a second copy is never made. s: what storage.sync holds,
+// absent keys absent.
+function promptMigration(s = {}) {
+  if (!LEGACY_KEYS.some((k) => s[k] !== undefined)) return null;
+  const place = legacyPlace(s);
+  if (!place || place.copy) return { set: {}, remove: LEGACY_KEYS };
+  const n = place.slot;
+  const item = n ? { name: legacyName(n), ...place.texts } : null;
+  if (!n || !fitsSync(SAVED.key(n), item)) return null;
+  const set = { [SAVED.key(n)]: item };
+  if (n === 1 && typeof s[SAVED.styleKey] !== 'string') set[SAVED.styleKey] = savedStyle(1);
+  return { set, remove: LEGACY_KEYS };
+}
 
 // Lines the extension writes itself, under the task: a pasted "Mailbox:" line would give the agent a second, perhaps
 // different, mailbox (and keep the address in synced settings), so own instructions lose them.

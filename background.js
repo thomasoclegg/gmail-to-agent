@@ -46,6 +46,25 @@ async function firstRun({ reason, previousVersion }) {
   if (legacy) chrome.tabs.create({ url: chrome.runtime.getURL('options.html#new') });
 }
 
+// 1.5.0 moves 1.4.0's "Your own instructions" into the first empty saved prompt (promptMigration, in targets.js), on
+// update and at each browser start while they are there, so a computer still on 1.4.0 that writes them again later
+// has them moved too. The readers count them as that saved prompt until then, so nothing changes for the user
+// meanwhile; when the two texts are together too long for one storage.sync item, or every slot is taken, they stay
+// where they are, and the settings page says so. The new item is written before the old keys go, and when a saved
+// prompt already holds the same text only the old keys go. The settings page says once, on this computer, which
+// saved prompt they became (promptsMoved, in local storage).
+async function migratePrompts() {
+  const s = await chrome.storage.sync.get([...LEGACY_KEYS, ...Object.keys(PROMPT_KEYS)]);
+  const move = promptMigration(s);
+  if (!move) return;
+  const slot = Array.from({ length: SAVED.count }, (_, i) => i + 1).find((n) => SAVED.key(n) in move.set);
+  if (slot) {
+    await chrome.storage.sync.set(move.set);
+    await chrome.storage.local.set({ promptsMoved: slot });
+  }
+  await chrome.storage.sync.remove(move.remove);
+}
+
 // getBrowserInfo exists only in Firefox, which differs from Chrome in two ways
 // that matter here. It adds the manifest's content scripts to matching tabs that
 // are already open when the extension is installed or updated; Chrome does not.
@@ -74,13 +93,17 @@ async function injectIntoGmailTabs() {
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   await firstRun(details).catch((e) => console.warn('First run:', e));
+  if (details.reason === 'update') await migratePrompts().catch((e) => console.warn('Prompts:', e));
   rebuildMenus();
   if (details.reason === 'install' || details.reason === 'update') {
     await injectIntoGmailTabs().catch((e) => console.warn('Gmail tabs:', e));
   }
 });
 
-chrome.runtime.onStartup.addListener(() => rebuildMenus());
+chrome.runtime.onStartup.addListener(() => {
+  rebuildMenus();
+  migratePrompts().catch((e) => console.warn('Prompts:', e));
+});
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && changes.targets) rebuildMenus();
@@ -157,8 +180,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 // ---- The toolbar list and the keyboard shortcuts ----
 
-// The toolbar list (popup.js) and the shortcut act on what is open or ticked in the Gmail tab now.
-const runCurrent = (tab, platform) => runInTab(tab, { target: 'content', action: 'run', platform, current: true });
+// The toolbar list (popup.js) and the shortcut act on what is open or ticked in the Gmail tab now. style: the prompt
+// style the toolbar list chose for this pick only, passed on as it came (a string of at most 20 characters) so the
+// content script can refuse one it does not have rather than use another; the shortcut passes none, so the default
+// is used.
+const runCurrent = (tab, platform, style) =>
+  runInTab(tab, { target: 'content', action: 'run', platform, current: true, ...(style !== undefined ? { style: String(style).slice(0, 20) } : {}) });
 
 // The AIs picked, and the one the shortcut uses (shortcutTarget, in targets.js).
 async function lastUsed() {
@@ -240,8 +267,8 @@ const DESKTOP_SELECTED_ASK =
 
 // For a web AI and Copy, and for Claude Code in Gmail and Codex, which get it on the clipboard too. The desktop
 // agents can act, so their prompt asks for the next step rather than a reply and ends after the block on
-// SELECTED_END. Selected text keeps these built-in instructions: the user's own instructions in the settings are for
-// emails.
+// SELECTED_END. Selected text keeps these built-in instructions whatever the prompt style: the styles and saved
+// prompts in the settings are for emails.
 function selectionPrompt(text, target, cut = 0) {
   const { block, kept } = selectedBlock(text, SELECTION_CAP, cut);
   const app = target?.kind === 'app';
@@ -488,14 +515,14 @@ const ACTIONS = { handoff: handOff, ik: (_msg, tab) => gmailKey(tab) };
 
 const tabFor = (tabId) => (Number.isInteger(tabId) ? chrome.tabs.get(tabId).catch(() => null) : null);
 
-// From the extension's own pages (the toolbar list): run a pick in a Gmail tab, or, on another site, on the
-// text selected there (opening the list grants activeTab for that tab). The reply comes first, so the list
-// can close; the pick runs on here.
+// From the extension's own pages (the toolbar list): run a pick in a Gmail tab, with the prompt style picked there
+// for this pick, or, on another site, on the text selected there (opening the list grants activeTab for that tab),
+// which keeps its built-in prompt. The reply comes first, so the list can close; the pick runs on here.
 const PAGE_ACTIONS = {
-  async run({ platform, tabId }) {
+  async run({ platform, tabId, style }) {
     const tab = await tabFor(tabId);
     if (!tab?.url?.startsWith(GMAIL) || !targetById(platform)) throw new Error('Not a Gmail tab');
-    runCurrent(tab, platform).catch((e) => console.warn('Toolbar list:', e));
+    runCurrent(tab, platform, style).catch((e) => console.warn('Toolbar list:', e));
     return { ok: true };
   },
   // Whether the tab, not Gmail, has text selected: the list then offers the selected-text items.

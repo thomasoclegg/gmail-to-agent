@@ -13,9 +13,10 @@
 if (globalThis.vpaContentLoaded !== true) {
   globalThis.vpaContentLoaded = true;
 
-  // Settings cached in memory so the desktop click path stays synchronous. The user's own instructions
-  // (OWN, in targets.js) are '' until set, which means the built-in ones.
-  const SETTING_DEFAULTS = { targets: DEFAULT_TARGETS, folder: '', toolbarButton: true, [OWN.desktop.key]: '', [OWN.web.key]: '' };
+  // Settings cached in memory so the desktop click path stays synchronous: the AIs, the working folder, the
+  // toolbar button and (1.5.0) the prompt settings (PROMPT_KEYS, in targets.js: the default style, the saved
+  // prompts and 1.4.0's own instructions until they are moved).
+  const SETTING_DEFAULTS = { targets: DEFAULT_TARGETS, folder: '', toolbarButton: true, ...PROMPT_KEYS };
   let settings = { ...SETTING_DEFAULTS };
   globalThis.chrome?.storage?.sync.get(SETTING_DEFAULTS, (s) => {
     settings = s;
@@ -26,13 +27,15 @@ if (globalThis.vpaContentLoaded !== true) {
     if (c.targets) settings.targets = c.targets.newValue ?? DEFAULT_TARGETS;
     if (c.folder) settings.folder = c.folder.newValue ?? '';
     if (c.toolbarButton) settings.toolbarButton = c.toolbarButton.newValue ?? true;
-    for (const { key } of Object.values(OWN)) if (c[key]) settings[key] = c[key].newValue ?? '';
+    for (const [key, empty] of Object.entries(PROMPT_KEYS)) if (c[key]) settings[key] = c[key].newValue ?? empty;
     if (c.targets || c.toolbarButton) scheduleToolbar();
   });
 
-  // The user's own instructions for 'desktop' (Claude Code and Codex) or 'web' (the web AIs and Copy), cleaned
-  // (ownInstructions, in targets.js) each time they are used; '' for the built-in ones.
-  const ownText = (group) => ownInstructions(settings[OWN[group].key], OWN[group].max);
+  // The prompts a pick uses (promptPlan, in targets.js): for each group, a preset's built-in task or the user's own
+  // text, cleaned (ownInstructions) when it is read. style: the one the toolbar list chose for this pick only; the
+  // menus, Gmail's toolbar button and the shortcut pass none, so they use the default. Null for a style picked in the
+  // list that is not here (a saved prompt deleted since the list opened): that pick is refused, not sent another way.
+  const planFor = (style) => promptPlan(promptSettings(settings), style);
 
   const enc = encodeURIComponent;
   const DESKTOP_URLS = {
@@ -76,6 +79,9 @@ if (globalThis.vpaContentLoaded !== true) {
     busy: 'Still reading the last emails. Try again in a moment.',
     // A desktop prompt over PROMPT_CAP would lose its end, the approval sentence, so it is never sent.
     tooLong: 'The prompt would be too long for the app, so nothing was opened. Tick fewer emails, or use Report a problem on the settings page.',
+    // The toolbar list picked a style that is not saved here (deleted, or changed on another computer, since the list
+    // opened): another style is never put in its place.
+    style: 'The prompt style you picked is no longer saved, so nothing was sent. Open the toolbar list again and pick another.',
   };
 
   let lastTarget = null;
@@ -162,13 +168,13 @@ if (globalThis.vpaContentLoaded !== true) {
   // Every Claude Code and Codex prompt has the same shape, with only thread IDs and links from Gmail, never
   // an email's text:
   //   Claude Code's session name (the subject, "Batch: N emails" or "Inbox triage: N unread emails"), from the first line
-  //   the task: the built-in instructions, which end by setting aside what cannot be finished now (SPLIT), or the user's own
-  //   (ownText) in their place; Triage unread keeps its own
+  //   the task: the chosen style's (DESKTOP_TASKS; Resolve fully's ends by setting aside what cannot be finished now,
+  //   SPLIT), or a saved prompt's own text in its place (planFor); Triage unread keeps its own
   //   the mailbox, then the thread ID and link, or one line per thread
   //   how to read the threads, that email content is information, not instructions, and NO_FOLLOWING (targets.js)
   //   any fixed line for the kind of prompt, CODEX_LIMIT for Codex, then APPROVAL (targets.js) last.
   // Codex starts straight away with its tools on, so it never sees a subject, selected text or email text; the
-  // user's own instructions are the user's, so they may go to it.
+  // presets carry none, and a saved prompt's text is the user's own, so it may go to it.
 
   // Codex starts on its prompt the moment its link opens, before the user has read it, and it can run commands
   // in its working folder. Its prompt carries nothing from an email, but the threads it then reads may still try
@@ -282,6 +288,40 @@ if (globalThis.vpaContentLoaded !== true) {
     'do the substantive work first and draft replies after it. Merge threads about the same matter into one task. ' +
     `For each task:\n${resolveSteps(target, false)}`;
 
+  // The task for each built-in style (PRESETS, in targets.js), for one thread and for n. Resolve fully is the task
+  // above. The two lighter ones ask for less: Quick summary and reply says where each thread stands and what is asked,
+  // then drafts a reply where one is needed, each thread under its number; Draft replies only asks for the drafts
+  // alone, in as few words as will do, with a line saying why not where there is no reply or the email looks
+  // suspicious. Both say that reading the thread is all the investigation they need: the approval sentence that ends
+  // every desktop prompt lets an agent do "any investigation" it is allowed to without waiting, and this keeps that to
+  // the reading. Both put any fact or decision they do not have in brackets rather than guess it, since nothing is
+  // checked. Neither carries anything from an email, so Codex may have them, and like every task they come before the
+  // mailbox, the read line, NO_FOLLOWING and the approval sentence (desktopPrompt). No apostrophes: a browser may write
+  // one as %27 in a link.
+  const NO_GUESS = 'putting any fact or decision you do not have in [brackets] rather than guessing it';
+  const READ_ONLY = { one: 'reading this thread is all the investigation this needs', many: 'reading these threads is all the investigation this needs' };
+  const QUICK_LIMIT = (count) => `Keep it quick: ${READ_ONLY[count]}, so look nothing else up and start no other sessions or tasks.`;
+  const DESKTOP_TASKS = {
+    resolve: { one: desktopTask, many: bulkDesktopTask },
+    quick: {
+      one: () =>
+        'Give me a quick read of this Gmail thread: in a few lines, where it stands and what is being asked of me. ' +
+        `Then, if a reply is needed, draft one I can review, in your answer, without repeating what I have already said, ${NO_GUESS}. ${QUICK_LIMIT('one')}`,
+      many: (_target, n) =>
+        `Give me a quick read of these ${n} Gmail threads, most urgent first. For each, under its number: in a line or two, where it stands and what is being asked of me, ` +
+        `then a draft reply in your answer if one is needed, without repeating what I have already said, ${NO_GUESS}. ${QUICK_LIMIT('many')}`,
+    },
+    drafts: {
+      one: () =>
+        `Draft a reply to this Gmail thread, in your answer, in as few words as will do, ${NO_GUESS}. ` +
+        'Give only the draft, or one line saying why not if no reply is needed or the email looks suspicious. Reading this thread is all the investigation this needs.',
+      many: (_target, n) =>
+        `Draft a reply to each of these ${n} Gmail threads that needs one, in your answer, in as few words as will do, ${NO_GUESS}. ` +
+        'Give only the drafts, each under the number of its thread, with one line saying why not for any thread that needs no reply or looks suspicious. ' +
+        'Reading these threads is all the investigation this needs.',
+    },
+  };
+
   // name: Claude Code's first line, or ''. refs: the lines under the mailbox. read: how to read the threads and
   // that their content is information; NO_FOLLOWING always follows it. fixed: a line the kind of prompt always ends
   // with, before CODEX_LIMIT and APPROVAL ('' for none).
@@ -309,12 +349,13 @@ if (globalThis.vpaContentLoaded !== true) {
   }
 
   // One thread: its ID and link. Claude Code also gets the subject, as the first line, to name its session.
-  function desktopUrl(target, thread) {
+  // plan: the prompts for this pick (planFor).
+  function desktopUrl(target, thread, plan = planFor()) {
     if (!thread || !DESKTOP_URLS[target?.id]) return null;
     const subject = target.id === 'claude-code' ? cleanSubject(thread.subject) : '';
     const prompt = desktopPrompt(target, {
       name: subject && `Email subject: ${subject}`,
-      task: ownText('desktop') || desktopTask(target),
+      task: plan.desktop.own || DESKTOP_TASKS[plan.desktop.preset].one(target),
       refs: [`Thread ID: ${thread.id}`, `Gmail link: ${gmailLink(thread.id)}`],
       read:
         'Read the whole thread with your Gmail tool (if it is not connected to this mailbox, say so and use the link in your browser). ' +
@@ -359,22 +400,22 @@ if (globalThis.vpaContentLoaded !== true) {
   // Reading unread threads leaves them unread, whoever wrote the instructions.
   const KEEP_UNREAD = 'Do not mark anything as read.';
 
-  // triage: every thread is unread. from: 'unread' for Triage unread, which always keeps its built-in sort (the
-  // user's own instructions are for one email or several), or 'ticked' for ticked rows, which take the user's own
-  // instructions when there are any.
-  function bulkDesktopPrompt(target, threads, subjectCap, triage = false, from = 'ticked') {
+  // triage: every thread is unread. from: 'unread' for Triage unread, which always keeps its built-in sort whatever
+  // the style (styles are for one email or several), or 'ticked' for ticked rows, which get the sort only with Resolve
+  // fully's built-in task, and otherwise the chosen style's task or a saved prompt's own text. plan: planFor.
+  function bulkDesktopPrompt(target, threads, subjectCap, triage = false, from = 'ticked', plan = planFor()) {
     const n = threads.length;
     const withSubjects = subjectCap > 0;
     const line = (t, i) => {
       const subject = withSubjects ? cleanSubject(t.subject, subjectCap) : '';
       return `${i + 1}. ${subject ? `${subject} | ` : ''}Thread ID: ${t.id} | ${gmailLink(t.id)}`;
     };
-    const own = ownText('desktop');
-    const sort = triage && (from === 'unread' || !own);
+    const { own, preset } = plan.desktop;
+    const sort = triage && (from === 'unread' || (!own && preset === 'resolve'));
     return desktopPrompt(target, {
       // Claude Code names its session from the first line.
       name: sort ? `Inbox triage: ${n} unread emails` : `Batch: ${n} emails`,
-      task: sort ? triageTask(target, n, from) : own || bulkDesktopTask(target, n),
+      task: sort ? triageTask(target, n, from) : own || DESKTOP_TASKS[preset].many(target, n),
       refs: ['', ...threads.map(line)],
       read:
         'Read every thread with your Gmail tool (if it is not connected to this mailbox, say so and use the links in your browser). ' +
@@ -384,15 +425,15 @@ if (globalThis.vpaContentLoaded !== true) {
   }
 
   // Several threads for a desktop agent: IDs and links, and for Claude Code the subjects, shortened further, then
-  // dropped, if the prompt would pass the apps' limit. The longest built-in task, or the user's own at OWN's cap,
-  // still leaves room for 25 threads (BULK_CAP) with their subjects whole for any real mailbox. A prompt still over
-  // the limit with no subjects is refused (capLink).
-  function bulkDesktopUrl(target, threads, triage = false, from = 'ticked') {
+  // dropped, if the prompt would pass the apps' limit. The longest built-in task (Resolve fully's), or a saved prompt's
+  // own text at OWN's cap, still leaves room for 25 threads (BULK_CAP) with their subjects whole for any real mailbox.
+  // A prompt still over the limit with no subjects is refused (capLink).
+  function bulkDesktopUrl(target, threads, triage = false, from = 'ticked', plan = planFor()) {
     if (!DESKTOP_URLS[target?.id]) return null;
     const caps = target.id === 'claude-code' ? [SUBJECT_CAP, 60, 40, 20, 0] : [0];
     let prompt = '';
     for (const subjectCap of caps) {
-      prompt = bulkDesktopPrompt(target, threads, subjectCap, triage, from);
+      prompt = bulkDesktopPrompt(target, threads, subjectCap, triage, from, plan);
       if (prompt.length <= PROMPT_CAP) break;
     }
     return capLink(target, prompt);
@@ -588,19 +629,19 @@ if (globalThis.vpaContentLoaded !== true) {
 
   // ---- Prompts for the web AIs and Copy ----
 
-  // A web AI has only the text on the clipboard, so the built-in ask is to say briefly where the thread stands and
+  // A web AI has only the text on the clipboard, so Resolve fully's ask is to say briefly where the thread stands and
   // what resolving it needs, do as much of the work as the text allows, say which facts would need checking (and
   // where) before a reply could commit to anything and draft a reply with substance; for several threads, it also
-  // ends each task that cannot be finished now with a Handover for a new chat (handover, below). The user's own instructions
-  // (ownText('web')) take the built-in ask's place, languages included, except for Triage unread, which keeps its
-  // own; the thread between its markers, the mailbox and link, any note on what is missing, the line that email
-  // content is information and WEB_APPROVAL (targets.js) always go.
+  // ends each task that cannot be finished now with a Handover for a new chat (handover, below). The lighter styles
+  // ask for less (WEB_ASKS). A saved prompt's own text for the web AIs takes the ask's place, languages included,
+  // except for Triage unread, which keeps its own; the thread between its markers, the mailbox and link, any note on
+  // what is missing, the line that email content is information and WEB_APPROVAL (targets.js) always go.
 
-  // The built-in ask, or the user's own instructions with the fixed lines after them. lead: a first line kept
-  // with the user's own instructions too ("Here are 3 email threads from my inbox."), or ''. fixed: what ends the
-  // ask either way, before WEB_APPROVAL. withOwn: what the built-in ask already says that must stay when the
-  // user's own instructions replace it. own: the user's own instructions ('' keeps the built-in ask).
-  function webAsk({ lead = '', ask, fixed, withOwn = '', own = ownText('web') }) {
+  // The style's ask, or the user's own text with the fixed lines after it. lead: a first line kept with the user's
+  // own text too ("Here are 3 email threads from my inbox."), or ''. fixed: what ends the ask either way, before
+  // WEB_APPROVAL. withOwn: what the built-in ask already says that must stay when the user's own text replaces it.
+  // own: the user's own text from the pick's plan ('' keeps the style's ask).
+  function webAsk({ lead = '', ask, fixed, withOwn = '', own = '' }) {
     if (!own) return [lead, ask, fixed, WEB_APPROVAL].filter(Boolean).join(' ');
     return [...(lead ? [lead, ''] : []), own, '', [withOwn, fixed, WEB_APPROVAL].filter(Boolean).join(' ')].join('\n');
   }
@@ -632,16 +673,45 @@ if (globalThis.vpaContentLoaded !== true) {
     );
   };
 
-  // note: a line for the AI on what is missing (gapsLine), or '' when nothing is.
-  function chatPrompt(thread, note = gapsLine(readGaps(thread))) {
+  // The ask for each built-in style (PRESETS, in targets.js), for one thread and for several (after "Here are N email
+  // threads from my inbox."). Resolve fully's is 1.4.0's. Quick summary and reply says where each thread stands and
+  // what is asked, then drafts a reply where one is needed, each thread under its number; Draft replies only asks for
+  // the drafts alone, in as few words as will do, with a line saying why not where there is no reply or the email
+  // looks suspicious. Both put any fact or decision they do not have in brackets (NO_GUESS, as for the desktop agents),
+  // and neither sets anything aside with a Handover. Each keeps the language lines, and webAsk adds the markers line
+  // and WEB_APPROVAL.
+  const WEB_ASKS = {
+    resolve: {
+      one: () =>
+        'Help me resolve this email thread. In a few lines, say where it stands and what resolving it needs. ' +
+        `${RESOLVE_FROM_TEXT} Then, if a reply is needed, draft one I can review that does not repeat what I have already said, ${SUBSTANCE}. ` +
+        `Write the summary in ${languageName()} and the reply in the language of the email.`,
+      many: () => bulkIntro(),
+    },
+    quick: {
+      one: () =>
+        'Give me a quick read of this email thread: in a few lines, where it stands and what is being asked of me. ' +
+        `Then, if a reply is needed, draft one I can review, without repeating what I have already said, ${NO_GUESS}. ` +
+        `Write the summary in ${languageName()} and the reply in the language of the email.`,
+      many: () =>
+        'Give me a quick read of them, most urgent first. For each, under its number: in a line or two, where it stands and what is being asked of me, ' +
+        `then a draft reply if one is needed, without repeating what I have already said, ${NO_GUESS}. ` +
+        `Write the summaries in ${languageName()} and each reply in the language of its email.`,
+    },
+    drafts: {
+      one: () =>
+        `Draft a reply to this email thread in as few words as will do, in the language of the email, ${NO_GUESS}. ` +
+        'Give only the draft, or one line saying why not if no reply is needed or the email looks suspicious.',
+      many: () =>
+        `Draft a reply to each thread that needs one, in as few words as will do and in the language of its email, ${NO_GUESS}. ` +
+        'Give only the drafts, each under the number of its thread, with one line saying why not for any thread that needs no reply or looks suspicious.',
+    },
+  };
+
+  // note: a line for the AI on what is missing (gapsLine), or '' when nothing is. plan: the prompts for this pick.
+  function chatPrompt(thread, note = gapsLine(readGaps(thread)), plan = planFor()) {
     return [
-      webAsk({
-        ask:
-          'Help me resolve this email thread. In a few lines, say where it stands and what resolving it needs. ' +
-          `${RESOLVE_FROM_TEXT} Then, if a reply is needed, draft one I can review that does not repeat what I have already said, ${SUBSTANCE}. ` +
-          `Write the summary in ${languageName()} and the reply in the language of the email.`,
-        fixed: MARKERS_ONE,
-      }),
+      webAsk({ ask: WEB_ASKS[plan.web.preset].one(), fixed: MARKERS_ONE, own: plan.web.own }),
       '',
       `Mailbox: ${thread.mailbox}`,
       `Gmail link: ${thread.link}`,
@@ -659,13 +729,16 @@ if (globalThis.vpaContentLoaded !== true) {
   const NOT_COPIED =
     "The email's text could not be copied, so only its subject and Gmail link are here; ask me to paste it before you draft a reply or commit to anything.";
 
-  function linkOnlyPrompt(thread) {
+  // With no text there is nothing to resolve or draft yet, so the lighter styles share one plain ask.
+  function linkOnlyPrompt(thread, plan = planFor()) {
     const subject = shorten(oneLine(thread.subject), BLOCK_SUBJECT_CAP) || '(no subject)';
+    const lead = plan.web.preset === 'resolve' ? 'Help me resolve this email.' : 'Help me reply to this email.';
     return [
       webAsk({
-        ask: `Help me resolve this email. ${NOT_COPIED} Write your answer in ${languageName()}.`,
+        ask: `${lead} ${NOT_COPIED} Write your answer in ${languageName()}.`,
         fixed: MARKERS_ONE,
         withOwn: NOT_COPIED,
+        own: plan.web.own,
       }),
       '',
       `Mailbox: ${mailboxName()}`,
@@ -896,8 +969,10 @@ if (globalThis.vpaContentLoaded !== true) {
   // Every thread in its own block, in order, the long ones cut to a fair share of
   // the batch (capThread). Only if a cut thread would get less than SHARE_FLOOR are
   // the last threads left out, listed by link only, so no email text sits outside the markers.
-  // total: how many were selected, when the batch was capped at BULK_CAP. triage: the triage ask.
-  function bulkChatPrompt(threads, texts, total = threads.length, { triage = false, from = 'ticked' } = {}) {
+  // total: how many were selected, when the batch was capped at BULK_CAP. triage: every thread is unread. from:
+  // 'unread' for Triage unread, which always keeps the triage ask, or 'ticked', which gets it only with Resolve fully's
+  // built-in ask. plan: the prompts for this pick (planFor).
+  function bulkChatPrompt(threads, texts, total = threads.length, { triage = false, from = 'ticked', plan = planFor() } = {}) {
     const n = threads.length;
     const parts = threads.map((t, i) => {
       const link = gmailLink(t.id);
@@ -915,16 +990,17 @@ if (globalThis.vpaContentLoaded !== true) {
     const blocks = parts.slice(0, kept).map((p, i) => bulkBlock(i + 1, n, p.head, capThread(p.text, caps[i])));
     const leftOut = parts.slice(kept).map((p, i) => `thread ${kept + i + 1} (${p.link})`);
     const snippets = parts.slice(0, kept).filter((p) => !p.read).length;
+    const { own, preset } = plan.web;
     const prompt = [
       triage
         ? webAsk({
             lead: `Here are ${n} unread email threads from my inbox.`,
-            ask: triageIntro(),
+            // Triage unread keeps its four groups; ticked rows that are all unread take the style's ask or a saved prompt's text.
+            ask: from === 'unread' || (!own && preset === 'resolve') ? triageIntro() : WEB_ASKS[preset].many(),
             fixed: `${MARKERS_LINE} ${KEEP_UNREAD}`,
-            // Triage unread keeps its four groups; ticked rows that are all unread take the user's own instructions.
-            ...(from === 'unread' ? { own: '' } : {}),
+            own: from === 'unread' ? '' : own,
           })
-        : webAsk({ lead: `Here are ${n} email threads from my inbox.`, ask: bulkIntro(), fixed: MARKERS_LINE }),
+        : webAsk({ lead: `Here are ${n} email threads from my inbox.`, ask: WEB_ASKS[preset].many(), fixed: MARKERS_LINE, own }),
       '',
       `Mailbox: ${mailboxName()}`,
       ...bulkNotes(total, n, snippets, from),
@@ -982,7 +1058,7 @@ if (globalThis.vpaContentLoaded !== true) {
     if (!res?.ok) throw new Error(res?.error || 'No reply');
   }
 
-  async function handOff(target, thread) {
+  async function handOff(target, thread, plan = planFor()) {
     // An orphaned script (extension updated) must not open the thread first.
     if (!isLive()) return toast(ERRORS.reload, true);
     if (bulkBusy) return toast(ERRORS.busy);
@@ -992,11 +1068,11 @@ if (globalThis.vpaContentLoaded !== true) {
       const data = opened && readThread(thread.id);
       if (!data) {
         // The subject and link still help: the AI, or the user, can open the email from the link.
-        await sendHandOff(target, linkOnlyPrompt(thread));
+        await sendHandOff(target, linkOnlyPrompt(thread, plan));
         return toast(`${opened ? ERRORS.notRead : ERRORS.notOpened} ${nextStep(target)}`, true);
       }
       const gaps = readGaps(data);
-      await sendHandOff(target, chatPrompt(data, gapsLine(gaps)));
+      await sendHandOff(target, chatPrompt(data, gapsLine(gaps), plan));
       toast(copiedText(target, gaps), false, gaps.partial || gaps.cut ? 8000 : 6000, true);
     } catch (e) {
       toast(isInvalidated(e) || !isLive() ? ERRORS.reload : ERRORS.copy, true);
@@ -1005,7 +1081,7 @@ if (globalThis.vpaContentLoaded !== true) {
 
   // Several threads read from the print view, never opened or clicked in Gmail.
   // One run at a time: a second pick while one is reading only says so.
-  async function bulkHandOff(target, batch) {
+  async function bulkHandOff(target, batch, plan = planFor()) {
     if (!isLive()) return toast(ERRORS.reload, true);
     if (bulkBusy) return toast(ERRORS.busy);
     bulkBusy = true;
@@ -1016,7 +1092,7 @@ if (globalThis.vpaContentLoaded !== true) {
       // A refused ik request (a service worker restart, say) leaves the snippets.
       const ik = await gmailKey().catch(() => null);
       const texts = await readThreads(batch.threads, ik, (done) => done < n && quietToast(`Reading ${done + 1} of ${n} emails...`, 20000));
-      const bulk = bulkChatPrompt(batch.threads, texts, batch.total, { triage: batch.triage, from: batch.from });
+      const bulk = bulkChatPrompt(batch.threads, texts, batch.total, { triage: batch.triage, from: batch.from, plan });
       await sendHandOff(target, bulk.prompt);
       const long = note || bulk.snippets;
       toast(note + bulkCopiedText(target, bulk), false, long ? 8000 : 6000, true);
@@ -1028,33 +1104,34 @@ if (globalThis.vpaContentLoaded !== true) {
   }
 
   // Desktop targets launch inside the user's click (here), or hand their link back for background.js to
-  // open (the toolbar list and the shortcut in Chrome); the rest hand off. Returns that link, or null.
-  function run(target, thread, here = true) {
+  // open (the toolbar list and the shortcut in Chrome); the rest hand off. Returns that link, or null. plan: the
+  // prompts, read at the pick (planFor), so a hand-off that reads for a while still uses the style picked.
+  function run(target, thread, here = true, plan = planFor()) {
     if (!thread) {
       toast(ERRORS.noThread, true);
       return null;
     }
     remember(target);
     if (target.kind !== 'app') {
-      handOff(target, thread);
+      handOff(target, thread, plan);
       return null;
     }
-    const url = desktopUrl(target, thread);
+    const url = desktopUrl(target, thread, plan);
     if (url && here) launch(url);
     return here ? null : url;
   }
 
-  function runBulk(target, batch, here = true) {
+  function runBulk(target, batch, here = true, plan = planFor()) {
     if (!batch.threads.length) {
       toast(ERRORS.nothing, true);
       return null;
     }
     remember(target);
     if (target.kind !== 'app') {
-      bulkHandOff(target, batch);
+      bulkHandOff(target, batch, plan);
       return null;
     }
-    const url = bulkDesktopUrl(target, batch.threads, batch.triage, batch.from);
+    const url = bulkDesktopUrl(target, batch.threads, batch.triage, batch.from, plan);
     if (!url) return null; // refused: its note stays
     if (here) launch(url);
     const note = capNote(batch);
@@ -1073,14 +1150,14 @@ if (globalThis.vpaContentLoaded !== true) {
     return null;
   }
 
-  // Runs a pick from currentPick (or Gmail's toolbar button) for the target.
-  function runPick(target, pick, here = true) {
+  // Runs a pick from currentPick (or Gmail's toolbar button) for the target, with the prompts of plan.
+  function runPick(target, pick, here = true, plan = planFor()) {
     if (!pick) {
       toast(ERRORS.nothing, true);
       return null;
     }
-    if (pick.rows) return runBulk(target, batchOf(pick.rows, pick.rows.length, pick.from), here);
-    return run(target, pick.thread, here);
+    if (pick.rows) return runBulk(target, batchOf(pick.rows, pick.rows.length, pick.from), here, plan);
+    return run(target, pick.thread, here, plan);
   }
 
   // ---- Gmail's own inbox-row menu ----
@@ -1558,7 +1635,9 @@ if (globalThis.vpaContentLoaded !== true) {
   // run: the browser's own menu (background.js). Desktop targets reply with the deep link for the
   // background to open, or in Firefox (msg.launch) click it here, as Gmail's row menu does; web and copy
   // targets hand off from here. With msg.current (the toolbar list and the shortcut) it acts on what is
-  // open or ticked now rather than on the right-clicked element.
+  // open or ticked now rather than on the right-clicked element. msg.style: the prompt style the toolbar list
+  // chose for this pick only; one that is not saved here is refused with a note (planFor gives null), never swapped
+  // for the default. The shortcut sends none, so it uses the default.
   globalThis.chrome?.runtime?.onMessage?.addListener((msg, _sender, reply) => {
     if (msg?.target !== 'content') return;
     if (msg.action === 'state') {
@@ -1572,7 +1651,12 @@ if (globalThis.vpaContentLoaded !== true) {
     const target = targetById(msg.platform);
     if (msg.current) {
       if (!target) return reply({});
-      const url = runPick(target, currentPick(), !!msg.launch);
+      const plan = planFor(msg.style);
+      if (!plan) {
+        toast(ERRORS.style, true);
+        return reply({});
+      }
+      const url = runPick(target, currentPick(), !!msg.launch, plan);
       return reply(url ? { url } : {});
     }
     // A right-click inside a frame never updates lastTarget: use the open thread.

@@ -209,6 +209,20 @@ function createWorld(opts = {}) {
       });
       return maybeCb(p, cb);
     },
+    // A removed key's change has its oldValue and no newValue, as in Chrome.
+    remove: (keys, cb) => {
+      const list = (Array.isArray(keys) ? keys : [keys]).filter((k) => k in world.storage);
+      const changes = {};
+      for (const k of list) {
+        changes[k] = { oldValue: clone(world.storage[k]) };
+        delete world.storage[k];
+      }
+      log.push({ ev: 'storage.remove', keys: clone(Array.isArray(keys) ? keys : [keys]) });
+      const p = tick(jitter()).then(() => {
+        if (list.length) setTimeout(() => onChanged.fire(clone(changes), 'sync'), jitter());
+      });
+      return maybeCb(p, cb);
+    },
   };
 
   // ---- chrome.contextMenus: ops run strictly in call order (like Chrome's IPC), async ----

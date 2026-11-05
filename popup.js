@@ -1,8 +1,9 @@
 // The toolbar list: the AIs picked, for what the Gmail tab in front has open or ticked. A pick goes to
 // background.js, which runs it in that tab as the browser's menu does, so the note in Gmail says what
-// happened and the list closes. On another site it offers the AIs for the text selected there (opening the
-// list lets the extension read it, through activeTab), or else shows a hint. It always links to the settings
-// page.
+// happened and the list closes. In Gmail a compact picker above the AIs chooses the prompt style for that pick
+// only (1.5.0): it starts on the default every time the list opens, goes with every pick and is never saved. On
+// another site it offers the AIs for the text selected there (opening the list lets the extension read it, through
+// activeTab), which keeps its built-in prompt, or else shows a hint. It always links to the settings page.
 const $ = (id) => document.getElementById(id);
 const GMAIL = 'https://mail.google.com/';
 const HINT = 'Open Gmail, or select some text on a page and right-click it.';
@@ -58,6 +59,31 @@ const label = (target, state, selected) =>
   selected ? target.selectionMenu : state?.ticked >= 2 ? target.bulkMenu.replace('{n}', state.ticked) : target.menu;
 const note = (target) => (target.kind === 'web' ? target.note : target.kind === 'app' ? 'desktop app' : 'clipboard');
 
+// The prompt style picker: the presets, then the saved prompts by name (promptSettings, in targets.js), in two
+// labelled groups so a saved prompt named like a built-in style cannot pass for it, on the default, which says so.
+// Shown only when a pick here goes to emails in Gmail.
+function showStyles(settings, show) {
+  const option = (id, name) => {
+    const el = element('option', '', id === settings.style ? `${name} (default)` : name);
+    el.value = id;
+    return el;
+  };
+  const group = (label, options) => {
+    const el = element('optgroup');
+    el.label = label;
+    el.append(...options);
+    return el;
+  };
+  const saved = settings.saved.flatMap((p, i) => (p ? [option(savedStyle(i + 1), savedName(p, i + 1))] : []));
+  $('style').replaceChildren(group('Built-in', PRESETS.map((p) => option(p.id, p.name))), ...(saved.length ? [group('Saved', saved)] : []));
+  $('style').value = settings.style;
+  $('style-pick').hidden = !show;
+}
+
+// The style for this pick, always sent while the picker shows, so what the list showed is what the AI gets: the
+// content script refuses one it no longer has rather than use another.
+const pickedStyle = () => ($('style-pick').hidden ? {} : { style: $('style').value });
+
 // While a pick is under way the AIs do not take another; keyboard focus stays on the one picked.
 let busy = false;
 async function pick(target, tab, selected, button) {
@@ -66,7 +92,7 @@ async function pick(target, tab, selected, button) {
   for (const b of document.querySelectorAll('.ai')) b.setAttribute('aria-disabled', 'true');
   const action = selected ? 'runSelection' : 'run';
   const res = await chrome.runtime
-    .sendMessage({ target: 'background', action, platform: target.id, tabId: tab.id })
+    .sendMessage({ target: 'background', action, platform: target.id, tabId: tab.id, ...(selected ? {} : pickedStyle()) })
     .catch((e) => ({ ok: false, error: e?.message }));
   if (res?.ok) return window.close();
   $('context').textContent = selected ? RESELECT : RELOAD;
@@ -117,8 +143,8 @@ async function showLast(chosen) {
 }
 
 async function main() {
-  const [{ targets }, tab] = await Promise.all([chrome.storage.sync.get({ targets: DEFAULT_TARGETS }), activeTab().catch(() => null)]);
-  const chosen = pickTargets(targets);
+  const [stored, tab] = await Promise.all([chrome.storage.sync.get({ targets: DEFAULT_TARGETS, ...PROMPT_KEYS }), activeTab().catch(() => null)]);
+  const chosen = pickTargets(stored.targets);
   const onGmail = typeof tab?.url === 'string' && tab.url.startsWith(GMAIL);
   const state = onGmail ? await gmailState(tab) : null;
   const selected = !onGmail && chosen.length > 0 && (await hasSelection(tab));
@@ -127,6 +153,7 @@ async function main() {
   $('context').classList.toggle('hint', !!line.hint);
   $('empty').hidden = chosen.length > 0;
   $('list').hidden = !chosen.length;
+  showStyles(promptSettings(stored), onGmail && !!state && chosen.length > 0);
   $('list').replaceChildren(
     ...chosen.map((t) => {
       const li = element('li');

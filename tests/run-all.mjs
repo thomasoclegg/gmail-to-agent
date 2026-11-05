@@ -26,7 +26,7 @@ const SUITES = [
     what: 'background.js (as a Chrome service worker and as a Firefox or Safari background page), offscreen.js and the manifests scripts/package.mjs writes, in Node vm (node:test)',
     args: ['--test', '--test-reporter=spec', path.join('tests', 'background', 'background.test.js')],
     unit: 'tests',
-    min: 111,
+    min: 121,
     count: (out) => {
       const pass = out.match(/^\S*\s*pass (\d+)\s*$/m);
       const tests = out.match(/^\S*\s*tests (\d+)\s*$/m);
@@ -38,7 +38,7 @@ const SUITES = [
     what: 'content.js and targets.js on a mock Gmail page in headless Chrome',
     args: [path.join('tests', 'content', 'run.mjs')],
     unit: 'scenarios',
-    min: 58,
+    min: 61,
     count: scenarioCount,
   },
   {
@@ -46,7 +46,7 @@ const SUITES = [
     what: 'options.html and the toolbar list (popup.html) in headless Chrome over the DevTools Protocol',
     args: [path.join('tests', 'settings', 'run.mjs')],
     unit: 'scenarios',
-    min: 41,
+    min: 44,
     count: scenarioCount,
   },
 ];

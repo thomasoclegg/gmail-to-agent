@@ -92,10 +92,10 @@ describe('static: manifest, targets, offscreen.html', () => {
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.4.0 adds "activeTab" (no install
   // warning: tests/package/gmail-tab.mjs compares Chrome's warnings with 1.1.1's), the toolbar list as the
   // action's popup and two keyboard shortcuts. scripts/package.mjs writes the Firefox and Safari manifests from it.
-  test('manifest matches the v1.4.0 spec', () => {
+  test('manifest matches the v1.5.0 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.4.0');
+    assert.equal(m.version, '1.5.0');
     assert.equal(m.name, 'Open in AI Agent for Gmail');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -1119,6 +1119,22 @@ describe('background: selected text on any page (1.4.0)', () => {
     }
   });
 
+  test('selected text keeps its built-in prompt under every prompt style and saved prompt (1.5.0)', async () => {
+    for (const promptStyle of ['quick', 'drafts', 'saved1', 'saved2']) {
+      const storage = { folder: '', promptStyle, savedPrompt1: { name: 'Mine', desktop: 'MY DESKTOP STEPS', web: 'MY WEB STEPS' }, savedPrompt2: { name: 'Web', desktop: '', web: 'MY WEB STEPS' } };
+      for (const id of ['claude-code', 'codex', 'chatgpt', 'copy']) {
+        const w = createWorld({ storage });
+        await w.chrome.contextMenus.onClicked.fire(selectionClick(id, SELECTED), OUTLOOK_TAB);
+        await tick(20);
+        const link = w.tabsUpdated[0]?.props.url || '';
+        const text = `${w.clipboard || ''} ${link && decodeURIComponent(link)}`;
+        assert.ok(!/MY (DESKTOP|WEB) STEPS|quick read|as few words/.test(text), `${promptStyle} ${id}: ${text.slice(0, 120)}`);
+        assert.ok(text.includes('Tell me what it is about and what is being asked of me'), `${promptStyle} ${id}: the built-in ask`);
+        if (id === 'chatgpt') await afterOpenDelay();
+      }
+    }
+  });
+
   test('Claude Code: a long selection is cut so the prompt stays under the apps\' 14,336 characters', async () => {
     const w = createWorld();
     await w.chrome.contextMenus.onClicked.fire(selectionClick('claude-code', 'word '.repeat(9000)), OUTLOOK_TAB);
@@ -1517,10 +1533,195 @@ describe('background: the toolbar list (popup.js) (1.4.0)', () => {
     assert.deepStrictEqual([ret, calls], [[undefined], []], 'a content script cannot send it');
   });
 
+  test('a pick from the list with a prompt style (1.5.0): the style goes to the content script as it came, at most 20 characters, for that pick only, so the content script can refuse one it does not have; the shortcut never sends one', async () => {
+    const w = createWorld();
+    w.openTabs = [GMAIL_TAB];
+    w.contentReply = () => ({});
+    eq(await w.fromContent({ ...pick('claude', 7), style: 'drafts' }, POPUP), { ok: true });
+    eq(await w.fromContent({ ...pick('codex', 7), style: 'saved2' }, POPUP), { ok: true });
+    const odd = ['evil', 42, '', 'saved9', { a: 1 }, null, 'x'.repeat(50)];
+    for (const style of odd) eq(await w.fromContent({ ...pick('claude', 7), style }, POPUP), { ok: true });
+    eq(await w.fromContent(pick('claude', 7), POPUP), { ok: true });
+    await tick(30);
+    eq(w.tabsMessages.map((m) => m.msg), [
+      { target: 'content', action: 'run', platform: 'claude', current: true, style: 'drafts' },
+      { target: 'content', action: 'run', platform: 'codex', current: true, style: 'saved2' },
+      ...['evil', '42', '', 'saved9', '[object Object]', 'null', 'x'.repeat(20)].map((style) => ({ target: 'content', action: 'run', platform: 'claude', current: true, style })),
+      { target: 'content', action: 'run', platform: 'claude', current: true },
+    ]);
+    const w2 = createWorld({ storage: { targets: ['claude'], promptStyle: 'quick' } });
+    await w2.chrome.commands.onCommand.fire('send-to-last', GMAIL_TAB);
+    eq(w2.tabsMessages.map((m) => m.msg), [{ target: 'content', action: 'run', platform: 'claude', current: true }], 'the shortcut: no style, so the content script uses the default');
+  });
+
   test('the hand-off and ik actions still refuse the extension\'s own pages (they need a Gmail tab)', async () => {
     const w = createWorld();
     eq(await w.fromContent({ target: 'background', action: 'handoff', platform: 'claude', prompt: 'x' }, POPUP), { ok: false, error: 'Not from Gmail' });
     eq(await w.fromContent({ target: 'background', action: 'ik' }, POPUP), { ok: false, error: 'Not from Gmail' });
+  });
+});
+
+describe('targets.js: prompt styles and saved prompts (1.5.0)', () => {
+  const ctx = vm.createContext({});
+  vm.runInContext(read('targets.js'), ctx);
+  const run = (expr) => clone(vm.runInContext(expr, ctx));
+  const LEGACY = ['desktopInstructions', 'webInstructions'];
+
+  test('the presets, the saved prompts and the style ids follow the spec', () => {
+    eq(run('PRESETS.map((p) => [p.id, p.name])'), [['resolve', 'Resolve fully'], ['quick', 'Quick summary and reply'], ['drafts', 'Draft replies only']]);
+    assert.equal(run('DEFAULT_STYLE'), 'resolve');
+    eq(run('[SAVED.count, SAVED.nameMax, SAVED.key(1), SAVED.key(3), SAVED.styleKey, savedStyle(2), LEGACY_NAME]'), [3, 40, 'savedPrompt1', 'savedPrompt3', 'promptStyle', 'saved2', 'My instructions']);
+    eq(run('PROMPT_KEYS'), { promptStyle: null, savedPrompt1: null, savedPrompt2: null, savedPrompt3: null, desktopInstructions: '', webInstructions: '' });
+    eq(run("[promptName('  A\\u200b  long\\n name  '), promptName('x'.repeat(39) + '\\u{1F600}'), promptName(5), savedName({ name: '' }, 2), savedName({ name: 'Mine' }, 2)]"), ['A long name', 'x'.repeat(39), '', 'Saved prompt 2', 'Mine']);
+  });
+
+  test('promptSettings: cleaned slots, a default that falls back to Resolve fully, and 1.4.0\'s own instructions as the saved prompt they will become until they move', () => {
+    const none = { style: 'resolve', saved: [null, null, null], legacy: 0, stranded: false };
+    eq(run('promptSettings({})'), none);
+    eq(run('promptSettings()'), none);
+    eq(run("promptSettings({ promptStyle: 'saved2', savedPrompt2: { name: ' A\\u200b name ', desktop: '  D\\u202e  ', web: 5, extra: 'x' } })"), { ...none, style: 'saved2', saved: [null, { name: 'A name', desktop: 'D', web: '' }, null] });
+    eq(run("promptSettings({ promptStyle: 'saved3', savedPrompt1: 'text', savedPrompt2: [1] })"), none, 'an empty slot as the default, and slots holding something else');
+    eq(run("promptSettings({ promptStyle: 'quick' })").style, 'quick');
+    eq(run("promptSettings({ promptStyle: 'evil' })").style, 'resolve');
+    eq(run("promptSettings({ desktopInstructions: 'X' })"), { ...none, style: 'saved1', saved: [{ name: 'My instructions', desktop: 'X', web: '' }, null, null], legacy: 1 }, '1.4.0: saved prompt 1 and the default');
+    eq(run("promptSettings({ promptStyle: 'drafts', webInstructions: 'W' })"), { ...none, style: 'drafts', saved: [{ name: 'My instructions', desktop: '', web: 'W' }, null, null], legacy: 1 }, 'a chosen style stays the default');
+    eq(run("promptSettings({ desktopInstructions: ' \\u200b ', webInstructions: '' })"), none, 'blank 1.4.0 boxes are nothing');
+    // Saved prompt 1 taken (a computer on 1.4.0 wrote them after another moved them): the next empty slot, named apart, never the default by itself.
+    const mine = "{ name: 'Mine', desktop: 'M', web: '' }";
+    eq(run(`promptSettings({ savedPrompt1: ${mine}, desktopInstructions: 'X' })`), { ...none, saved: [{ name: 'Mine', desktop: 'M', web: '' }, { name: 'My instructions (from 1.4.0)', desktop: 'X', web: '' }, null], legacy: 2 }, 'slot 1 taken: saved prompt 2, not the default');
+    eq(run(`promptSettings({ promptStyle: 'saved2', savedPrompt1: ${mine}, desktopInstructions: 'X' })`).style, 'saved2', 'chosen as the default on the settings page: it is');
+    eq(run(`promptSettings({ savedPrompt1: ${mine}, savedPrompt2: { name: 'B', desktop: '', web: 'b' }, savedPrompt3: { name: 'C', desktop: '', web: 'c' }, desktopInstructions: 'X' })`), { ...none, saved: [{ name: 'Mine', desktop: 'M', web: '' }, { name: 'B', desktop: '', web: 'b' }, { name: 'C', desktop: '', web: 'c' }], stranded: true }, 'every slot taken: counted as nothing, and stranded so the settings page shows them');
+    // A copy already moved (the old keys not yet gone): nothing, and no second copy.
+    eq(run("promptSettings({ savedPrompt1: { name: 'Renamed', desktop: 'X', web: 'W' }, desktopInstructions: 'X\\u200b', webInstructions: ' W ' })"), { ...none, saved: [{ name: 'Renamed', desktop: 'X', web: 'W' }, null, null] }, 'the same cleaned text in a saved prompt, whatever its name: a copy, counted as nothing');
+    // The finding's case: slot 1 taken, the old texts too long for one item; they show as saved prompt 2 rather than hide, and take slot 1 only once it is empty.
+    const cjk = JSON.stringify('\u4e2d'.repeat(3000));
+    const big = `{ savedPrompt1: ${mine}, desktopInstructions: ${cjk}, webInstructions: 'old web text' }`;
+    eq(run(`promptSettings(${big}).legacy`), 2);
+    eq(run(`promptSettings(${big}).saved[1].name`), 'My instructions (from 1.4.0)');
+    eq(run(`promptSettings(${big}).style`), 'resolve', 'and not the default');
+  });
+
+  test('promptPlan: a preset for both groups, or a saved prompt\'s text for each group; an empty group uses what the default uses for it (its preset, or the default saved prompt\'s text, else Resolve fully); a pick only for that pick, and one it cannot find is null', () => {
+    const S = "promptSettings({ promptStyle: 'quick', savedPrompt1: { name: 'Both', desktop: 'D1', web: 'W1' }, savedPrompt2: { name: 'D only', desktop: 'D2', web: '' } })";
+    const preset = (id) => ({ style: id, desktop: { preset: id, own: '' }, web: { preset: id, own: '' } });
+    eq(run(`promptPlan(${S})`), preset('quick'));
+    eq(run(`promptPlan(${S}, undefined)`), preset('quick'));
+    eq(run(`promptPlan(${S}, 'drafts')`), preset('drafts'));
+    eq(run(`promptPlan(${S}, 'resolve')`), preset('resolve'));
+    eq(run(`promptPlan(${S}, 'saved1')`), { style: 'saved1', desktop: { preset: 'quick', own: 'D1' }, web: { preset: 'quick', own: 'W1' } });
+    eq(run(`promptPlan(${S}, 'saved2')`), { style: 'saved2', desktop: { preset: 'quick', own: 'D2' }, web: { preset: 'quick', own: '' } });
+    for (const pick of ["'saved3'", "'evil'", "''", 'null', '42', "'Resolve'"]) eq(run(`promptPlan(${S}, ${pick})`), null, `pick ${pick}: not here, so null (the content script refuses it)`);
+    const T = "promptSettings({ promptStyle: 'saved2', savedPrompt2: { name: 'D only', desktop: 'D2', web: '' } })";
+    eq(run(`promptPlan(${T})`), { style: 'saved2', desktop: { preset: 'resolve', own: 'D2' }, web: { preset: 'resolve', own: '' } }, 'a saved prompt as the default: Resolve fully for its own empty group');
+    eq(run(`promptPlan(${T}, 'drafts')`), preset('drafts'));
+    // The finding's case: the default saved prompt has desktop text; a web-only saved prompt picked for Claude Code uses that desktop text.
+    const U = "promptSettings({ promptStyle: 'saved2', savedPrompt1: { name: 'x', desktop: '', web: 'W1' }, savedPrompt2: { name: 'x', desktop: 'D2', web: '' } })";
+    eq(run(`promptPlan(${U}, 'saved1')`), { style: 'saved1', desktop: { preset: 'resolve', own: 'D2' }, web: { preset: 'resolve', own: 'W1' } }, 'an empty group: the default saved prompt\'s text for it');
+    eq(run(`promptPlan(${U}, 'saved1').desktop`), run(`promptPlan(${U}).desktop`), 'the same as the default gives that group');
+  });
+
+  test('promptMigration: 1.4.0\'s own instructions go into the first empty saved prompt, "My instructions" in saved prompt 1, which alone becomes the default when no style was chosen; the old keys go after; a copy already there means only the old keys go; too long for one item, or no free slot, and nothing moves', () => {
+    const m = (s) => run(`promptMigration(${JSON.stringify(s)})`);
+    eq(m({}), null, 'nothing to move');
+    eq(m({ targets: ['claude'], promptStyle: 'quick' }), null);
+    eq(m({ desktopInstructions: '', webInstructions: '' }), { set: {}, remove: LEGACY }, 'empty boxes: only the old keys go');
+    eq(m({ desktopInstructions: ' Resolve first.\u200b ', webInstructions: '' }), { set: { savedPrompt1: { name: 'My instructions', desktop: 'Resolve first.', web: '' }, promptStyle: 'saved1' }, remove: LEGACY });
+    eq(m({ desktopInstructions: 'D', webInstructions: 'W', promptStyle: 'drafts' }), { set: { savedPrompt1: { name: 'My instructions', desktop: 'D', web: 'W' } }, remove: LEGACY }, 'a chosen style is kept');
+    eq(m({ webInstructions: 'W', savedPrompt1: { name: 'Mine', desktop: '', web: '' } }), { set: { savedPrompt2: { name: 'My instructions (from 1.4.0)', desktop: '', web: 'W' } }, remove: LEGACY }, 'slot 1 taken: slot 2, named apart, and the default left alone');
+    eq(m({ webInstructions: 'W', savedPrompt1: {}, savedPrompt2: {}, savedPrompt3: {} }), null, 'no free slot');
+    // Idempotent: two computers moving at once, or the old keys still on their way out, never make a second copy.
+    eq(m({ desktopInstructions: 'D', webInstructions: 'W', savedPrompt1: { name: 'My instructions', desktop: 'D', web: 'W' }, promptStyle: 'saved1' }), { set: {}, remove: LEGACY }, 'a copy already in saved prompt 1: only the old keys go');
+    eq(m({ desktopInstructions: 'D', savedPrompt1: { name: 'A', desktop: 'a', web: '' }, savedPrompt3: { name: 'Renamed', desktop: 'D', web: '' } }), { set: {}, remove: LEGACY }, 'a copy in any slot, renamed: only the old keys go');
+    eq(m({ desktopInstructions: 'D', savedPrompt1: {}, savedPrompt2: {}, savedPrompt3: { name: 'Copy', desktop: 'D', web: '' } }), { set: {}, remove: LEGACY }, 'every slot taken but one is the copy: only the old keys go');
+    const desktop = 'a'.repeat(4000);
+    const web = 'b\n'.repeat(2000);
+    assert.ok(run(`fitsSync('webInstructions', ${JSON.stringify(web)})`) && run(`fitsSync('desktopInstructions', ${JSON.stringify(desktop)})`), 'control: each fitted 1.4.0 alone');
+    eq(m({ desktopInstructions: desktop, webInstructions: web }), null, 'together too long for one item: they stay where they are');
+    eq(m({ desktopInstructions: '\u4e2d'.repeat(3000), webInstructions: 'old web text', savedPrompt1: { name: 'Mine', desktop: 'M', web: '' } }), null, 'the same with slot 1 taken: they stay (and show as saved prompt 2)');
+  });
+
+  test('the readers and the move agree: before and after promptMigration every pick gets the same prompts, whichever slot the old text goes to', () => {
+    const cases = [
+      { desktopInstructions: 'D', webInstructions: 'W' },
+      { desktopInstructions: 'D', promptStyle: 'quick' },
+      { webInstructions: 'W', savedPrompt1: { name: 'Mine', desktop: 'M', web: '' } },
+      { webInstructions: 'W', savedPrompt1: { name: 'Mine', desktop: 'M', web: '' }, savedPrompt2: { name: 'Two', desktop: '', web: 'two' } },
+    ];
+    for (const s of cases) {
+      const after = run(`(() => { const s = ${JSON.stringify(s)}; const m = promptMigration(s); const t = { ...s, ...m.set }; for (const k of m.remove) delete t[k]; return t; })()`);
+      for (const pick of ['undefined', "'saved1'", "'saved2'", "'saved3'", "'drafts'"]) {
+        const plan = (x) => run(`promptPlan(promptSettings(${JSON.stringify(x)}), ${pick})`);
+        eq(plan(after), plan(s), `${JSON.stringify(s)} pick ${pick}`);
+      }
+      eq(run(`promptSettings(${JSON.stringify(after)}).saved.map((p) => p && p.name)`), run(`promptSettings(${JSON.stringify(s)}).saved.map((p) => p && p.name)`), 'the same names');
+    }
+  });
+
+  test('the byte count matches Chromium\'s for storage.sync (key plus JSON in UTF-8, "<" and the line separators as six bytes), without TextEncoder', () => {
+    const chromium = (k, v) => new TextEncoder().encode(k + JSON.stringify(v).replace(/[<\u2028\u2029]/g, '\\u003C')).length;
+    const values = ['plain', 'é and 中 and \u{1F600}', 'a<b>c', 'line\u2028para\u2029', 'quote " and \\ and \n', { name: 'N', desktop: '中'.repeat(100), web: '<'.repeat(10) }];
+    for (const v of values) assert.equal(run(`syncBytes('savedPrompt1', ${JSON.stringify(v)})`), chromium('savedPrompt1', v), JSON.stringify(v));
+    assert.equal(run("typeof TextEncoder"), 'undefined', 'control: no TextEncoder in this context');
+    const fill = (n) => ({ name: 'x', desktop: 'a'.repeat(n), web: '' });
+    const base = chromium('savedPrompt1', fill(0));
+    eq(run(`[fitsSync('savedPrompt1', ${JSON.stringify(fill(8192 - base))}), fitsSync('savedPrompt1', ${JSON.stringify(fill(8193 - base))})]`), [true, false], 'exactly 8,192 bytes fit; one more does not');
+  });
+});
+
+describe('background: moving 1.4.0\'s own instructions (1.5.0)', () => {
+  const plan = (w, s) => clone(w.evalIn(`promptPlan(promptSettings(${JSON.stringify(s)}))`));
+
+  test('update: saved prompt 1, "My instructions", becomes the default; the new item is written before the old keys go; the prompts are the same before and after', async () => {
+    const storage = { targets: ['claude', 'codex'], folder: '/x', desktopInstructions: 'Resolve first.\nThen draft.', webInstructions: 'Sum up.' };
+    const w = createWorld({ storage });
+    const before = plan(w, storage);
+    await w.chrome.runtime.onInstalled.fire({ reason: 'update', previousVersion: '1.4.0' });
+    await w.settle();
+    await tick(20);
+    eq(w.storage, { targets: ['claude', 'codex'], folder: '/x', savedPrompt1: { name: 'My instructions', desktop: 'Resolve first.\nThen draft.', web: 'Sum up.' }, promptStyle: 'saved1' });
+    const writes = w.log.filter((e) => e.ev === 'storage.set' || e.ev === 'storage.remove').map((e) => e.ev);
+    eq(writes, ['storage.set', 'storage.remove'], 'the new item first, then the old keys');
+    eq(plan(w, w.storage), before, 'the same prompts for every pick');
+    eq(before.desktop, { preset: 'resolve', own: 'Resolve first.\nThen draft.' });
+    eq(w.optionsOpened, 0, 'no settings page for it');
+    eq(w.local.promptsMoved, 1, 'the settings page is told, on this computer, which saved prompt they became');
+  });
+
+  test('update: a chosen style is kept, a taken slot 1 means slot 2 (not the default), a copy already there means only the old keys go, every slot taken or too long for one item stays (still that saved prompt for the readers), nothing to move writes nothing; a browser start moves them too; install moves nothing', async () => {
+    const after = async (storage, details = { reason: 'update', previousVersion: '1.4.0' }) => {
+      const w = createWorld({ storage });
+      if (details === 'startup') await w.chrome.runtime.onStartup.fire();
+      else await w.chrome.runtime.onInstalled.fire(details);
+      await w.settle();
+      await tick(30);
+      return w;
+    };
+    let w = await after({ targets: ['claude'], promptStyle: 'drafts', webInstructions: 'W' });
+    eq(w.storage, { targets: ['claude'], promptStyle: 'drafts', savedPrompt1: { name: 'My instructions', desktop: '', web: 'W' } });
+    w = await after({ targets: ['claude'], savedPrompt1: { name: 'Mine', desktop: 'M', web: '' }, desktopInstructions: 'D' });
+    eq(w.storage, { targets: ['claude'], savedPrompt1: { name: 'Mine', desktop: 'M', web: '' }, savedPrompt2: { name: 'My instructions (from 1.4.0)', desktop: 'D', web: '' } }, 'slot 1 taken: saved prompt 2, named apart, and the default left as it was');
+    eq(w.local.promptsMoved, 2);
+    // A computer still on 1.4.0 wrote them again after this one moved them, or two computers moved them at once: no second copy.
+    w = await after({ targets: ['claude'], savedPrompt1: { name: 'My instructions', desktop: 'D', web: 'W' }, promptStyle: 'saved1', desktopInstructions: 'D', webInstructions: 'W' }, 'startup');
+    eq(w.storage, { targets: ['claude'], savedPrompt1: { name: 'My instructions', desktop: 'D', web: 'W' }, promptStyle: 'saved1' }, 'a copy already there: only the old keys go');
+    eq(w.log.filter((e) => e.ev === 'storage.set').length, 0, 'nothing written for it');
+    eq(w.local.promptsMoved, undefined, 'and nothing said');
+    w = await after({ targets: ['claude'], savedPrompt1: { name: 'A', desktop: 'a', web: '' }, savedPrompt2: { name: 'B', desktop: 'b', web: '' }, savedPrompt3: { name: 'C', desktop: 'c', web: '' }, desktopInstructions: 'D' }, 'startup');
+    eq(w.storage.desktopInstructions, 'D', 'every slot taken: they stay, for the settings page to show');
+    w = await after({ targets: ['claude'], desktopInstructions: '', webInstructions: '' });
+    eq(w.storage, { targets: ['claude'] });
+    eq(w.log.filter((e) => e.ev === 'storage.set').length, 0, 'empty boxes: nothing written, only removed');
+    const big = { targets: ['claude'], desktopInstructions: 'a'.repeat(4000), webInstructions: 'b\n'.repeat(2000) };
+    w = await after(big);
+    eq(w.storage, big, 'too long for one item: left as it was');
+    eq(plan(w, w.storage).desktop, { preset: 'resolve', own: 'a'.repeat(4000) }, 'and still saved prompt 1, the default, for the readers');
+    w = await after({ targets: ['claude'], promptStyle: 'quick' });
+    eq(w.log.filter((e) => e.ev === 'storage.set' || e.ev === 'storage.remove'), [], 'nothing to move: nothing written');
+    w = await after({ targets: ['claude'], desktopInstructions: 'D' }, 'startup');
+    eq(w.storage, { targets: ['claude'], savedPrompt1: { name: 'My instructions', desktop: 'D', web: '' }, promptStyle: 'saved1' }, 'a browser start moves them too');
+    w = await after({ targets: ['claude'], desktopInstructions: 'D' }, { reason: 'chrome_update' });
+    eq(w.storage, { targets: ['claude'], desktopInstructions: 'D' }, 'a Chrome update moves nothing');
+    eq(w.warnings, []);
   });
 });
 
