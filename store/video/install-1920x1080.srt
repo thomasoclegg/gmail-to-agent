@@ -1,0 +1,66 @@
+1
+00:00:00,000 --> 00:00:03,200
+Install in about two minutes.
+
+2
+00:00:03,200 --> 00:00:07,600
+Download the zip from the website.
+
+3
+00:00:07,600 --> 00:00:11,800
+Unzip it: right-click, Extract All.
+On a Mac, double-click it.
+
+4
+00:00:11,800 --> 00:00:16,000
+Move the folder somewhere it can stay.
+
+5
+00:00:16,000 --> 00:00:19,000
+Open chrome://extensions.
+
+6
+00:00:19,000 --> 00:00:21,000
+Switch on Developer mode.
+
+7
+00:00:21,000 --> 00:00:23,000
+Click Load unpacked.
+
+8
+00:00:23,000 --> 00:00:25,800
+Pick the unzipped folder, then Select.
+
+9
+00:00:25,800 --> 00:00:29,000
+Installed. The settings page
+opens by itself.
+
+10
+00:00:29,000 --> 00:00:31,000
+Tick the AIs you use.
+
+11
+00:00:31,000 --> 00:00:35,400
+Pin it from the puzzle-piece menu.
+
+12
+00:00:35,400 --> 00:00:39,700
+In Gmail, right-click an email.
+Pick an AI.
+
+13
+00:00:39,700 --> 00:00:42,667
+It copies the thread and opens your AI.
+
+14
+00:00:43,167 --> 00:00:48,900
+Paste it, check it, then press Enter.
+
+15
+00:00:48,900 --> 00:00:51,200
+Free and open source.
+
+16
+00:00:51,200 --> 00:00:54,000
+Coming soon to the Chrome Web Store.

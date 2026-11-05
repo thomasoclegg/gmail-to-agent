@@ -19,6 +19,7 @@ import { findChrome, extraChromeFlags } from '../../tests/lib/chrome.mjs';
 export const MEDIA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const REPO = path.dirname(MEDIA);
 const STAGE = path.join(MEDIA, 'stage');
+const DOCS = path.join(REPO, 'docs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- The extension, as it ships ----
@@ -65,7 +66,12 @@ export function printView(data, id) {
 
 // ---- Chrome ----
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
+
+// The recordings are in British English, so the browser is too: the prompts the extension copies name
+// the browser's language ("Write the summary in British English"). With these switches, navigator.language
+// reads en-GB in the tabs and in the service worker (checked on a Mac, where the system is en-US).
+const LANG = ['--lang=en-GB', '--accept-lang=en-GB,en'];
 
 export async function startChrome({ profile, log = () => {} }) {
   fs.mkdirSync(profile, { recursive: true });
@@ -75,7 +81,7 @@ export async function startChrome({ profile, log = () => {} }) {
       '--headless=new', '--no-first-run', '--no-default-browser-check', '--disable-background-networking', '--disable-sync',
       '--disable-component-update', '--disable-default-apps', '--disable-renderer-backgrounding', '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows', '--hide-scrollbars', '--force-color-profile=srgb', '--mute-audio',
-      `--user-data-dir=${profile}`, '--host-resolver-rules=MAP * ~NOTFOUND', '--remote-debugging-pipe', '--enable-unsafe-extension-debugging',
+      `--user-data-dir=${profile}`, ...LANG, '--host-resolver-rules=MAP * ~NOTFOUND', '--remote-debugging-pipe', '--enable-unsafe-extension-debugging',
       ...extraChromeFlags(), 'about:blank',
     ],
     { stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] },
@@ -223,7 +229,16 @@ export async function serveStage(b, tab, data) {
     let body;
     let type = 'text/html; charset=utf-8';
     let held = false;
-    if (url.searchParams.get('view') === 'pt') {
+    let code = 200;
+    if (url.pathname.startsWith('/__docs/')) {
+      // The project's website (docs/), for the install video's page. Its videos are not served, so they
+      // keep their posters and never play on the wall clock.
+      const file = path.join(DOCS, path.normalize(decodeURIComponent(url.pathname.slice('/__docs/'.length))).replace(/^(\.\.[/\\])+/, ''));
+      const ok = file.startsWith(DOCS + path.sep) && !/\.(webm|mp4)$/.test(file) && fs.existsSync(file) && fs.statSync(file).isFile();
+      body = ok ? fs.readFileSync(file) : 'Not found';
+      type = ok ? TYPES[path.extname(file)] || 'application/octet-stream' : 'text/plain';
+      code = ok ? 200 : 404;
+    } else if (url.searchParams.get('view') === 'pt') {
       body = printView(data, url.searchParams.get('th')) ?? '<html><body>Not found</body></html>';
       tab.printViews = (tab.printViews || 0) + 1;
       held = true; // answered on the video's clock (Director.frame), as a real mailbox takes a moment
@@ -235,7 +250,7 @@ export async function serveStage(b, tab, data) {
     const fulfil = () =>
       b.send(
         'Fetch.fulfillRequest',
-        { requestId, responseCode: 200, responseHeaders: [{ name: 'Content-Type', value: type }, { name: 'Cache-Control', value: 'no-store' }], body: Buffer.from(body).toString('base64') },
+        { requestId, responseCode: code, responseHeaders: [{ name: 'Content-Type', value: type }, { name: 'Cache-Control', value: 'no-store' }], body: Buffer.from(body).toString('base64') },
         tab.session,
       ).catch(() => {});
     if (held) tab.held.push({ fulfil, n: tab.printViews });

@@ -5,7 +5,8 @@
 (function (root) {
   const ME = { name: 'Sam Morgan', email: 'sam.morgan@example.com' };
 
-  // Newest first, as Gmail lists them. ids are 16 hex digits, like Gmail's data-legacy-thread-id.
+  // Newest first, as Gmail lists them. ids are 16 hex digits, like Gmail's data-legacy-thread-id. Six start
+  // unread; the walkthrough opens two of them, and Triage unread hands over the other four.
   const THREADS = [
     {
       id: '19a4c2e81f07b3d5',
@@ -76,7 +77,7 @@
       subject: 'December pick',
       snippet: "We're down to two. Vote by Friday",
       when: '3 Nov',
-      unread: false,
+      unread: true,
       messages: [{ name: 'Book club', email: 'bookclub@example.com', to: ME.email, date: 'Tue, 3 Nov 2026, 20:12', body: "We're down to two. Vote by Friday." }],
     },
     {
@@ -86,7 +87,7 @@
       subject: 'School trip consent form',
       snippet: 'Please sign and return it by Thursday',
       when: '3 Nov',
-      unread: false,
+      unread: true,
       messages: [{ name: 'Hannah Kim', email: 'hannah.kim@example.com', to: ME.email, date: 'Tue, 3 Nov 2026, 08:47', body: 'Please sign and return it by Thursday.\n\nHannah' }],
     },
     {
@@ -124,7 +125,7 @@
       subject: 'Tickets for the 22nd',
       snippet: "I've got two spares if you still want them",
       when: '31 Oct',
-      unread: false,
+      unread: true,
       messages: [{ name: 'Nadia Haddad', email: 'nadia.haddad@example.com', to: ME.email, date: 'Sat, 31 Oct 2026, 19:55', body: "I've got two spares if you still want them." }],
     },
     {
@@ -134,7 +135,7 @@
       subject: 'Allotment rota',
       snippet: 'Your weeks are the 9th and the 23rd',
       when: '30 Oct',
-      unread: false,
+      unread: true,
       messages: [{ name: 'Lena Fischer', email: 'lena.fischer@example.com', to: ME.email, date: 'Fri, 30 Oct 2026, 07:41', body: 'Your weeks are the 9th and the 23rd.' }],
     },
   ];

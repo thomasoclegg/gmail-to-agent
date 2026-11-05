@@ -36,7 +36,7 @@ Or tick several emails at once.
 
 10
 00:00:38,200 --> 00:00:41,300
-It reads each one without opening it.
+It reads each email without opening it.
 
 11
 00:00:41,300 --> 00:00:45,000
@@ -51,13 +51,44 @@ Or copy it for any AI.
 Claude Code and Codex read it themselves.
 
 14
-00:00:52,900 --> 00:00:56,700
-It gets the thread ID, not the message.
+00:00:52,900 --> 00:00:56,500
+The email's text is never in the link.
 
 15
-00:00:56,700 --> 00:00:59,800
-No server, no account, no tracking.
+00:00:56,500 --> 00:01:01,000
+It is told to do the work, then ask first.
 
 16
-00:00:59,800 --> 00:01:03,000
-Change your AIs from the toolbar icon.
+00:01:01,000 --> 00:01:04,867
+Nothing ticked? Triage your unread emails.
+
+17
+00:01:04,867 --> 00:01:08,200
+It copies them, and they stay unread.
+
+18
+00:01:08,200 --> 00:01:12,500
+The AI sorts them: Action, Consolidate,
+Disregard and Draft.
+
+19
+00:01:12,500 --> 00:01:16,733
+Or tick some, then click the icon
+in the browser's toolbar.
+
+20
+00:01:16,733 --> 00:01:21,000
+It lists your AIs for what you ticked.
+
+21
+00:01:21,000 --> 00:01:24,000
+In Settings, write
+your own instructions.
+
+22
+00:01:24,000 --> 00:01:27,000
+No server, no account, no tracking.
+
+23
+00:01:27,000 --> 00:01:29,500
+Free and open source.

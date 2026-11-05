@@ -42,8 +42,13 @@ svg { display: block; }
 .tab .t { overflow: hidden; text-overflow: ellipsis; }
 .tab .x { width: 14px; height: 14px; flex: none; margin-left: auto; color: #5f6368; }
 .plus { width: 28px; height: 28px; margin: 0 0 2px 4px; color: #43474e; display: grid; place-items: center; }
-#badge { position: absolute; right: 14px; top: 9px; padding: 3px 9px 4px; border-radius: 10px; background: rgba(21, 23, 26, 0.07);
+/* In the overlay (see buildHud), so opaque: the tab strip's grey with 7% ink over it, as before. Behind it, a plate of
+   the strip's own grey fills the strip's right end, so it cannot be seen until the camera zooms in; then it hides
+   whatever passes under the label (the + button, the extension's icon, the avatar), as the strip's corner would. */
+#badge { position: absolute; right: 14px; top: 9px; padding: 3px 9px 4px; border-radius: 10px; background: #d1d5d9;
          font: 600 11.5px/1.2 var(--sans); color: var(--ink-2); letter-spacing: 0.01em; }
+#badge::before { content: ""; position: absolute; z-index: -1; left: -30px; right: -14px; top: -9px; height: 36px;
+                 border-bottom-left-radius: 12px; background: #dfe3e7; }
 #bar { position: absolute; left: 0; right: 0; top: 36px; height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px;
        background: #ffffff; border-bottom: 1px solid #e3e5e8; color: #5f6368; }
 #bar .nav { width: 18px; height: 18px; }
@@ -83,6 +88,14 @@ svg { display: block; }
 .gm-tools { display: flex; align-items: center; gap: 22px; height: 46px; padding: 0 18px; color: var(--gm-icon); }
 .gm-tools svg { width: 20px; height: 20px; }
 .gm-tools .count { margin-left: auto; margin-right: 8px; font-size: 12px; color: var(--gm-soft); }
+.gm-tools .nf { display: grid; place-items: center; }
+/* With rows ticked, Gmail swaps refresh for the selection actions, before More. */
+.gm-tools .gm-sel { display: flex; align-items: center; gap: 22px; }
+/* The extension's button (content.js), before Gmail's More button. In Gmail, Gmail's own classes on it give its
+   size and hover; here it is a plain outlined button, as the website draws it. */
+.gm-tools .vpa-tb { height: 30px; border: 1px solid #c4c7c5; border-radius: 4px; background: var(--gm-panel); color: var(--gm-ink); }
+.gm-tools .vpa-tb.T-I-JW { background: var(--gm-hover); }
+.gm-tools .vpa-tb svg { width: 18px; height: 18px; color: var(--gm-icon); }
 .gm-tabs { display: flex; height: 46px; border-bottom: 1px solid var(--gm-line); }
 .gm-tabs span { position: relative; display: flex; align-items: center; width: 196px; padding-left: 18px; font-weight: 500; color: var(--gm-soft); }
 .gm-tabs span.on { color: var(--gm-tab); }
@@ -175,6 +188,11 @@ body > div.J-M, body > div#vpa-toast { translate: var(--gm-x, 0px) 0; }
 .ai-btn.send.on { background: var(--ink); }
 .ai-btn svg { width: 18px; height: 18px; }
 
+/* ---- The toolbar list: the real popup.html, captured from its own tab, in the browser's popup bubble ---- */
+#popup { position: absolute; z-index: 2147483646; overflow: hidden; border-radius: 8px; background: #fafaf8;
+         box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 26px rgba(0, 0, 0, 0.22); }
+#popup img { display: block; }
+
 /* ---- Chrome's "Open Claude?" prompt, drawn ---- */
 #dlg { position: absolute; z-index: 6; left: 50%; top: calc(var(--frame) + 10px); width: 430px; transform: translateX(-50%);
        padding: 22px 24px 18px; border-radius: 12px; background: #ffffff; font: 400 13.5px/1.45 var(--ui); color: #1f1f1f;
@@ -200,7 +218,7 @@ body > div.J-M, body > div#vpa-toast { translate: var(--gm-x, 0px) 0; }
 #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-family: var(--sans); }
 .cap { position: absolute; left: 0; right: 0; bottom: calc(30px * var(--u)); display: flex; justify-content: center; }
 .cap span { max-width: 82%; padding: calc(9px * var(--u)) calc(18px * var(--u)) calc(11px * var(--u)); border-radius: 4px;
-            background: rgba(21, 23, 26, 0.93); color: #fafaf8; font: 600 calc(23px * var(--u))/1.3 var(--sans); letter-spacing: -0.005em;
+            background: var(--ink); color: #fafaf8; font: 600 calc(23px * var(--u))/1.3 var(--sans); letter-spacing: -0.005em;
             text-align: center; text-wrap: balance; white-space: pre-line; box-shadow: inset 0 -3px 0 var(--rubric); }
 .keys { position: absolute; left: 0; right: 0; bottom: calc(112px * var(--u)); display: flex; justify-content: center; gap: calc(12px * var(--u)); }
 .keys.top { bottom: auto; top: calc(var(--frame) + 46px * var(--u)); }
@@ -235,15 +253,148 @@ body > div.J-M, body > div#vpa-toast { translate: var(--gm-x, 0px) 0; }
 .card.thumb .small { left: calc(46px * var(--u)); right: auto; bottom: calc(26px * var(--u)); }
 
 /* What a desktop agent gets: the prompt, line by line, in the website's style. */
+/* The prompt is shortened to fit (stage.js fitRows): one line a row, blank rows at half height. */
 .card.prompt { align-items: stretch; justify-content: flex-start; text-align: left;
-               padding: calc(54px * var(--u)) calc(64px * var(--u)) 0; }
-.card.prompt h3 { margin: 0 0 calc(6px * var(--u)); font: 600 calc(30px * var(--u))/1.15 var(--sans); letter-spacing: -0.02em; }
-.card.prompt .sub { margin: 0 0 calc(22px * var(--u)); font: 400 calc(17px * var(--u))/1.45 var(--sans); color: var(--ink-2); }
-.card.prompt .grid { display: grid; grid-template-columns: minmax(0, 1fr) calc(250px * var(--u)); column-gap: calc(34px * var(--u));
-                     border-top: 1px solid var(--ink); padding-top: calc(12px * var(--u)); }
-.card.prompt .lines { font: calc(14px * var(--u))/1.6 var(--mono); }
-.card.prompt .l { display: block; padding: 0 calc(8px * var(--u)); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.6em; }
-.card.prompt .l.cut { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+               padding: calc(40px * var(--u)) calc(44px * var(--u)) 0; }
+.card.prompt h3 { margin: 0 0 calc(4px * var(--u)); font: 600 calc(28px * var(--u))/1.15 var(--sans); letter-spacing: -0.02em; }
+.card.prompt .sub { margin: 0 0 calc(14px * var(--u)); font: 400 calc(15px * var(--u))/1.45 var(--sans); color: var(--ink-2); }
+.card.prompt .grid { display: grid; grid-template-columns: minmax(0, 1fr) calc(220px * var(--u)); column-gap: calc(28px * var(--u));
+                     border-top: 1px solid var(--ink); padding-top: calc(10px * var(--u)); }
+.card.prompt .lines { font: calc(11.5px * var(--u))/1.45 var(--mono); }
+/* Fewer rows, larger (the clips, shown smaller on the website): about the size of the 1.3 card's text. */
+.card.prompt.big .lines { font-size: calc(15px * var(--u)); }
+.card.prompt .l { display: block; padding: 0 calc(8px * var(--u)); white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.45em; }
+.card.prompt .l.cut, .card.prompt .l.fit { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.card.prompt .l.blank { min-height: 0; height: 0.7em; }
 .card.prompt .l.hl { background: var(--tint); }
-.card.prompt .notes p { margin: 0 0 calc(14px * var(--u)); font: 400 calc(15px * var(--u))/1.45 var(--sans); color: var(--ink-2); }
+.card.prompt .notes p { margin: 0 0 calc(12px * var(--u)); font: 400 calc(14px * var(--u))/1.4 var(--sans); color: var(--ink-2); }
 .card.prompt .notes b { display: block; font-weight: 600; color: var(--ink); }
+
+/* ---- Installing it (the install video): the toolbar's puzzle piece and downloads, the website, the
+   browser's extensions page, and the computer's file windows. All drawn plainly and generically: no
+   product's own look. The website is the real docs/index.html, in a frame. ---- */
+#view { z-index: 0; } /* pages stack by tab order inside the view, never above the menus and dialogs */
+#puz, #dl { position: relative; width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; color: #5f6368; }
+#puz svg, #dl svg { width: 19px; height: 19px; }
+#puz:hover, #puz.hover, #dl:hover, #dl.hover { background: #e8eaed; }
+#addr.focus { background: #ffffff; box-shadow: inset 0 0 0 1.5px var(--line); }
+#addr .sel { background: #c9d6e6; color: #1f1f1f; padding: 2px 0; }
+#addr .caret { display: inline-block; width: 1.5px; height: 17px; margin-left: 1px; background: #1f1f1f; }
+
+#site { background: #fafaf8; }
+#site iframe { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border: 0; }
+
+/* The download bubble under the toolbar */
+#dlb { position: absolute; z-index: 6; top: 80px; width: 340px; padding: 14px 0 10px; border-radius: 12px; background: #ffffff;
+       font: 400 13px/1.4 var(--ui); color: #1f1f1f; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 8px 28px rgba(0, 0, 0, 0.2); }
+#dlb .h { margin: 0 18px 10px; font: 500 14px/1.3 var(--ui); }
+#dlb .row { display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 18px; }
+#dlb .row .fi { width: 30px; height: 30px; flex: none; }
+#dlb .row .t { flex: 1; min-width: 0; }
+#dlb .row b { display: block; font-weight: 500; }
+#dlb .row span.s { display: block; font-size: 12px; color: #5e6268; }
+#dlb .btn { width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; color: #444746; }
+#dlb .btn svg { width: 19px; height: 19px; }
+#dlb .btn:hover, #dlb .btn.hover { background: #eceef0; }
+
+/* The puzzle-piece Extensions menu */
+#xmenu { position: absolute; z-index: 6; top: 80px; width: 330px; padding: 12px 0 8px; border-radius: 12px; background: #ffffff;
+         font: 400 13.5px/1.4 var(--ui); color: #1f1f1f; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 8px 28px rgba(0, 0, 0, 0.2); }
+#xmenu .h { display: flex; align-items: center; justify-content: space-between; margin: 0 14px 8px 18px; font: 500 15px/1.3 var(--ui); }
+#xmenu .h svg { width: 18px; height: 18px; color: #5f6368; }
+#xmenu .row { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 10px 0 18px; }
+#xmenu .row > svg { width: 20px; height: 20px; flex: none; color: #5f6368; }
+#xmenu .row .n { flex: 1; }
+#xmenu .pin { width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; color: #5f6368; }
+#xmenu .pin svg { width: 18px; height: 18px; }
+#xmenu .pin:hover, #xmenu .pin.hover { background: #eceef0; }
+#xmenu .pin.on { color: var(--ink); }
+#xmenu .sep { height: 1px; margin: 6px 0; background: var(--gm-sep); }
+
+/* The browser's extensions page, drawn plainly */
+#extp { background: #f4f5f7; font: 400 13.5px/1.45 var(--ui); color: #1f1f1f; }
+#extp .xp-in { position: absolute; inset: 0; }
+#extp .top { display: flex; align-items: center; gap: 16px; height: 60px; padding: 0 24px 0 20px; background: #ffffff;
+             border-bottom: 1px solid #e3e5e8; }
+#extp .top > svg { width: 22px; height: 22px; color: #5f6368; }
+#extp .title { width: 220px; font: 400 21px/1 var(--ui); }
+#extp .search { display: flex; align-items: center; gap: 12px; width: 460px; height: 38px; padding: 0 16px; border-radius: 19px;
+                background: #eef0f3; color: #6b7078; }
+#extp .search svg { width: 19px; height: 19px; }
+#extp .dev { margin-left: auto; display: flex; align-items: center; gap: 12px; color: #3c4043; }
+.xp-switch { position: relative; width: 36px; height: 20px; border-radius: 10px; background: #c4c8ce; }
+.xp-switch i { position: absolute; left: 3px; top: 3px; width: 14px; height: 14px; border-radius: 7px; background: #ffffff;
+               box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.xp-switch.on { background: var(--ink); }
+.xp-switch.on i { left: 19px; }
+#extp .tools { display: flex; align-items: center; gap: 12px; padding: 0 24px; overflow: hidden; background: #ffffff;
+               border-bottom: 1px solid #e3e5e8; }
+.xp-btn { display: inline-flex; align-items: center; height: 34px; padding: 0 16px; border: 1px solid #c4c8ce; border-radius: 17px;
+          background: #ffffff; color: #1f1f1f; font: 500 13.5px/1 var(--ui); white-space: nowrap; }
+.xp-btn:hover, .xp-btn.hover { background: #eceef0; }
+#extp .grid { padding: 28px 24px; }
+#extp .xp-card { width: 420px; border-radius: 10px; background: #ffffff; box-shadow: 0 0 0 1px #e3e5e8, 0 1px 3px rgba(0, 0, 0, 0.06);
+              transform-origin: 30% 20%; }
+#extp .xp-card .c-top { display: flex; gap: 16px; padding: 18px 20px 14px; }
+#extp .xp-card .c-top > svg { width: 44px; height: 44px; flex: none; }
+#extp .xp-card p { margin: 0; }
+#extp .xp-card .c-name { font: 500 15px/1.3 var(--ui); }
+#extp .xp-card .c-ver { margin-left: 8px; font-weight: 400; color: #5e6268; }
+#extp .xp-card .c-desc { margin-top: 4px; color: #444746; }
+#extp .xp-card .c-id { margin-top: 6px; font-size: 12px; color: #5e6268; }
+#extp .xp-card .c-foot { display: flex; align-items: center; gap: 10px; padding: 10px 20px 14px; border-top: 1px solid #eef0f2; }
+#extp .xp-card .c-foot .sp { flex: 1; }
+#extp .xp-card .c-foot > svg { width: 20px; height: 20px; color: #5f6368; }
+
+/* The computer's file window and the folder picker, drawn plainly */
+#dim { position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: 0; background: #15171a; pointer-events: none; }
+.fw { position: absolute; z-index: 7; overflow: hidden; border-radius: 10px; background: #ffffff; font: 400 13.5px/1.4 var(--ui);
+      color: #1f1f1f; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 18px 50px rgba(0, 0, 0, 0.28); }
+.fw .bar { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 8px 0 16px; background: #f1f3f5;
+           border-bottom: 1px solid #e3e5e8; }
+.fw .bar > svg.ico { width: 18px; height: 18px; color: #7f8c99; }
+.fw .bar .t { font-weight: 500; }
+.fw .bar .wb { margin-left: auto; display: flex; gap: 2px; }
+.fw .bar .wb svg { width: 34px; height: 28px; padding: 6px 10px; color: #5f6368; }
+.fw .body { display: grid; grid-template-columns: 172px minmax(0, 1fr); height: calc(100% - 44px); }
+.fw.foot .body { height: calc(100% - 44px - 64px); }
+.fw .side { padding: 12px 8px; border-right: 1px solid #eef0f2; background: #fafbfc; }
+.fw .side div { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: 6px; color: #3c4043; }
+.fw .side div svg { width: 18px; height: 18px; color: #7f8c99; }
+.fw .side div.on { background: #e4e8ed; font-weight: 500; color: #1f1f1f; }
+.fw .side div.drop { background: #d5dde6; box-shadow: inset 0 0 0 1.5px var(--line); }
+.fw .main { position: relative; overflow: hidden; }
+.fw .head, .fw .row { display: grid; grid-template-columns: minmax(0, 1fr) 90px 130px; align-items: center; column-gap: 12px; padding: 0 18px; }
+.fw .head { height: 34px; border-bottom: 1px solid #eef0f2; font-size: 12px; color: #5e6268; }
+.fw .row { height: 36px; overflow: hidden; }
+.fw .row .n { display: flex; align-items: center; gap: 10px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fw .row .n svg { width: 22px; height: 22px; flex: none; }
+.fw .row .s, .fw .row .k { font-size: 12.5px; color: #5e6268; white-space: nowrap; }
+.fw .row.on { background: #dfe6ee; }
+.fw .row.drag { opacity: 0.4; }
+/* The picker's Folder box lines up with the list above it, not with the places */
+.fw .foot-row { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 18px 0 190px;
+                border-top: 1px solid #e3e5e8; background: #fafbfc; }
+.fw .field { flex: 1; display: flex; align-items: center; gap: 10px; color: #5e6268; }
+.fw .field b { flex: 1; height: 32px; display: flex; align-items: center; padding: 0 10px; border: 1px solid #c4c8ce; border-radius: 6px;
+               background: #ffffff; font-weight: 400; color: #1f1f1f; }
+.fw .fb { display: inline-flex; align-items: center; height: 34px; padding: 0 20px; border: 1px solid #c4c8ce; border-radius: 17px;
+          background: #ffffff; font-weight: 500; }
+.fw .fb.go { border-color: var(--ink); background: var(--ink); color: #fafaf8; }
+.fw .fb.go.off { border-color: #c4c8ce; background: #e4e6e9; color: #80858d; }
+.fw .fb:hover, .fw .fb.hover { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+.fw-ghost { position: absolute; z-index: 8; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border-radius: 6px;
+            background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22); font: 400 13px/1.3 var(--ui); color: #1f1f1f;
+            pointer-events: none; white-space: nowrap; }
+.fw-ghost svg { width: 22px; height: 22px; }
+/* A file's right-click menu in the file window, drawn plainly */
+.fw-menu { position: absolute; z-index: 9; width: 210px; padding: 6px 0; border-radius: 8px; background: #ffffff; font: 400 13.5px/1.3 var(--ui);
+           color: #1f1f1f; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 8px 24px rgba(0, 0, 0, 0.22); transform-origin: 0 0; }
+.fw-menu div { display: flex; align-items: center; height: 32px; padding: 0 16px; }
+.fw-menu div:hover, .fw-menu div.hover { background: #e4e8ed; }
+.fw-menu hr { height: 1px; margin: 5px 0; border: 0; background: var(--gm-sep); }
+
+/* A thumbnail's heading under the name, for a video about one task */
+.card.thumb .head { margin: calc(20px * var(--u)) 0 0; font: 600 calc(34px * var(--u))/1.15 var(--sans); letter-spacing: -0.02em;
+                    text-decoration: underline; text-decoration-color: var(--rubric); text-decoration-thickness: 3px;
+                    text-underline-offset: 0.2em; }

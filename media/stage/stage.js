@@ -3,9 +3,15 @@
 //   - a browser window (tab strip, address bar, the extension's toolbar icon), schematic and neutral;
 //   - a Gmail-like inbox and thread view built from the selectors content.js reads (tr.zA, span.bqe with
 //     data-legacy-thread-id, Gmail's body > div.J-M menu, h2[data-legacy-thread-id], role=list messages
-//     with span.gD, span.g3 and div.a3s), so the extension's real menu items and note appear in it;
+//     with span.gD, span.g3 and div.a3s, and the action toolbar [gh="mtb"] with its More button .nf), so
+//     the extension's real menu items, toolbar button and note appear in it;
 //   - the real settings page, as images captured from its own tab by record.mjs;
 //   - a neutral AI page with no logo, for the paste;
+//   - the real toolbar list (popup.html), as images captured from its own tab, in a bubble under the
+//     extension's icon;
+//   - for the install video: the project's website (the real docs/index.html, in a frame), and plain,
+//     generic drawings of a download bubble, the browser's extensions page and Extensions menu, a file
+//     window and a folder picker;
 //   - a drawn pointer, click rings, key caps, captions and cards in front of a camera.
 // Nothing here runs on its own clock: record.mjs calls __stage.frame(t) for every frame with the time in
 // milliseconds, and every animation (the extension's own included) is set to that time. So a render is
@@ -49,12 +55,27 @@
     archive: 'M20.54 5.23l-1.39-1.68A1.45 1.45 0 0 0 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23A1.97 1.97 0 0 0 3 6.5V19a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5 6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z',
     trash: 'M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z',
     unread: 'M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8l8 5 8-5v10zm-8-7L4 6h16l-8 5z',
+    // Gmail's selection actions: Report spam, Mark as read and Labels.
+    spam: 'M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3zM19 14.9L14.9 19H9.1L5 14.9V9.1L9.1 5h5.8L19 9.1v5.8zM11 7h2v6h-2zm0 8h2v2h-2z',
+    read: 'M21.99 8c0-.72-.37-1.35-.94-1.7L12 1 2.95 6.3C2.38 6.65 2 7.28 2 8v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2l-.01-10zm-2 0v.01L12 13 4 8l8-4.68L19.99 8zM4 18v-7.66l8 5.02 7.99-4.99L20 18H4z',
+    label: 'M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16zM16 17H5V7h11l3.55 5L16 17z',
     back: 'M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z',
     fwd: 'M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z',
     x: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
     plus: 'M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z',
     tune: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z',
     up: 'M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z',
+    // For the install video: the browser's puzzle piece, downloads and pin, and the file windows.
+    puzzle: 'M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z',
+    download: 'M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z',
+    pin: 'M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z',
+    pinOff: 'M14 4v5c0 1.12.37 2.16 1 3H9c.65-.86 1-1.9 1-3V4h4m3-2H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3V4h1c.55 0 1-.45 1-1s-.45-1-1-1z',
+    folder: 'M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z',
+    gear: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z',
+    home: 'M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z',
+    desktop: 'M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z',
+    minimise: 'M6 13h12v-2H6z',
+    maximise: 'M5 5v14h14V5H5zm12 12H7V7h10v10z',
   };
   function icon(name, cls = '') {
     const s = document.createElementNS(SVG, 'svg');
@@ -77,6 +98,13 @@
   const DOT = `<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="#9aa0a6"/><circle cx="8" cy="8" r="3" fill="#ffffff"/></svg>`;
   const ENVELOPE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#5f6368" d="${PATHS.unread}"/></svg>`;
   const CURSOR = `<svg viewBox="0 0 16 22" width="17" height="24" aria-hidden="true"><path d="M1 1v17.5l4.4-4.2 2.9 6.6 2.9-1.3-2.8-6.4H14L1 1z" fill="#000" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+  const PUZZLE = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#5f6368" d="${PATHS.puzzle}"/></svg>`;
+  // Plain file icons for the drawn file windows: a zip, a document and a folder, in neutral greys.
+  const FILE_ICONS = {
+    zip: `<svg class="fi" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2H14l5.5 5.5V20a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#8a929b"/><path d="M14 2v5.5h5.5z" fill="#c4c9cf"/><path d="M9 3.5h2v1.5H9zm2 1.5h2v1.5h-2zM9 6.5h2V8H9zm2 1.5h2v1.5h-2zM9 9.5h2V11H9z" fill="#ffffff"/><rect x="9" y="12" width="4" height="4.5" rx="0.8" fill="#ffffff"/><rect x="10.2" y="14" width="1.6" height="1.4" fill="#8a929b"/></svg>`,
+    doc: `<svg class="fi" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2H14l5.5 5.5V20a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" fill="#b5bcc4"/><path d="M14 2v5.5h5.5z" fill="#dde1e5"/><path d="M8 12h8v1.4H8zm0 3h8v1.4H8zm0 3h5v1.4H8z" fill="#ffffff"/></svg>`,
+    folder: `<svg class="fi" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z" fill="#7d93a8"/><path d="M2 9h20v9c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2z" fill="#93a8bc"/></svg>`,
+  };
 
   // ---- Time, easing and tweens ----
 
@@ -111,6 +139,17 @@
     ai: { text: '', scroll: 0, sent: 0, sentText: '', composeTop: 0.28 },
     dialog: null,
     anims: new WeakMap(),
+    // The install video's extras. bar: how far each toolbar icon has grown in (1 shown, 0 hidden).
+    bar: { ext: 1, puz: 0, dl: 0 },
+    addr: null, // the address bar while it has focus: { mode: 'select' | 'type', text, t0, dur }
+    z: 0, // the last page z-index handed out, so the tab in front is always on top
+    site: { scroll: 0, applied: -1 },
+    dlb: { show: 0 },
+    xm: { show: 0 },
+    xp: { dev: 0, tools: 0 },
+    wins: {},
+    drag: null,
+    pop: { show: 0 }, // the toolbar list's bubble
   };
 
   function tween(obj, key, to, dur = 400, ease = 'inOut') {
@@ -141,7 +180,11 @@
   // clock. Every animation in the document is paused and set to the stage time instead, counted from
   // the frame it first appeared in.
   function driveAnimations() {
-    for (const a of document.getAnimations()) {
+    const docs = [document];
+    try {
+      if (siteFrame?.contentDocument) docs.push(siteFrame.contentDocument); // the website's own hover transitions
+    } catch {}
+    for (const a of docs.flatMap((doc) => doc.getAnimations())) {
       if (!S.anims.has(a)) S.anims.set(a, S.t);
       try {
         a.pause();
@@ -175,13 +218,16 @@
 
   // ---- Building the window ----
 
-  let hud, capEl, keysEl, cursorEl, tabsEl, addrEl, badgeEl, viewEl, extEl;
+  let hud, capEl, keysEl, cursorEl, tabsEl, addrEl, badgeEl, viewEl, extEl, puzEl, dlEl;
 
   function buildWindow() {
     tabsEl = h('div', { id: 'tabs' });
     badgeEl = h('div', { id: 'badge', text: 'Illustration' });
     addrEl = h('div', { id: 'addr' });
     extEl = h('div', { id: 'ext', title: 'Open in AI Agent settings' }, h('img', { src: '/__stage/icon32.png', alt: '' }));
+    // The puzzle-piece Extensions menu and the downloads icon: hidden unless a storyboard shows them.
+    puzEl = h('div', { id: 'puz', hidden: true }, icon('puzzle'));
+    dlEl = h('div', { id: 'dl', hidden: true }, icon('download'));
     const bar = h(
       'div',
       { id: 'bar' },
@@ -190,24 +236,32 @@
       icon('refresh', 'nav'),
       addrEl,
       extEl,
+      puzEl,
+      dlEl,
       h('div', { class: 'me', text: 'S' }),
     );
     viewEl = h('div', { id: 'view' });
-    document.body.append(tabsEl, badgeEl, bar, viewEl);
+    document.body.append(tabsEl, bar, viewEl);
   }
 
   function tabEl(tab) {
     const fav = h('span', { class: 'fav' });
-    fav.append(svgFrom(tab.fav === 'mark' ? MARK : tab.fav === 'dot' ? DOT : ENVELOPE));
+    fav.append(svgFrom(tab.fav === 'mark' ? MARK : tab.fav === 'dot' ? DOT : tab.fav === 'puzzle' ? PUZZLE : ENVELOPE));
     return h('div', { class: 'tab', 'data-tab': tab.id }, fav, h('span', { class: 't', text: tab.title }), icon('x', 'x'));
   }
 
+  // Tabs are 228 px wide until they no longer fit beside the "Illustration" label; then they share the room,
+  // as a browser narrows its tabs.
+  const tabWidth = () => Math.min(228, Math.floor((S.W - 190) / Math.max(1, S.tabs.length)) - 2);
+
   function renderTabs() {
+    const w = tabWidth();
     tabsEl.replaceChildren(
       ...S.tabs.map((tab) => {
         const el = tabEl(tab);
         if (tab.id === S.active) el.classList.add('on');
-        if (tab.grow !== undefined && tab.grow < 1) Object.assign(el.style, { width: `${228 * tab.grow}px`, opacity: String(tab.grow) });
+        if (w < 228) el.style.width = `${w}px`;
+        if (tab.grow !== undefined && tab.grow < 1) Object.assign(el.style, { width: `${w * tab.grow}px`, opacity: String(tab.grow) });
         return el;
       }),
       h('div', { class: 'plus' }, icon('plus')),
@@ -215,6 +269,22 @@
     const tab = S.tabs.find((x) => x.id === S.active);
     const m = tab?.addr ? ['', ...tab.addr] : tab?.url.match(/^(?:https?:\/\/)?([^/]+)(.*)$/) || ['', '', ''];
     addrEl.replaceChildren(icon('tune', 'tune'), h('span', { text: m[1] }), h('span', { class: 'rest', text: m[2] }));
+    if (S.addr) renderAddr(true);
+  }
+
+  // The address bar while it has focus: the address selected, or being typed, with a caret.
+  function renderAddr(force) {
+    const a = S.addr;
+    if (!a) return;
+    const n = a.mode === 'type' && a.dur > 0 ? Math.round(clamp((S.t - a.t0) / a.dur, 0, 1) * a.text.length) : a.text.length;
+    const typing = a.mode === 'type' && n < a.text.length;
+    const caret = typing || Math.floor((S.t - a.t0) / 530) % 2 === 0;
+    const key = `${a.mode}|${n}|${caret}`;
+    if (!force && addrEl.dataset.key === key) return;
+    addrEl.dataset.key = key;
+    addrEl.classList.add('focus');
+    const text = a.mode === 'select' ? h('span', { class: 'sel', text: a.text }) : h('span', { text: a.text.slice(0, n) });
+    addrEl.replaceChildren(icon('tune', 'tune'), h('span', {}, text, caret && a.mode === 'type' ? h('i', { class: 'caret' }) : null));
   }
 
   // ---- Gmail ----
@@ -239,7 +309,7 @@
     inboxEl = h(
       'div',
       { id: 'gm-inbox' },
-      h('div', { class: 'gm-tools' }, selectAll(), icon('refresh'), icon('more'), h('span', { class: 'count', text: D.INBOX_COUNT })),
+      h('div', { class: 'gm-tools', gh: 'mtb' }, selectAll(), icon('refresh', 'gm-refresh'), selActions(), moreButton(), h('span', { class: 'count', text: D.INBOX_COUNT })),
       h('div', { class: 'gm-tabs' }, h('span', { class: 'on', text: 'Primary' }), h('span', { text: 'Promotions' }), h('span', { text: 'Updates' })),
       h('table', { class: 'gm-list' }, tbody),
     );
@@ -275,6 +345,19 @@
     });
   }
 
+  // Gmail's action toolbar is [gh="mtb"], above the list and above an open email, and its More button has
+  // class nf. content.js puts its own button just before the visible More button.
+  const moreButton = () => h('div', { class: 'nf', role: 'button', 'aria-label': 'More email options' }, icon('more'));
+
+  // With any row ticked, Gmail's toolbar shows the selection actions in place of refresh; the More button stays
+  // last, so the extension's button stays just before it.
+  const selActions = () => h('span', { class: 'gm-sel', hidden: true }, ...['archive', 'spam', 'trash', 'read', 'clock', 'folder', 'label'].map((n) => icon(n)));
+  function syncToolbar() {
+    const any = !!tbody.querySelector('tr.zA.x7');
+    inboxEl.querySelector('.gm-sel').hidden = !any;
+    inboxEl.querySelector('.gm-refresh').style.display = any ? 'none' : '';
+  }
+
   // Gmail's select-all box: with rows ticked, a click clears them all; with none, it ticks every row.
   function selectAll() {
     const box = h('span', { class: 'gm-box', id: 'gm-all', role: 'checkbox', 'aria-checked': 'false', 'aria-label': 'Select all' });
@@ -286,6 +369,7 @@
         r.classList.toggle('x7', on);
         r.querySelector('[role="checkbox"]').setAttribute('aria-checked', String(on));
       }
+      syncToolbar();
     });
     return box;
   }
@@ -312,6 +396,7 @@
       const on = box.getAttribute('aria-checked') !== 'true';
       box.setAttribute('aria-checked', String(on));
       row.classList.toggle('x7', on);
+      syncToolbar();
     });
     row.addEventListener('click', () => after(260, () => openThread(th)));
     return row;
@@ -379,7 +464,7 @@
     const back = h('span', { id: 'gm-back' }, icon('back'));
     back.addEventListener('click', backToInbox);
     threadEl.replaceChildren(
-      h('div', { class: 'gm-tools' }, back, icon('archive'), icon('trash'), icon('unread'), icon('more')),
+      h('div', { class: 'gm-tools', gh: 'mtb' }, back, icon('archive'), icon('trash'), icon('unread'), moreButton()),
       h('div', { class: 'gm-head' }, h('h2', { class: 'hP', 'data-legacy-thread-id': th.id, text: th.subject }), h('span', { class: 'gm-chip', text: 'Inbox' })),
       msgs,
       h('div', { class: 'gm-acts' }, h('span', {}, icon('reply'), 'Reply'), h('span', {}, icon('forward'), 'Forward')),
@@ -427,15 +512,15 @@
     S.pages.ai = { el, x: S.W };
   }
 
-  function aiReset() {
-    S.ai = { text: '', scroll: 0, sent: 0, sentText: '', composeTop: 0.24 };
+  function aiReset(textMax = 0.44) {
+    S.ai = { text: '', scroll: 0, sent: 0, sentText: '', composeTop: 0.24, textMax };
     ai.text.textContent = '';
   }
 
   function renderAi() {
     const a = S.ai;
     const viewH = S.H - 76;
-    const maxText = Math.round(viewH * 0.44);
+    const maxText = Math.round(viewH * a.textMax);
     ai.ph.hidden = !!a.text;
     ai.text.textContent = a.text;
     ai.textBox.style.maxHeight = `${maxText}px`;
@@ -462,6 +547,238 @@
     ai.compose.style.top = `${topEmpty + (topSent - topEmpty) * a.sent}px`;
   }
 
+  // ---- Installing it: the website, the download, the extensions page and the file windows ----
+  // The website is the real docs/index.html, served by record.mjs under /__docs/ and shown in a frame, so
+  // the real mouse hovers its button. Everything else here is a plain, generic drawing of what a browser
+  // and a computer show while you install an extension, with no product's own look.
+
+  let siteFrame, dlb, xmenu, extp, ghost, dimEl;
+
+  function buildSite(src) {
+    siteFrame = h('iframe', { src, title: 'The website' });
+    const el = h('div', { class: 'page', id: 'site' }, siteFrame);
+    viewEl.append(el);
+    S.pages.site = { el, x: S.W };
+    return new Promise((resolve) => {
+      siteFrame.addEventListener('load', async () => {
+        const doc = siteFrame.contentDocument;
+        // A drawn click never leaves the page: links do nothing, and the videos keep their posters.
+        doc.addEventListener('click', (e) => e.target.closest?.('a') && e.preventDefault(), true);
+        for (const v of doc.querySelectorAll('video')) {
+          v.pause();
+          v.preload = 'none';
+          v.play = () => Promise.resolve();
+        }
+        doc.documentElement.style.scrollBehavior = 'auto';
+        await doc.fonts.ready;
+        resolve({ title: doc.title, height: doc.documentElement.scrollHeight });
+      });
+    });
+  }
+
+  function buildDownloads({ name, size }) {
+    dlb?.remove();
+    dlb = h(
+      'div',
+      { id: 'dlb' },
+      h('p', { class: 'h', text: 'Recent downloads' }),
+      h(
+        'div',
+        { class: 'row' },
+        svgFrom(FILE_ICONS.zip),
+        h('div', { class: 't' }, h('b', { text: name }), h('span', { class: 's', text: size ? `${size} • Done` : 'Done' })),
+        h('span', { class: 'btn', id: 'dlb-folder', title: 'Show in folder' }, icon('folder')),
+      ),
+    );
+    document.body.append(dlb);
+  }
+
+  function buildXmenu({ name }) {
+    xmenu?.remove();
+    xmenu = h(
+      'div',
+      { id: 'xmenu' },
+      h('div', { class: 'h' }, h('span', { text: 'Extensions' }), icon('x')),
+      h('div', { class: 'row' }, svgFrom(MARK), h('span', { class: 'n', text: name }), h('span', { class: 'pin', id: 'xm-pin' }, icon('pinOff'))),
+      h('div', { class: 'sep' }),
+      h('div', { class: 'row' }, icon('gear'), h('span', { class: 'n', text: 'Manage extensions' })),
+    );
+    document.body.append(xmenu);
+  }
+
+  function buildExtPage() {
+    extp = {};
+    extp.sw = h('span', { class: 'xp-switch', id: 'xp-dev' }, h('i'));
+    extp.tools = h(
+      'div',
+      { class: 'tools' },
+      h('span', { class: 'xp-btn', id: 'xp-load', text: 'Load unpacked' }),
+      h('span', { class: 'xp-btn', text: 'Pack extension' }),
+      h('span', { class: 'xp-btn', text: 'Update' }),
+    );
+    extp.grid = h('div', { class: 'grid' });
+    extp.inner = h(
+      'div',
+      { class: 'xp-in' },
+      h(
+        'div',
+        { class: 'top' },
+        icon('burger'),
+        h('span', { class: 'title', text: 'Extensions' }),
+        h('div', { class: 'search' }, icon('search'), 'Search extensions'),
+        h('div', { class: 'dev' }, h('span', { text: 'Developer mode' }), extp.sw),
+      ),
+      extp.tools,
+      extp.grid,
+    );
+    const el = h('div', { class: 'page', id: 'extp' }, extp.inner);
+    viewEl.append(el);
+    S.pages.extp = { el, x: S.W };
+  }
+
+  function extCard({ name, version, description, id, from }) {
+    const mark = svgFrom(MARK);
+    const sw = h('span', { class: 'xp-switch on' }, h('i'));
+    return h(
+      'div',
+      { class: 'xp-card', id: 'xp-card' },
+      h(
+        'div',
+        { class: 'c-top' },
+        mark,
+        h(
+          'div',
+          {},
+          h('p', { class: 'c-name' }, name, h('span', { class: 'c-ver', text: version })),
+          h('p', { class: 'c-desc', text: description }),
+          id ? h('p', { class: 'c-id', text: `ID: ${id}` }) : null,
+          from ? h('p', { class: 'c-id', text: `Loaded from: ${from}` }) : null,
+        ),
+      ),
+      h('div', { class: 'c-foot' }, h('span', { class: 'xp-btn', text: 'Details' }), h('span', { class: 'xp-btn', text: 'Remove' }), h('span', { class: 'sp' }), icon('refresh'), sw),
+    );
+  }
+
+  // A file window (the computer's Downloads folder) or a folder picker: a title bar, places on the left
+  // and the folder's contents. rows: [{ key, name, kind: 'zip' | 'doc' | 'folder', size, type }].
+  const PLACES = [['home', 'Home'], ['desktop', 'Desktop'], ['file', 'Documents'], ['download', 'Downloads']];
+  function fileRow(r) {
+    return h(
+      'div',
+      { class: 'row', 'data-row': r.key },
+      h('span', { class: 'n' }, svgFrom(FILE_ICONS[r.kind]), h('span', { text: r.name })),
+      h('span', { class: 's', text: r.size || '' }),
+      h('span', { class: 'k', text: r.type || '' }),
+    );
+  }
+  function buildWin(id, { title, place, rows, picker, x, y, w = 720, hgt = 400 }) {
+    S.wins[id]?.el.remove();
+    const win = { show: 0, rows: [] };
+    win.title = h('span', { class: 't', text: title });
+    win.side = h('div', { class: 'side' }, ...PLACES.map(([ic, name]) => h('div', { 'data-place': name, class: name === place ? 'on' : null }, icon(ic), name)));
+    win.list = h('div', { class: 'rows' });
+    win.field = h('b', { text: '' });
+    win.el = h(
+      'div',
+      { class: `fw${picker ? ' foot' : ''}`, 'data-win': id, style: { width: `${w}px`, height: `${hgt}px` } },
+      h(
+        'div',
+        { class: 'bar' },
+        icon('folder'),
+        win.title,
+        h('span', { class: 'wb' }, icon('minimise'), icon('maximise'), icon('x')),
+      ),
+      h('div', { class: 'body' }, win.side, h('div', { class: 'main' }, h('div', { class: 'head' }, h('span', { text: 'Name' }), h('span', { text: 'Size' }), h('span', { text: 'Kind' })), win.list)),
+      picker
+        ? h(
+            'div',
+            { class: 'foot-row' },
+            h('div', { class: 'field' }, h('span', { text: 'Folder:' }), win.field),
+            h('span', { class: 'fb', text: 'Cancel' }),
+            h('span', { class: 'fb go off', id: `${id}-select`, text: 'Select' }),
+          )
+        : null,
+    );
+    win.list.replaceChildren(...rows.map(fileRow));
+    win.x = x ?? (S.W - w) / 2;
+    win.y = y ?? 76 + 40;
+    Object.assign(win.el.style, { left: `${win.x}px`, top: `${win.y}px` });
+    document.body.append(win.el);
+    S.wins[id] = win;
+    return win;
+  }
+
+  // A row grows in or folds away, on the video's clock (driveAnimations sets every animation's time).
+  // A grown row keeps no fill, so its classes (selected, dragged) style it once it is in.
+  const growRow = (el) => el.animate([{ height: '0px', opacity: 0 }, { height: '36px', opacity: 1 }], { duration: 320, easing: 'ease-out' });
+  // A moved row folds away slowly enough to see the rows below close up.
+  const FOLD = 460;
+  const foldRow = (el) => el.animate([{ height: '36px', opacity: 0.4 }, { height: '36px', opacity: 0, offset: 0.3 }, { height: '0px', opacity: 0 }], { duration: FOLD, easing: 'ease-in-out', fill: 'forwards' });
+
+  function renderInstall() {
+    // Toolbar icons growing in or out.
+    for (const [k, el] of [['ext', extEl], ['puz', puzEl], ['dl', dlEl]]) {
+      const g = S.bar[k];
+      el.hidden = g <= 0.001;
+      const mid = g < 0.999;
+      Object.assign(el.style, { width: mid ? `${28 * g}px` : '', opacity: mid ? String(g) : '', marginLeft: mid ? `${-12 * (1 - g)}px` : '', overflow: mid ? 'hidden' : '' });
+    }
+    renderAddr(false);
+    if (siteFrame && S.site.applied !== S.site.scroll) {
+      try {
+        siteFrame.contentWindow.scrollTo({ top: S.site.scroll, behavior: 'instant' });
+        S.site.applied = S.site.scroll;
+      } catch {}
+    }
+    const pop = (el, s, dy = -6) => {
+      if (!el) return;
+      el.hidden = s <= 0.001;
+      el.style.opacity = String(s);
+      el.style.transform = `translateY(${(1 - s) * dy}px) scale(${0.98 + 0.02 * s})`;
+    };
+    pop(dlb, S.dlb.show);
+    pop(xmenu, S.xm.show);
+    let dim = 0;
+    for (const win of Object.values(S.wins)) {
+      pop(win.el, win.show, 14);
+      pop(win.menu, win.menuShow ?? 0, -4);
+      dim = Math.max(dim, win.show);
+    }
+    if (dimEl) {
+      dimEl.style.opacity = String(0.16 * dim);
+      dimEl.hidden = dim <= 0.001;
+    }
+    if (extp) {
+      const d = S.xp.dev;
+      extp.sw.classList.toggle('on', d > 0.5);
+      extp.sw.firstChild.style.left = `${3 + 16 * d}px`;
+      extp.tools.style.height = `${56 * S.xp.tools}px`;
+      extp.tools.style.opacity = String(clamp(S.xp.tools * 1.4 - 0.4, 0, 1));
+      extp.tools.style.borderBottomWidth = S.xp.tools > 0.01 ? '1px' : '0';
+    }
+    if (S.drag && ghost) {
+      const c = S.cursor;
+      Object.assign(ghost.style, { left: `${c.x + 10}px`, top: `${c.y + 8}px` });
+    }
+  }
+
+  // ---- The toolbar list: the real popup.html, as images captured from its own tab ----
+  // It opens in a bubble under the extension's icon, as the browser shows an extension's popup.
+
+  let popEl, popImg;
+  function buildPopup() {
+    popImg = h('img', { alt: '' });
+    popEl = h('div', { id: 'popup', hidden: true }, popImg);
+    document.body.append(popEl);
+  }
+
+  function renderPopup() {
+    const s = S.pop.show;
+    popEl.hidden = s <= 0.001;
+    popEl.style.opacity = String(s);
+    popEl.style.transform = `translateY(${(1 - s) * -6}px)`;
+  }
+
   // ---- Chrome's prompt to open a desktop app, drawn ----
 
   let dlg;
@@ -482,18 +799,33 @@
 
   // ---- Overlay: captions, key caps, cards ----
 
+  // The "Illustration" label sits over the tab strip's right end, but in the overlay, so it stays in
+  // the corner when the camera zooms in. Cards, added after it, cover it.
   function buildHud() {
     hud = h('div', { id: 'hud' });
     capEl = h('div', { class: 'cap' });
     keysEl = h('div', { class: 'keys' });
-    hud.append(keysEl, capEl);
+    hud.append(badgeEl, keysEl, capEl);
     document.documentElement.append(hud);
     cursorEl = svgFrom(`<div id="cursor">${CURSOR}</div>`);
     document.body.append(cursorEl);
   }
 
+  // A caption armed with toast starts the moment the extension's note reads what it matches, in that very
+  // frame: the note changes when the service worker answers, which takes real time and can fall between a
+  // frame's render and its screenshot (see setup), so a caption set a frame later would leave the old one
+  // there for a frame, lifted clear of the grown note.
+  function commitArmed() {
+    const a = S.capArm;
+    if (!a || !a.re.test(document.getElementById('vpa-toast')?.textContent || '')) return;
+    S.capArm = null;
+    COMMANDS.caption({ text: a.text, pos: a.pos, fade: a.fade });
+    S.armedStart = S.t;
+  }
+
   // Captions change in place; one that starts or ends with nothing beside it fades.
   function renderCaption() {
+    commitArmed();
     const c = S.caps.filter((x) => x.start <= S.t && (x.end === undefined || S.t < x.end)).at(-1);
     if (!c) {
       liftCaption(null, null, true);
@@ -565,6 +897,33 @@
         p.style.opacity = String(k);
         p.style.transform = `translateY(${(1 - EASE.out(k)) * 8}px)`;
       }
+      for (const p of c.el.querySelectorAll('[data-mark-at]')) {
+        const k = clamp((S.t - c.t0 - Number(p.dataset.markAt)) / 300, 0, 1);
+        p.style.boxShadow = k > 0 ? `inset ${(3 * k * S.W) / 1024}px 0 0 var(--rubric)` : '';
+      }
+    }
+  }
+
+  // Cuts each fitted row at a word, with " …", so it fits on one line; a row with no space to cut at keeps
+  // the CSS ellipsis. Run while the card is laid out, before it is first hidden.
+  function fitRows(root) {
+    const fits = (el) => el.scrollWidth <= el.clientWidth + 0.5;
+    for (const el of root.querySelectorAll('.l.fit')) {
+      if (fits(el) || el.classList.contains('cut')) continue; // the Gmail link keeps its start, with the CSS ellipsis
+      const words = el.textContent.split(' ');
+      const at = (n) => `${words.slice(0, n).join(' ')} …`;
+      let lo = 1;
+      let hi = words.length - 1;
+      let best = 0;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        el.textContent = at(mid);
+        if (fits(el)) {
+          best = mid;
+          lo = mid + 1;
+        } else hi = mid - 1;
+      }
+      el.textContent = best ? at(best) : words.join(' ');
     }
   }
 
@@ -590,19 +949,25 @@
           { class: 'panel' },
           svgFrom(MARK.replace('<svg ', '<svg class="mark" ')),
           h('p', { class: 'name', text: 'Open in AI Agent for Gmail' }),
+          o.head ? h('p', { class: 'head', text: o.head }) : null,
           o.line ? h('p', { class: 'line', text: o.line }) : null,
           o.small ? h('p', { class: 'small', text: o.small }) : null,
         ),
       );
     } else if (kind === 'prompt') {
+      // fit: every row is one line, cut at a word to fit (fitRows). marks: [pattern, note] pairs; a row that
+      // matches a pattern gets a red rule on its left when that note appears.
+      const marks = (o.marks || []).map(([src, i]) => [new RegExp(src), o.notesAt?.[i] ?? 0]);
       const lines = o.prompt.split('\n').map((line) => {
         const hl = /^(Mailbox|Thread ID|Gmail link|Email subject):/.test(line);
         const cut = /^Gmail link:/.test(line);
-        return h('span', { class: `l${hl ? ' hl' : ''}${cut ? ' cut' : ''}`, text: line || ' ' });
+        const mark = marks.find(([re]) => re.test(line));
+        const cls = `l${hl ? ' hl' : ''}${cut ? ' cut' : ''}${o.fit ? ' fit' : ''}${o.fit && !line.trim() ? ' blank' : ''}`;
+        return h('span', { class: cls, 'data-mark-at': mark ? String(mark[1]) : null, text: line || ' ' });
       });
       el = h(
         'div',
-        { class: 'card prompt' },
+        { class: `card prompt${o.big ? ' big' : ''}` },
         h('h3', { text: o.title }),
         h('p', { class: 'sub', text: o.sub }),
         h(
@@ -614,6 +979,7 @@
       );
     }
     hud.insertBefore(el, keysEl);
+    if (o.fit) fitRows(el);
     const c = { el, show: 0, words: 0, kind, t0: S.t };
     S.cards.push(c);
     return c;
@@ -652,7 +1018,7 @@
     cursorEl.style.transform = `translate(${c.x - 1}px, ${c.y - 1}px) scale(${scale})`;
     cursorEl.style.opacity = String(1 - c.hidden);
     S.rings = S.rings.filter((r) => {
-      const k = (S.t - r.t0) / 480;
+      const k = (S.t - r.t0) / (r.life || 480);
       if (k >= 1) return void r.el.remove();
       const e = EASE.out(clamp(k, 0, 1));
       const size = 10 + 34 * e;
@@ -688,7 +1054,9 @@
       p.el.style.transform = `translateX(${p.x}px)`;
       p.el.style.visibility = p.x >= S.W - 0.5 || p.x <= -S.W + 0.5 ? 'hidden' : 'visible';
       if (name !== 'gm') p.el.style.boxShadow = p.x > 0.5 && p.x < S.W - 0.5 ? '-12px 0 32px rgba(0, 0, 0, 0.12)' : 'none';
+      if (p.o !== undefined) p.el.style.opacity = String(p.o); // a page fading in after a typed address
     }
+    renderInstall();
     document.body.style.setProperty('--gm-x', `${S.pages.gm.x}px`);
     measureToast();
     for (const tab of S.tabs) if (tab.grow !== undefined && tab.grow < 1) renderTabs();
@@ -699,6 +1067,7 @@
       dlg.style.transform = `translateX(-50%) translateY(${(1 - s) * -8}px) scale(${0.97 + 0.03 * s})`;
       dlg.hidden = s <= 0.001;
     }
+    renderPopup();
     renderPointer();
     renderCaption();
     renderKeys();
@@ -712,7 +1081,8 @@
     driveAnimations();
     render();
     const v = toView(S.cursor.x, S.cursor.y);
-    return { mx: Math.round(v.x * 100) / 100, my: Math.round(v.y * 100) / 100 };
+    // mx, my: where the pointer is on screen (after the camera); px, py: on the page.
+    return { mx: Math.round(v.x * 100) / 100, my: Math.round(v.y * 100) / 100, px: S.cursor.x, py: S.cursor.y };
   }
 
   // ---- Commands from record.mjs ----
@@ -720,6 +1090,15 @@
   // A selector, { sel, text } for the element under sel whose text is text, or a point.
   function resolve(target, o = {}) {
     let el;
+    // "site:<selector>": an element in the website's frame.
+    if (typeof target === 'string' && target.startsWith('site:')) {
+      const inner = siteFrame?.contentDocument?.querySelector(target.slice(5));
+      if (!inner) throw new Error(`stage: nothing in the website matches ${target.slice(5)}`);
+      const r = inner.getBoundingClientRect();
+      const f = boxOf(siteFrame);
+      const k = f.w / siteFrame.clientWidth;
+      return { x: f.x + (r.left + r.width * (o.ax ?? 0.5)) * k + (o.dx || 0), y: f.y + (r.top + r.height * (o.ay ?? 0.5)) * k + (o.dy || 0) };
+    }
     if (typeof target === 'object' && target && target.sel) {
       el = [...document.querySelectorAll(target.sel)].find((x) => x.textContent.trim() === target.text);
       if (!el) throw new Error(`stage: no ${target.sel} reads "${target.text}"`);
@@ -761,12 +1140,13 @@
       Object.assign(S.cursor, p);
       return p;
     },
-    press({ down }) {
+    // ring: how long the click's ring lasts, in ms (shorter where what was clicked goes away at once).
+    press({ down, ring: life = 480 }) {
       tween(S.cursor, 'press', down ? 1 : 0, 90, 'out');
       if (down) {
         const ring = h('div', { class: 'ring' });
         document.body.append(ring);
-        S.rings.push({ x: S.cursor.x, y: S.cursor.y, t0: S.t, el: ring });
+        S.rings.push({ x: S.cursor.x, y: S.cursor.y, t0: S.t, el: ring, life });
       }
       return {};
     },
@@ -781,7 +1161,14 @@
       tween(S.cam, 'y', p.y, dur, ease);
       return {};
     },
-    caption({ text, pos = 'bottom', fade = true }) {
+    // toast: a pattern; the caption waits until the extension's note matches it (commitArmed).
+    caption({ text, pos = 'bottom', fade = true, toast }) {
+      if (toast) {
+        S.capArm = { text, pos, fade, re: new RegExp(toast) };
+        S.armedStart = null;
+        commitArmed();
+        return {};
+      }
       const open = S.caps.at(-1);
       if (open && open.end === undefined) open.end = S.t;
       if (text) S.caps.push({ text, start: S.t, pos, fade });
@@ -814,6 +1201,14 @@
       const toPage = S.pages[tab.page];
       const forward = S.tabs.indexOf(tab) > S.tabs.indexOf(from);
       if (toPage !== fromPage) {
+        // Only the two pages in the slide show, and the one coming in from the right (or going out to
+        // it) is on top, whatever order the pages were built in.
+        for (const p of Object.values(S.pages)) {
+          if (p === toPage || p === fromPage || Math.abs(p.x) >= S.W - 0.5) continue;
+          S.tweens = S.tweens.filter((tw) => tw.obj !== p);
+          p.x = -S.W;
+        }
+        (forward ? toPage : fromPage).el.style.zIndex = String(++S.z);
         toPage.x = forward ? S.W : -S.W * 0.3;
         tween(toPage, 'x', 0, dur, 'inOut');
         tween(fromPage, 'x', forward ? -S.W * 0.3 : S.W, dur, 'inOut');
@@ -832,8 +1227,11 @@
       settingsImg.src = src;
       return settingsImg.decode().then(() => ({}));
     },
-    aiReset() {
-      aiReset();
+    // textMax: how much of the page the pasted text may fill, as a share of it. A full box reaches nearly to a
+    // one-line caption; a two-line caption needs it a little shorter (the key caps above it leave no room to
+    // move it up).
+    aiReset({ textMax } = {}) {
+      aiReset(textMax);
       return {};
     },
     aiPaste({ text }) {
@@ -872,6 +1270,26 @@
       extEl.classList.toggle('hover', on);
       return {};
     },
+    // The toolbar list's bubble: src, a capture of the real popup.html, w x h in CSS pixels. Its top right sits
+    // under the extension's icon. Returns the bubble's box on the page, for the recorder to map the pointer.
+    popup({ src, w, h: ph, show = 1, dur = 160 }) {
+      if (src) {
+        popImg.src = src;
+        Object.assign(popImg.style, { width: `${w}px`, height: `${ph}px` });
+        const b = boxOf(extEl);
+        const left = clamp(b.x + b.w + 8 - w, 8, S.W - w - 8);
+        Object.assign(popEl.style, { left: `${left}px`, top: '74px' });
+        S.popBox = { x: left, y: 74, w, h: ph };
+      }
+      // Laid out at once (still transparent), so the camera can aim at it straight away.
+      if (show > 0) popEl.hidden = false;
+      tween(S.pop, 'show', show, dur, 'out');
+      return popImg.decode().then(() => S.popBox);
+    },
+    popupImage({ src }) {
+      popImg.src = src;
+      return popImg.decode().then(() => ({}));
+    },
     // A card fades through paper: coming in, its paper covers the page before its words appear; going
     // out, the words go before the paper. So a card's words never sit over the inbox behind it. The
     // thumbnail's panel is the card itself and fades as one.
@@ -904,6 +1322,7 @@
         row.classList.remove('x7', 'ctx');
         row.querySelector('[role="checkbox"]').setAttribute('aria-checked', 'false');
       }
+      syncToolbar();
       countUnread();
       const toast = document.getElementById('vpa-toast');
       if (toast) toast.style.visibility = 'hidden';
@@ -914,6 +1333,192 @@
       if (toast) toast.style.visibility = '';
       return {};
     },
+    // ---- The install video ----
+    // Which toolbar icons show: ext (the extension's own, once pinned), puz (the Extensions menu) and dl
+    // (downloads). true or false, or how far grown in (0 to 1); dur animates the change.
+    toolbar({ dur = 0, ...icons }) {
+      for (const [k, v] of Object.entries(icons)) if (k in S.bar) tween(S.bar, k, v === true ? 1 : v === false ? 0 : Number(v), dur, 'out');
+      return {};
+    },
+    // Room kept below a right-click for the extension's items, when a tick adds one after setup.
+    menuRoom({ items }) {
+      S.extItems = items;
+      return {};
+    },
+    // The website, in a page of its own; resolves once it has loaded, with its title.
+    site({ src = '/__docs/index.html' }) {
+      return siteFrame ? { title: siteFrame.contentDocument.title } : buildSite(src);
+    },
+    siteScroll({ to = 0, dur = 800 }) {
+      tween(S.site, 'scroll', to, dur, 'inOut');
+      return {};
+    },
+    // A click in the address bar selects the address; typing replaces it.
+    addrFocus() {
+      const tab = S.tabs.find((x) => x.id === S.active);
+      S.addr = { mode: 'select', text: tab.addr ? tab.addr.join('').trim() : tab.url, t0: S.t, dur: 0 };
+      renderAddr(true);
+      return {};
+    },
+    addrType({ text, dur = 900 }) {
+      S.addr = { mode: 'type', text, t0: S.t, dur };
+      renderAddr(true);
+      return { dur };
+    },
+    // The tab goes to another address: its title, address and favicon change and the new page fades in.
+    navTab({ id, dur = 280, ...props }) {
+      const tab = S.tabs.find((x) => x.id === id);
+      const from = S.pages[tab.page];
+      Object.assign(tab, props);
+      const to = S.pages[tab.page];
+      if (to !== from) {
+        to.el.style.zIndex = String(++S.z);
+        S.tweens = S.tweens.filter((tw) => tw.obj !== to);
+        to.x = 0;
+        to.o = 0;
+        tween(to, 'o', 1, dur, 'out');
+        after(dur, () => {
+          from.x = -S.W;
+        });
+      }
+      S.addr = null;
+      addrEl.classList.remove('focus');
+      delete addrEl.dataset.key;
+      renderTabs();
+      return {};
+    },
+    // The download bubble under the toolbar, right-aligned to the downloads icon.
+    downloads({ show = 1, dur = 240, name, size }) {
+      if (name) {
+        buildDownloads({ name, size });
+        const me = boxOf(document.querySelector('#bar .me'));
+        dlb.style.left = `${me.x - 12 + 8 - 340}px`;
+      }
+      tween(S.dlb, 'show', show, dur, 'out');
+      return {};
+    },
+    // The puzzle-piece Extensions menu. pinned: the extension's pin, filled once it is pinned.
+    xmenu({ show, dur = 200, name, pinned }) {
+      if (name) {
+        buildXmenu({ name });
+        const b = boxOf(puzEl);
+        xmenu.style.left = `${b.x + b.w + 8 - 330}px`;
+      }
+      if (pinned !== undefined) {
+        const pin = document.getElementById('xm-pin');
+        pin.classList.toggle('on', pinned);
+        pin.replaceChildren(icon(pinned ? 'pin' : 'pinOff'));
+      }
+      if (show !== undefined) tween(S.xm, 'show', show, dur, 'out');
+      return {};
+    },
+    extPage() {
+      if (!extp) buildExtPage();
+      return {};
+    },
+    // Developer mode: the switch slides on and the row with Load unpacked opens below the header.
+    extDev({ on = true, dur = 220 }) {
+      tween(S.xp, 'dev', on ? 1 : 0, dur, 'inOut');
+      after(dur * 0.4, () => tween(S.xp, 'tools', on ? 1 : 0, 340, 'out'));
+      return {};
+    },
+    // The extension's card: { name, version, description, id, from }.
+    extCard(o) {
+      const card = extCard(o);
+      extp.grid.replaceChildren(card);
+      card.animate([{ opacity: 0, transform: 'scale(0.96)' }, { opacity: 1, transform: 'scale(1)' }], { duration: 380, easing: 'ease-out', fill: 'forwards' });
+      return {};
+    },
+    // A file window or folder picker: with title it is built afresh ({ title, place, rows, picker, x, y,
+    // w, hgt }); show and dur bring it in or take it away.
+    win({ id, show = 1, dur = 320, ...o }) {
+      if (o.title) buildWin(id, o);
+      if (!dimEl) {
+        dimEl = h('div', { id: 'dim', hidden: true });
+        document.body.append(dimEl);
+      }
+      tween(S.wins[id], 'show', show, dur, 'out');
+      return {};
+    },
+    // Selects a row. In a picker, field is the name shown in the Folder box, and Select works once there
+    // is one (or when ready says so).
+    winSelect({ id, row, field, ready }) {
+      const win = S.wins[id];
+      for (const r of win.list.children) r.classList.toggle('on', r.dataset.row === row);
+      if (field !== undefined) win.field.textContent = field;
+      if (field !== undefined || ready !== undefined) document.getElementById(`${id}-select`)?.classList.toggle('off', !(ready ?? field));
+      return {};
+    },
+    // A new row (an unzipped folder) grows in at position at.
+    winAdd({ id, row, at = 0, select = true }) {
+      const win = S.wins[id];
+      const el = fileRow(row);
+      win.list.insertBefore(el, win.list.children[at] || null);
+      growRow(el);
+      if (select) COMMANDS.winSelect({ id, row: row.key });
+      return {};
+    },
+    // Dragging a row: it dims, and a copy of it follows the pointer until winDrop.
+    winDrag({ id, row }) {
+      const el = S.wins[id].list.querySelector(`[data-row="${row}"]`);
+      el.classList.add('drag');
+      ghost = h('div', { class: 'fw-ghost' }, el.querySelector('svg').cloneNode(true), h('span', { text: el.querySelector('.n span').textContent }));
+      document.body.append(ghost);
+      S.drag = { id, row };
+      renderInstall();
+      return {};
+    },
+    // A file's right-click menu, opening at the pointer: items are labels, '-' a rule. The real mouse
+    // hovers its items. show and dur bring it in or take it away.
+    winMenu({ id, items, show = 1, dur = 140 }) {
+      const win = S.wins[id];
+      if (items) {
+        win.menu?.remove();
+        win.menu = h('div', { class: 'fw-menu', 'data-menu': id }, ...items.map((it) => (it === '-' ? h('hr') : h('div', { 'data-item': it, text: it }))));
+        Object.assign(win.menu.style, { left: `${S.cursor.x + 2}px`, top: `${S.cursor.y + 2}px` });
+        document.body.append(win.menu);
+        win.menuShow = 0;
+      }
+      tween(win, 'menuShow', show, dur, 'out');
+      return {};
+    },
+    winOver({ id, place }) {
+      for (const p of S.wins[id].side.children) p.classList.toggle('drop', p.dataset.place === place);
+      return {};
+    },
+    winDrop({ id }) {
+      const el = S.wins[id].list.querySelector(`[data-row="${S.drag.row}"]`);
+      foldRow(el);
+      after(FOLD + 40, () => el.remove());
+      ghost?.remove();
+      ghost = null;
+      S.drag = null;
+      return {};
+    },
+    // Another place in a file window: its name in the title, the place lit on the left, and its rows.
+    winPlace({ id, place, rows, select }) {
+      const win = S.wins[id];
+      win.title.textContent = place;
+      for (const p of win.side.children) {
+        p.classList.toggle('on', p.dataset.place === place);
+        p.classList.remove('drop');
+      }
+      win.list.replaceChildren(...rows.map(fileRow));
+      if (select) COMMANDS.winSelect({ id, row: select });
+      return {};
+    },
+    // When an armed caption started (null while it waits). now: commit it at this time if it still waits.
+    armed({ now } = {}) {
+      if (S.capArm && now !== undefined) {
+        const a = S.capArm;
+        S.capArm = null;
+        COMMANDS.caption({ text: a.text, pos: a.pos, fade: a.fade });
+        S.caps.at(-1).start = now;
+        S.caps.at(-2) && (S.caps.at(-2).end = now);
+        S.armedStart = now;
+      }
+      return { start: S.armedStart ?? null, waiting: !!S.capArm };
+    },
     state() {
       const toast = document.getElementById('vpa-toast');
       return {
@@ -922,6 +1527,9 @@
         toast: toast && getComputedStyle(toast).opacity !== '0' ? toast.textContent : '',
         thread: S.thread || null,
         title: document.title,
+        // The extension's button in Gmail's toolbar, and its menu's items while it is open.
+        tb: document.querySelector('.vpa-tb')?.textContent.trim() || '',
+        tbItems: [...document.querySelectorAll('.vpa-tb-menu .vpa-tb-item')].map((i) => i.textContent.trim()),
       };
     },
   };
@@ -938,6 +1546,7 @@
   buildGmail();
   buildSettings();
   buildAi();
+  buildPopup();
   buildHud();
   S.tabs = [{ id: 'gm', title: `Inbox - ${D.ME.email} - Gmail`, url: 'mail.google.com/mail/u/0/#inbox', fav: 'mail', page: 'gm' }];
   renderTabs();

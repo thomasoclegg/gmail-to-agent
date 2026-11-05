@@ -24,6 +24,9 @@ export class Director {
     this.mouse = { x: -1, y: -1 };
     this.settingsLive = false;
     this.settingsScroll = 0;
+    this.popupLive = false; // the toolbar list is open: capture it every frame
+    this.onPopup = false;
+    this.popBox = null;
     this.scrollTween = null;
     this.marks = {};
   }
@@ -56,13 +59,79 @@ export class Director {
     this.log(`stage ready: ${size.w}x${size.h} at ${size.dsf}x, ${platform === 'mac' ? 'Mac' : 'Windows'} keys, ${this.manifest.name} ${this.manifest.version}`);
   }
 
-  // The real settings page, in a tab of its own the size of the drawn window's page area.
+  // Chrome on a Mac reports its own shortcut form ("⌃⇧O") whatever the tab's user agent says. With
+  // Windows keys, an extension page (the settings page, the toolbar list) gets the manifest's default keys
+  // ("Alt+Shift+O"), as Chrome on Windows reports them, so the video shows one platform's keys throughout.
+  async windowsKeys(session) {
+    const { platform = 'win' } = this.board;
+    const keys = Object.fromEntries(Object.entries(this.manifest.commands || {}).map(([n, c]) => [n, c.suggested_key?.default]).filter(([, k]) => k));
+    if (platform === 'mac' || process.platform !== 'darwin' || !Object.keys(keys).length) return;
+    const source = `(() => { try {
+      const keys = ${JSON.stringify(keys)};
+      const all = chrome.commands.getAll.bind(chrome.commands);
+      chrome.commands.getAll = async () => (await all()).map((c) => (c.shortcut && keys[c.name] ? { ...c, shortcut: keys[c.name] } : c));
+    } catch {} })();`;
+    await this.b.send('Page.addScriptToEvaluateOnNewDocument', { source }, session);
+  }
+
+  // The real settings page, in a tab of its own the size of the drawn window's page area. settingsZoom: how
+  // far the storyboard zooms in on it, so it is captured sharp enough for that.
   async openSettingsTab() {
-    const { size, platform = 'win' } = this.board;
-    this.opt = await openTab(this.b, { width: size.w, height: size.h - FRAME_H, dsf: size.dsf, platform });
+    const { size, platform = 'win', settingsZoom = 1 } = this.board;
+    this.opt = await openTab(this.b, { width: size.w, height: size.h - FRAME_H, dsf: size.dsf * settingsZoom, platform });
+    await this.windowsKeys(this.opt.session);
     await this.b.send('Page.navigate', { url: `chrome-extension://${this.ext.id}/options.html` }, this.opt.session);
     await this.waitReal('the settings page', () => this.b.eval(this.opt.session, `document.querySelectorAll('#tiles .tile').length > 0 && document.fonts.status === 'loaded'`).catch(() => false));
     this.settingsScroll = 0;
+  }
+
+  // ---- The toolbar list ----
+
+  // Opens the real toolbar list (popup.html) in a tab of its own, 320 px wide like the browser's popup, and
+  // shows it in the stage's bubble under the extension's icon. The list asks for the tab in front, which in
+  // this headless browser is not the stage, so it is pointed at the stage's Gmail tab; it then asks the
+  // content script there what is open or ticked, as it does in the browser. Each open loads it afresh, so it
+  // shows what Gmail has now. While it is open the pointer moves (and hovers) in its tab.
+  async openPopup() {
+    const { size, platform = 'win' } = this.board;
+    if (!this.pop) {
+      this.pop = await openTab(this.b, { width: 320, height: 600, dsf: size.dsf, platform });
+      await this.windowsKeys(this.pop.session);
+      const source = `(() => { try {
+        const query = chrome.tabs.query.bind(chrome.tabs);
+        chrome.tabs.query = (info = {}) => (info.active ? query({ url: 'https://mail.google.com/*' }) : query(info));
+      } catch {} })();`;
+      await this.b.send('Page.addScriptToEvaluateOnNewDocument', { source }, this.pop.session);
+    }
+    await this.b.send('Emulation.setDeviceMetricsOverride', { width: 320, height: 600, deviceScaleFactor: size.dsf, mobile: false }, this.pop.session);
+    await this.b.send('Page.navigate', { url: `chrome-extension://${this.ext.id}/popup.html` }, this.pop.session);
+    await this.waitReal('the toolbar list', () =>
+      this.b.eval(this.pop.session, `document.readyState === 'complete' && document.fonts.status === 'loaded' && !!document.getElementById('context')?.textContent && document.querySelectorAll('#list .ai').length > 0`).catch(() => false),
+    );
+    // The shortcut line at its foot comes a moment after the list.
+    await this.waitReal('the shortcut line in the toolbar list', () => this.b.eval(this.pop.session, `!document.getElementById('last').hidden`).catch(() => false), 3000).catch(() => {});
+    await sleep(150);
+    const h = await this.b.eval(this.pop.session, 'Math.ceil(document.body.getBoundingClientRect().height)');
+    await this.b.send('Emulation.setDeviceMetricsOverride', { width: 320, height: h, deviceScaleFactor: size.dsf, mobile: false }, this.pop.session);
+    await sleep(100);
+    this.popupText = await this.b.eval(this.pop.session, `({ context: document.getElementById('context').textContent, items: [...document.querySelectorAll('#list .ai')].map((b) => b.textContent), last: document.getElementById('last').textContent })`);
+    this.popBox = await this.stage('popup', { src: await this.popupShot(), w: 320, h, show: 1, dur: 160 });
+    this.popupLive = true;
+    this.onPopup = true;
+    this.mouse = { x: -1, y: -1 };
+    return this.popupText;
+  }
+
+  async popupShot() {
+    const { data } = await this.b.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, this.pop.session);
+    return `data:image/png;base64,${data}`;
+  }
+
+  async closePopup(dur = 120) {
+    this.popupLive = false;
+    this.onPopup = false;
+    this.mouse = { x: -1, y: -1 };
+    await this.stage('popup', { show: 0, dur });
   }
 
   async waitReal(what, probe, ms = 15000) {
@@ -117,20 +186,30 @@ export class Director {
     await this.release();
     await this.b.eval(this.page.session, `__clock.to(${this.t})`, this.iso);
     const r = await this.b.eval(this.page.session, `window.__stage.frame(${this.t})`);
-    await this.pointer(r.mx, r.my);
+    await this.pointer(r.mx, r.my, r.px, r.py);
     if (this.settingsLive) await this.pushSettings();
+    if (this.popupLive) await this.stage('popupImage', { src: await this.popupShot() });
     const { data } = await this.b.send('Page.captureScreenshot', { format: 'png', optimizeForSpeed: true }, this.page.session);
     fs.writeFileSync(path.join(this.frames, `f${String(this.n).padStart(5, '0')}.png`), Buffer.from(data, 'base64'));
     this.n++;
     this.t = (this.n * 1000) / this.fps;
   }
 
-  // Moves the real mouse with the drawn one: into the settings tab while its page is in front.
-  async pointer(x, y) {
+  // Moves the real mouse with the drawn one: into the settings tab while its page is in front, and into
+  // the toolbar list's tab while the list is open (px, py: the pointer on the page, before the camera).
+  async pointer(x, y, px = x, py = y) {
     if (x === this.mouse.x && y === this.mouse.y) return;
-    this.mouse = { x, y };
-    const target = this.onSettings ? { s: this.opt.session, x, y: y - FRAME_H } : { s: this.page.session, x, y };
+    this.mouse = { x, y, px, py };
+    const target = this.mouseTarget();
     await this.b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: target.x, y: target.y, button: 'none', buttons: 0 }, target.s);
+  }
+
+  mouseTarget() {
+    const { x, y, px = x, py = y } = this.mouse;
+    if (this.onPopup && this.popBox) return { s: this.pop.session, x: px - this.popBox.x, y: py - this.popBox.y };
+    // The settings page is drawn at page coordinates, so the pointer's page position is where it is in
+    // that tab, wherever the camera is.
+    return this.onSettings ? { s: this.opt.session, x: px, y: py - FRAME_H } : { s: this.page.session, x, y };
   }
 
   async pushSettings() {
@@ -167,6 +246,7 @@ export class Director {
       const s = await this.stage('state');
       if (check(s)) {
         if (late !== undefined && this.t > late) throw new Error(`${what} arrived at ${Math.round(this.t)} ms, after the ${late} ms this storyboard allows. A slow take: render it again.`);
+        await this.settleArmed();
         return s;
       }
       if (this.t >= end) throw new Error(`waited ${max} ms of video for ${what}; state: ${JSON.stringify(s)}`);
@@ -176,9 +256,15 @@ export class Director {
 
   // ---- Pointer, clicks, keys ----
 
-  // to: a CSS selector in the stage, "settings:<selector>" in the settings tab, or { x, y }.
+  // to: a CSS selector in the stage, "settings:<selector>" in the settings tab, "popup:<selector>" in the
+  // open toolbar list, or { x, y }.
   async move(to, o = {}) {
     let dest = to;
+    if (typeof to === 'string' && to.startsWith('popup:')) {
+      const sel = to.slice('popup:'.length);
+      const r = await this.b.eval(this.pop.session, `(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })()`);
+      dest = { x: this.popBox.x + r.x + r.w * (o.ax ?? 0.5) + (o.dx || 0), y: this.popBox.y + r.y + r.h * (o.ay ?? 0.5) + (o.dy || 0) };
+    }
     if (typeof to === 'string' && to.startsWith('settings:')) {
       const sel = to.slice('settings:'.length);
       const r = await this.b.eval(this.opt.session, `(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; })()`);
@@ -189,10 +275,12 @@ export class Director {
     return dur;
   }
 
-  async click({ button = 'left', hold = 70, after = 120, real = true } = {}) {
-    const target = this.onSettings ? { s: this.opt.session, x: this.mouse.x, y: this.mouse.y - FRAME_H } : { s: this.page.session, x: this.mouse.x, y: this.mouse.y };
+  // real: false draws the click but sends no event (for a link whose real effect the stage draws instead).
+  // ring: how long its ring lasts (ms).
+  async click({ button = 'left', hold = 70, after = 120, real = true, ring } = {}) {
+    const target = this.mouseTarget();
     const buttons = button === 'right' ? 2 : 1;
-    await this.stage('press', { down: true });
+    await this.stage('press', { down: true, ring });
     if (real) await this.b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: target.x, y: target.y, button, buttons, clickCount: 1 }, target.s);
     await this.wait(hold);
     if (real) await this.b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: target.x, y: target.y, button, buttons: 0, clickCount: 1 }, target.s);
@@ -201,12 +289,29 @@ export class Director {
   }
 
   // pos: 'bottom' or 'top' (when something on screen sits where the caption would). fade: false for a
-  // loop's first caption, which must already show on frame 0.
+  // loop's first caption, which must already show on frame 0. toast: a pattern (a string); the caption
+  // waits for the extension's note to match it and starts in that very frame (follow it with d.until on
+  // the same note, which records when it started).
   caption(text, o = {}) {
+    if (o.toast) {
+      this.armed = { text };
+      return this.stage('caption', { text, ...o });
+    }
     const open = this.captions.at(-1);
     if (open && open.end === undefined) open.end = this.t;
     if (text) this.captions.push({ text, start: this.t });
     return this.stage('caption', { text, ...o });
+  }
+
+  // An armed caption (see caption): when it started, for the SRT; it starts now if the note has not
+  // matched yet.
+  async settleArmed() {
+    if (!this.armed) return;
+    const { start } = await this.stage('armed', { now: this.t });
+    const open = this.captions.at(-1);
+    if (open && open.end === undefined) open.end = start;
+    this.captions.push({ text: this.armed.text, start });
+    this.armed = null;
   }
 
   mark(name) {
@@ -267,5 +372,17 @@ export class Director {
 
   async settingsRect(sel) {
     return this.b.eval(this.opt.session, `(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left, y: r.top + scrollY, w: r.width, h: r.height }; })()`);
+  }
+
+  // The lines of an element's text on the settings page: [{ top, bottom }] in page coordinates, so a frame's
+  // edge can fall between two lines rather than through one.
+  async settingsLines(sel) {
+    return this.b.eval(
+      this.opt.session,
+      `(() => { const r = document.createRange(); r.selectNodeContents(document.querySelector(${JSON.stringify(sel)})); const out = [];
+        for (const b of r.getClientRects()) { const top = b.top + scrollY, bottom = b.bottom + scrollY, l = out.at(-1);
+          if (l && top < l.bottom - 1) l.bottom = Math.max(l.bottom, bottom); else out.push({ top, bottom }); }
+        return out; })()`,
+    );
   }
 }

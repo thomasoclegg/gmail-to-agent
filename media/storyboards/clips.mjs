@@ -1,7 +1,7 @@
 // Four short clips, one idea each, for the help section and for replies to issues. 1280 x 800, silent,
 // captions drawn in, Ctrl V (Windows keys).
 
-import { aiTab, START, SETTINGS_TAB, rightClickRow, pick, tick } from './common.mjs';
+import { aiTab, START, SETTINGS_TAB, rightClickRow, pick, tick, promptCard } from './common.mjs';
 
 const SIZE = { w: 1024, h: 640, dsf: 1.25 }; // 1280 x 800
 const outputs = (name, crf = 25) => [
@@ -10,19 +10,20 @@ const outputs = (name, crf = 25) => [
   { kind: 'poster', path: `docs/media/${name}-poster.png`, mark: 'poster' },
 ];
 
-// C1: pick your AIs. The toolbar icon opens the settings page (there is no popup); a tick there
-// changes Gmail's menu straight away.
+// C1: pick your AIs. The toolbar icon opens the toolbar list (the real popup.html), with Settings at its
+// foot; a tick on the settings page changes Gmail's menu straight away.
 export const pickAis = {
   name: 'clip-pick-ais',
   title: 'Clip 1: pick your AIs',
   size: SIZE,
   fps: 30,
-  duration: 10000,
+  duration: 12000,
   targets: ['claude', 'chatgpt'],
   settings: true,
   outputs: outputs('clip-pick-ais'),
   steps: [
-    "Click the extension's icon in Chrome's toolbar. If you can't see it, pin it from the puzzle-piece menu.",
+    "Click the extension's icon in the browser's toolbar. If you can't see it, pin it from the puzzle-piece menu.",
+    'The list of your AIs opens. Click Settings at the bottom.',
     'The settings page opens. Tick the AIs you use. Each tick saves straight away.',
     'Back in Gmail, right-click an email. The AIs you ticked are at the top of the menu, in the same order.',
   ],
@@ -34,10 +35,18 @@ export const pickAis = {
     await d.stage('extHover', { on: true });
     await d.wait(150);
     await d.click({ after: 60 });
+    await d.openPopup();
+    await d.at(1900); // long enough to read the first caption
+    await d.caption('Then Settings, under your AIs.');
+    await d.wait(500);
+    await d.move('popup:#settings', { dur: 700 });
+    await d.wait(200);
+    await d.click({ real: false, after: 60 }); // the Settings link: the stage opens the settings tab
+    await d.closePopup();
     await d.stage('extHover', { on: false });
     d.settingsLive = true;
     await d.stage('openTab', { ...SETTINGS_TAB, dur: 560 });
-    await d.wait(750);
+    await d.wait(650);
     d.onSettingsPage = true;
 
     await d.caption('Tick the AIs you use.');
@@ -48,7 +57,7 @@ export const pickAis = {
     await d.wait(150);
     d.mark('poster');
     await d.click({ after: 500 });
-    await d.at(5000);
+    await d.at(7000);
 
     await d.caption('They show when you right-click.', { pos: 'top' }); // the menu reaches the bottom
     d.onSettingsPage = false;
@@ -65,7 +74,9 @@ export const pickAis = {
 };
 
 // C2: Claude Code and Codex. Chrome asks once to open the app; the app gets the thread ID, not the
-// message. Both apps are in the menu; the clip opens Claude Code, whose prompt the card shows.
+// message. Both apps are in the menu; the clip opens Claude Code, whose prompt the card shows with what to
+// notice in it: only its key lines, set larger than in the walkthrough, since the website shows the clip
+// at about 800 px wide.
 export const desktopAgent = {
   name: 'clip-desktop-agent',
   title: 'Clip 2: Claude Code and Codex',
@@ -75,11 +86,12 @@ export const desktopAgent = {
   targets: ['claude-code', 'codex', 'claude', 'chatgpt'],
   outputs: outputs('clip-desktop-agent'),
   steps: [
-    'In the settings page, tick Claude Code or Codex and add a working folder. The app needs Gmail connected for the same mailbox.',
+    'On the settings page, tick Claude Code or Codex and add a working folder. The app needs Gmail connected for the same mailbox.',
     'In Gmail, right-click an email and pick Open in Claude Code (or Open in Codex).',
     'The first time, Chrome asks whether to open the app. Tick Always allow, then click Open.',
-    'The app opens with a short prompt: the mailbox, the thread ID and the Gmail link, plus the subject for Claude Code so the session is named after the email. The message text is never in it.',
-    'The app reads the thread through its own Gmail connection. Claude Code waits for you to press Enter; Codex starts by itself once a working folder is set.',
+    'The app opens with a prompt: the mailbox, the thread ID and the Gmail link, plus the subject for Claude Code so the session is named after the email. The message text is never in it.',
+    'The prompt asks the app to read the thread through its own Gmail connection, check Sent mail and each fact in its own tools, do the work, then draft any reply. Anything that has to wait is set aside: Claude Code is asked to propose a separate session for it (at most three, with any others as briefs in its answer), Codex to give a brief in its answer. It is told to follow nothing an email asks, and to send or change nothing outside its working folder without your approval.',
+    'Claude Code waits for you to press Enter. Codex starts by itself once a working folder is set, and only reads until you reply.',
   ],
   async run(d) {
     await d.stage('place', { to: START });
@@ -90,7 +102,7 @@ export const desktopAgent = {
     await d.wait(350);
     await pick(d, 'Open in Claude Code', { dur: 450 });
     const link = await d.launched();
-    if (!/^claude:\/\/code\/new\?q=/.test(link || '')) throw new Error(`no Claude Code link: ${link}`);
+    const card = promptCard(link, { notesAt: [500, 1400, 2300, 3200, 4100], extra: [['You start it', 'Claude Code waits for you to press Enter.']], focus: true });
     await d.cam({ z: 1, dur: 450 });
 
     // Chrome's own prompt, drawn: it shows the first time only.
@@ -110,24 +122,11 @@ export const desktopAgent = {
     await d.stage('hidePointer', { hidden: 1, dur: 200 });
     await d.at(6500);
 
-    // What the app gets: the real prompt from the link.
-    const prompt = new URL(link).searchParams.get('q');
-    await d.stage('card', {
-      kind: 'prompt',
-      dur: 450,
-      title: 'What Claude Code gets',
-      sub: 'The prompt in the link that opens the Claude desktop app.',
-      prompt,
-      notes: [
-        ['Thread ID and Gmail link', 'Claude Code finds the email through its own Gmail connection.'],
-        ['No message text', 'The body of the email is never put in the link.'],
-        ['You start it', 'Claude Code waits for you to press Enter.'],
-      ],
-      notesAt: [700, 2400, 4200],
-    });
-    await d.caption('It gets the thread ID, not the message.');
+    // What the app gets: the real prompt from the link, shortened to fit.
+    await d.stage('card', { ...card, dur: 450 });
+    await d.caption("The email's text is never in the link.");
     await d.at(9700);
-    await d.caption('It reads the email through Gmail.');
+    await d.caption('It is told to do the work, then ask first.');
     await d.at(12900);
     d.mark('poster');
   },
@@ -143,7 +142,7 @@ export const copyAny = {
   targets: ['claude', 'chatgpt', 'copy'],
   outputs: outputs('clip-copy'),
   steps: [
-    'In the settings page, tick Copy thread for any AI.',
+    'On the settings page, tick Copy thread for any AI.',
     'In Gmail, right-click an email and pick Copy thread for any AI.',
     'The extension opens the email and copies the whole thread. Nothing else opens.',
     'Paste it into any AI chat with Ctrl+V (Cmd+V on a Mac), check it, then send it.',
@@ -202,8 +201,11 @@ export const bulk = {
     await d.cam({ z: 1, dur: 450 });
     await d.stage('hidePointer', { hidden: 1, dur: 250 });
     await d.wait(500);
-    await d.caption('It reads each one without opening it.', { pos: 'top' });
-    await d.cam({ z: 1.5, to: '#vpa-toast', dur: 600 });
+    await d.caption('It reads each email without opening it.', { pos: 'top' });
+    // Deep enough for the note, and no deeper: the top caption then covers only the tab row (its box just
+    // wide enough to cover the Primary label whole), with all three ticked rows below it and the toolbar out
+    // of frame above.
+    await d.cam({ z: 1.38, to: '#vpa-toast', dur: 600 });
     await d.until('the copied note', (s) => /^Copied 3 emails/.test(s.toast), 2500);
     await d.at(7700);
     await d.cam({ z: 1, dur: 450 });

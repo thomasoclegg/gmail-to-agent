@@ -3,5 +3,6 @@
 import { hero } from './hero.mjs';
 import { pickAis, desktopAgent, copyAny, bulk } from './clips.mjs';
 import { walkthrough, thumbnail } from './walkthrough.mjs';
+import { install, installThumbnail } from './install.mjs';
 
-export const BOARDS = [hero('win'), hero('mac'), pickAis, desktopAgent, copyAny, bulk, walkthrough, thumbnail];
+export const BOARDS = [hero('win'), hero('mac'), pickAis, desktopAgent, copyAny, bulk, walkthrough, thumbnail, install, installThumbnail];
