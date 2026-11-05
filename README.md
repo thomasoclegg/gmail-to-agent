@@ -254,7 +254,7 @@ Not affiliated with or endorsed by Google, Anthropic, OpenAI, Microsoft, Perplex
 
 ## Donations
 
-It's free. If it saves you time, please give something to [Friends of Larnaca Cats](https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent), a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. Donations go straight to them. I never see the money. Paying by PayPal? Write "AI Agent" in the note so they know it came from here.
+It's free. If it saves you time, please give something to [Friends of Larnaca Cats](https://www.friendsoflarnacacats.org/donate?ref=ai-agent), a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. Donations go straight to them. I never see the money. Paying by PayPal? Write "AI Agent" in the note so they know it came from here.
 
 ## Licence
 

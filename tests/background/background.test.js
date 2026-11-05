@@ -70,10 +70,10 @@ describe('static: manifest, targets, offscreen.html', () => {
 
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.3.0 keeps the same Chrome manifest;
   // scripts/package.mjs writes the Firefox and Safari ones from it.
-  test('manifest matches the v1.3.0 spec', () => {
+  test('manifest matches the v1.3.1 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.3.0');
+    assert.equal(m.version, '1.3.1');
     assert.equal(m.name, 'Open in AI Agent for Gmail');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -106,7 +106,7 @@ describe('static: manifest, targets, offscreen.html', () => {
     eq(clone(vm.runInContext('DONATION', ctx)), {
       charity: 'Friends of Larnaca Cats',
       about: 'a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus',
-      url: 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent',
+      url: 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent',
     });
     assert.equal(vm.runInContext('hasDonation()', ctx), true);
     for (const t of T) {

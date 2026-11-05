@@ -279,7 +279,7 @@
       check('DEFAULT_TARGETS = ["claude","chatgpt"]', JSON.stringify(DEFAULT_TARGETS) === '["claude","chatgpt"]', JSON.stringify(DEFAULT_TARGETS));
       check('LEGACY_TARGETS = ["claude-code","codex"]', JSON.stringify(LEGACY_TARGETS) === '["claude-code","codex"]', JSON.stringify(LEGACY_TARGETS));
       // The donation is live; hasDonation() still needs both fields.
-      check('DONATION is Friends of Larnaca Cats with an https link, hasDonation() true', DONATION.charity === 'Friends of Larnaca Cats' && DONATION.url === 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent' && hasDonation() === true, JSON.stringify(DONATION));
+      check('DONATION is Friends of Larnaca Cats with an https link, hasDonation() true', DONATION.charity === 'Friends of Larnaca Cats' && DONATION.url === 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent' && hasDonation() === true, JSON.stringify(DONATION));
       const saved = { ...DONATION };
       DONATION.url = '';
       const half = hasDonation();

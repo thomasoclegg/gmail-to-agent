@@ -69,7 +69,7 @@ const LEGACY_TARGETS = ['claude-code', 'codex']; // upgrades from 1.0.x with no 
 const DONATION = {
   charity: 'Friends of Larnaca Cats',
   about: 'a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus',
-  url: 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent',
+  url: 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent',
 };
 
 const targetById = (id) => TARGETS.find((t) => t.id === id);

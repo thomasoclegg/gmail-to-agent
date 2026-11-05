@@ -82,7 +82,7 @@ function nodeChecks() {
     JSON.stringify(g),
   );
   const src = fs.readFileSync(path.join(REPO, 'targets.js'), 'utf8');
-  check('donation names Friends of Larnaca Cats with its https donate page', g.don.charity === 'Friends of Larnaca Cats' && g.don.url === 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent' && (src.match(/const DONATION\s*=/g) || []).length === 1, JSON.stringify(g.don));
+  check('donation names Friends of Larnaca Cats with its https donate page', g.don.charity === 'Friends of Larnaca Cats' && g.don.url === 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent' && (src.match(/const DONATION\s*=/g) || []).length === 1, JSON.stringify(g.don));
   for (const f of ['targets.js', 'content.js']) {
     check(`${f} never uses innerHTML / insertAdjacentHTML / eval`, !/innerHTML|insertAdjacentHTML|\beval\(|new Function/.test(fs.readFileSync(path.join(REPO, f), 'utf8')));
   }

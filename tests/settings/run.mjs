@@ -491,7 +491,7 @@ await scenario('B15b the real targets.js shows the Friends of Larnaca Cats donat
       target: a.target, rel: a.rel, small: s.querySelector('.small').textContent }; })()`);
   check(d.visible && !d.hidden, 'visible', d);
   check(d.text === "It's free. If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus.", 'text names the charity and what it does', d.text);
-  check(d.link === 'Donate to Friends of Larnaca Cats' && d.href === 'https://friends-of-larnaca-cats.weebly.com/donate.html?ref=ai-agent', 'https link to the charity', d);
+  check(d.link === 'Donate to Friends of Larnaca Cats' && d.href === 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent', 'https link to the charity', d);
   check(d.target === '_blank' && /noopener/.test(d.rel), 'opens in a new tab with rel=noopener', d);
   check(d.small === 'Donations go straight to them. I never see the money. Paying by PayPal? Write \u201cAI Agent\u201d in the note so they know it came from here.', 'small print', d.small);
 });
