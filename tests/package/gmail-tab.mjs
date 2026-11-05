@@ -4,7 +4,8 @@
 //
 //   install  The Gmail tab is open first. The content script arrives without a reload, background.js
 //            reads Gmail's session key in the page's main world, Chrome shows the same permission
-//            warnings as for 1.1.1, and a bulk copy of two selected rows runs end to end.
+//            warnings as for 1.1.1, and a bulk copy of two selected rows runs end to end. The toolbar list
+//            opens as a real popup over Gmail (action.openPopup) and a pick in it runs in the Gmail tab.
 //   update   1.1.1 is installed and running in the tab, then the same folder is loaded again with this
 //            version, so Chrome treats it as an update. The tab gets the new copy without a reload, the
 //            1.1.1 copy is left orphaned, and the menu shows the new items once.
@@ -28,7 +29,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO, OUT_ROOT, findChrome, extraChromeFlags } from '../lib/chrome.mjs';
-import { TITLE, IK, GMAIL_PAGE, printView, SINGLE, BULK, TARGETS_SET } from './mock-gmail.mjs';
+import { TITLE, IK, GMAIL_PAGE, printView, SINGLE, BULK, BULK_RELEASED, TARGETS_SET, SINGLE_HINT, SHORTCUTS_OK, SELECTED_TEXT } from './mock-gmail.mjs';
 
 const SRC = process.argv[2] ? path.resolve(process.argv[2]) : REPO;
 if (!fs.existsSync(path.join(SRC, 'manifest.json'))) {
@@ -74,6 +75,10 @@ const tempDir = (name) => fs.mkdtempSync(path.join(TMP, `gmail-tab-${name}-`));
 // The copy goes through the offscreen document; a headless Chrome may refuse the clipboard, which still
 // shows the hand-off reached background.js.
 const COPIED = /^Copied 2 emails\. Paste them into any AI with (Cmd|Ctrl)\+V\.$|^Could not copy the emails/;
+const COPIED_SELECTION = /^Copied\. Paste it into any AI with (Cmd|Ctrl)\+V\.$|^Could not copy the selected text/;
+// The note in the tab while it is shown, or ''.
+const SHOWN_TOAST = `(() => { const t = document.getElementById('vpa-toast'); return t && t.style.opacity === '1' ? t.textContent : ''; })()`;
+const CLOSE_TOAST = `document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`;
 
 // ---- Chrome over a DevTools pipe (commands on fd 3, replies on fd 4, each message ending in a NUL) ----
 
@@ -201,12 +206,27 @@ async function withChrome(label, run) {
     await s.evalIn(`(() => { const item = [...document.querySelectorAll('.vpa-item')].find((i) => i.textContent === ${JSON.stringify(label)});
       const inner = item?.querySelector('.J-N-Jz');
       for (const t of ['mousedown', 'mouseup', 'click']) inner?.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true })); })()`);
+    return { labels, toast: await s.waitToast(/^(Copied|Could not|The extension)/) };
+  };
+  // The note once it shows text matching re (only while shown: since 1.4.0 Escape fades the last one out).
+  s.waitToast = async (re, tries = 60) => {
     let toast = '';
-    for (let i = 0; i < 60 && !/^(Copied|Could not|The extension)/.test(toast); i++) {
+    for (let i = 0; i < tries && !re.test(toast); i++) {
       await sleep(100);
-      toast = await s.evalIn(`document.getElementById('vpa-toast')?.textContent || ''`);
+      toast = await s.evalIn(SHOWN_TOAST);
     }
-    return { labels, toast };
+    return toast;
+  };
+  // An extension page in a tab of its own (the settings page or the toolbar list), with its session.
+  s.extensionPage = async (extId, file) => {
+    const { targetInfos } = await s.send('Target.getTargets');
+    let target = targetInfos.find((t) => t.type === 'page' && t.url.startsWith(`chrome-extension://${extId}/${file}`));
+    if (!target) {
+      const { targetId } = await s.send('Target.createTarget', { url: `chrome-extension://${extId}/${file}` });
+      target = { targetId };
+      await sleep(800);
+    }
+    return s.attach(target.targetId);
   };
 
   const watchdog = setTimeout(() => fail(new Error(`no result within ${RUN_MS / 1000} s`)), RUN_MS);
@@ -260,6 +280,80 @@ await withChrome('install', async (s) => {
   const views = report.printViewRequests.filter((r) => r.phase === 'install');
   step(`install: bulk copy reads both print views from the tab's own mailbox path with the session key`, views.length === 2 && views.every((r) => r.method === 'GET' && new RegExp(`^https://mail\\.google\\.com/mail/u/0/\\?ik=${IK}&view=pt&search=all&th=19a0b1c2d3e4f50[12]$`).test(r.url)), views);
   step('install: bulk copy ends with the result toast', COPIED.test(run.toast), run.toast);
+
+  // ---- 1.4.0 in a real Chrome ----
+  const state2 = await s.evalIn(`({ toast: globalThis.vpaToastLoaded })`, iso[0]?.id);
+  step('install: toast.js ran in the same isolated world', state2.toast === true, state2);
+  const tb = await s.evalIn(`[...document.querySelectorAll('.vpa-tb')].map((b) => b.textContent + (b.nextElementSibling?.classList.contains('nf') ? ' (before More)' : ''))`);
+  step("install: one button in Gmail's toolbar, before More, reading Send 2 to AI with two rows ticked", JSON.stringify(tb) === '["Send 2 to AI (before More)"]', tb);
+  const commands = await s.evalIn(`chrome.commands.getAll().then((c) => c.map((x) => ({ name: x.name, shortcut: x.shortcut })))`, undefined, sw);
+  report.commands = commands;
+  step('install: Chrome gives both shortcuts their suggested keys (Alt+Shift+O opens the toolbar list, Alt+Shift+L sends to the AI used last; Control+Shift on a Mac)', SHORTCUTS_OK(commands), commands);
+
+  // The toolbar list's route: a pick sent from an extension page runs on the Gmail tab.
+  await s.evalIn(CLOSE_TOAST);
+  const settings = await s.extensionPage(id, 'options.html');
+  const picked = await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => chrome.runtime.sendMessage({ target: 'background', action: 'run', platform: 'copy', tabId: tab.id }))`, undefined, settings);
+  const listToast = await s.waitToast(COPIED);
+  step('install: a pick from the toolbar list (an extension page) is accepted and copies the two ticked emails in the Gmail tab', picked?.ok === true && COPIED.test(listToast), { picked, listToast });
+  const refused = await s.evalIn(`chrome.runtime.sendMessage({ target: 'background', action: 'run', platform: 'copy' })`, iso[0]?.id).catch((e) => ({ error: e.message }));
+  step('install: the same message from the content script gets no answer (only extension pages may send it)', refused === undefined || refused?.error, refused);
+
+  // Your own instructions on the real settings page, in real Chrome storage.sync, reach the prompt the content script builds.
+  const OWN_TEXT = 'Settle each matter before drafting.\n- Check Sent mail first.';
+  await s.evalIn(`(() => { const f = document.getElementById('own-desktop'); f.focus(); f.value = ${JSON.stringify(`${OWN_TEXT}\nMailbox: someone@example.org`)}; f.dispatchEvent(new Event('input', { bubbles: true })); f.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`, undefined, settings);
+  await sleep(300);
+  const ownStored = await s.evalIn(`chrome.storage.sync.get({ desktopInstructions: null }).then((x) => x.desktopInstructions)`, undefined, settings);
+  step('install: text typed in the settings page box is saved in storage.sync as the prompts use it (the Mailbox line left out)', ownStored === OWN_TEXT, ownStored);
+  const ownLink = await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => chrome.tabs.sendMessage(tab.id, { target: 'content', action: 'run', platform: 'codex', current: true }, { frameId: 0 })).then((r) => r && r.url)`, undefined, settings);
+  const ownPrompt = typeof ownLink === 'string' ? new URL(ownLink).searchParams.get('prompt') || '' : '';
+  step('install: the Codex link for the two ticked emails starts with that text and ends on the approval sentence; one Mailbox line', ownPrompt.startsWith(`${OWN_TEXT}\n\nMailbox: `) && /outside your working folder without my explicit approval; .*its risks\.$/.test(ownPrompt) && ownPrompt.split('Mailbox:').length === 2, ownPrompt.slice(0, 120));
+  // Chrome's own per-item limit, as the settings page counts it: "<" takes six bytes (Chromium's JSON writer escapes it).
+  const quota = await s.evalIn(`(async () => { const tryIt = (n) => chrome.storage.sync.set({ webInstructions: '<'.repeat(n) }).then(() => 'ok', (e) => String(e && e.message)); const r = [await tryIt(1360), await tryIt(1363)]; await chrome.storage.sync.set({ webInstructions: '', desktopInstructions: '' }); return r; })()`, undefined, settings);
+  step('install: Chrome takes 1,360 "<" in one setting and refuses 1,363 (8,177 and 8,195 bytes with "<" as six), as the settings page counts them', quota?.[0] === 'ok' && /quota/i.test(quota?.[1] || ''), quota);
+
+  // The shortcut's route: send-to-last with Copy as the AI used last.
+  await s.evalIn(CLOSE_TOAST);
+  await s.evalIn(`(async () => { await chrome.storage.local.set({ lastTarget: 'copy' }); const [tab] = await chrome.tabs.query({ url: 'https://mail.google.com/*' }); await onCommand('send-to-last', tab); return 1; })()`, undefined, sw);
+  const keyToast = await s.waitToast(COPIED);
+  step('install: the send-to-last shortcut (onCommand in the service worker) copies the ticked emails with the AI used last', COPIED.test(keyToast), keyToast);
+
+  // Selected text: the copy, then toast.js and the note put into the tab with scripting.executeScript.
+  await s.evalIn(CLOSE_TOAST);
+  await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => onSelection({ menuItemId: 'selection:copy', selectionText: ${JSON.stringify(SELECTED_TEXT)} }, tab)).then(() => 1)`, undefined, sw);
+  const selToast = await s.waitToast(COPIED_SELECTION);
+  step('install: Copy selected text for any AI: the note shows in the tab (toast.js and its message injected by background.js)', COPIED_SELECTION.test(selToast), selToast);
+  step('install: still one toast element and one toolbar button in the tab', (await s.evalIn(`document.querySelectorAll('#vpa-toast').length + document.querySelectorAll('.vpa-tb').length`)) === 2);
+
+  // The real toolbar list: the popup, opened with the Gmail tab in front, as a click on the icon or Alt+Shift+O
+  // opens it. It asks the tab what is ticked, shows the bulk labels, and a pick runs there and closes it.
+  await s.evalIn(CLOSE_TOAST);
+  await s.front();
+  const popupUrl = `chrome-extension://${id}/popup.html`;
+  const opened = await s.evalIn(`chrome.action.openPopup().then(() => 'opened', (e) => 'refused: ' + e.message)`, undefined, sw);
+  let popupTarget = null;
+  for (let i = 0; i < 40 && !popupTarget; i++) {
+    await sleep(100);
+    popupTarget = (await s.send('Target.getTargets')).targetInfos.find((t) => t.url === popupUrl) || null;
+  }
+  const ps = popupTarget ? await s.attach(popupTarget.targetId) : null;
+  const real = ps
+    ? await s.evalIn(`new Promise((r) => { const t = () => document.querySelector('.ai') && document.getElementById('context').textContent ? r({ context: document.getElementById('context').textContent,
+        labels: [...document.querySelectorAll('.ai .label')].map((l) => l.textContent), enabled: [...document.querySelectorAll('.ai')].every((b) => !b.disabled) }) : setTimeout(t, 50); t(); })`, undefined, ps)
+    : null;
+  step('install: the toolbar list opens as a real popup with the Gmail tab in front (action.openPopup): "For the 2 emails you ticked." and the bulk labels, every AI pickable', opened === 'opened' && real?.context === 'For the 2 emails you ticked.' && JSON.stringify(real.labels) === JSON.stringify(BULK) && real.enabled, { opened, real, type: popupTarget?.type });
+  if (ps) await s.evalIn(`document.querySelector('.ai[data-id="copy"]').click(); 1`, undefined, ps).catch(() => {});
+  const popupToast = await s.waitToast(COPIED);
+  await sleep(300);
+  const popupLeft = (await s.send('Target.getTargets')).targetInfos.some((t) => t.url === popupUrl);
+  step('install: Copy picked in the popup copies the two ticked emails in the Gmail tab (the note there says so), and the popup closes', COPIED.test(popupToast) && !popupLeft, { popupToast, popupLeft });
+
+  // The toolbar list itself, in a tab: the active tab is then the list, not Gmail, so it shows the hint.
+  const popup = await s.extensionPage(id, 'popup.html');
+  const list = await s.evalIn(`new Promise((r) => { const t = () => document.getElementById('context').textContent ? r({ context: document.getElementById('context').textContent,
+    labels: [...document.querySelectorAll('.ai .label')].map((l) => l.textContent), disabled: [...document.querySelectorAll('.ai')].every((b) => b.disabled) }) : setTimeout(t, 50); t(); })`, undefined, popup);
+  step('install: popup.html renders the AIs picked and, away from Gmail, the hint', list.context === SINGLE_HINT && JSON.stringify(list.labels) === JSON.stringify(SINGLE) && list.disabled, list);
+  step('install: no script errors in the tab', !report.exceptions.some((x) => x.phase === 'install'), report.exceptions);
 });
 
 // ---- update: 1.1.1 runs in the tab, then this version replaces it ----
@@ -334,7 +428,8 @@ for (const before of AFTER_RIGHT_CLICK) {
     await s.openGmail();
     await sleep(2000);
     const old = await s.rightClick();
-    step(`${before.label}: ${before.what} runs and adds its bulk items once`, running === before.version && JSON.stringify(old.labels) === JSON.stringify(BULK), { running, labels: old.labels });
+    const oldBulk = before.version === '1.2.0' ? BULK_RELEASED : BULK;
+    step(`${before.label}: ${before.what} runs and adds its bulk items once`, running === before.version && JSON.stringify(old.labels) === JSON.stringify(oldBulk), { running, labels: old.labels });
     copyRuntime(SRC, pkg);
     await s.send('Extensions.loadUnpacked', { path: pkg });
     await sleep(3000);
@@ -344,6 +439,9 @@ for (const before of AFTER_RIGHT_CLICK) {
     const run = await s.rightClick('Copy 2 emails for any AI');
     step(`${before.label}: the first right-click after the update shows the bulk items once`, JSON.stringify(run.labels) === JSON.stringify(BULK), run.labels);
     step(`${before.label}: picking one works at once (the new copy's item, not the old copy's)`, COPIED.test(run.toast), run.toast);
+    await sleep(500);
+    const tb = await s.evalIn(`[...document.querySelectorAll('.vpa-tb')].map((b) => b.textContent)`);
+    step(`${before.label}: one button in Gmail's toolbar after the update (an orphaned copy's goes)`, JSON.stringify(tb) === '["Send 2 to AI"]', tb);
   });
 }
 

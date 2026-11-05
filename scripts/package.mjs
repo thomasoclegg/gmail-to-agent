@@ -14,8 +14,9 @@
 // offscreen documents (neither browser has them), so background.js runs as a background page with targets.js
 // listed before it, and Firefox gets its add-on id, minimum version and data-collection statement.
 //
-// The file list comes from the manifest and from what the pages and scripts reference (script tags, icons,
-// font URLs, importScripts, the offscreen document and runtime.getURL pages), plus LICENSE, fonts/OFL.txt
+// The file list comes from the manifest (its content scripts, settings page and toolbar list among them) and
+// from what the pages and scripts reference (script tags, icons, font URLs, importScripts, the offscreen
+// document and runtime.getURL pages), plus LICENSE, fonts/OFL.txt
 // for the bundled fonts and every icons/*.png. The build fails if a referenced file is missing or if
 // anything outside the target's allow-list would be packed. The zip is written by the small deflate writer
 // below (no dependencies), with manifest.json first, the other entries in code-point order (the same
@@ -100,13 +101,14 @@ const targetOf = (m) => (m?.browser_specific_settings?.gecko ? 'firefox' : m?.ba
 
 // ---------- what may ship ----------
 
-// Runtime files only: the manifest, root scripts, the extension pages, PNG icons, woff2 fonts (only those a
-// page references), the font licence and the MIT licence. The offscreen document ships for Chrome only.
+// Runtime files only: the manifest, root scripts, the extension pages (settings, the toolbar list and the
+// offscreen document), PNG icons, woff2 fonts (only those a page references), the font licence and the MIT
+// licence. The offscreen document ships for Chrome only.
 const ALLOWED = [
   (f) => f === 'manifest.json',
   (f) => f === 'LICENSE',
   (f) => /^[^/]+\.js$/.test(f),
-  (f) => f === 'options.html' || f === 'offscreen.html',
+  (f) => f === 'options.html' || f === 'popup.html' || f === 'offscreen.html',
   (f) => /^icons\/[^/]+\.png$/.test(f),
   (f) => /^fonts\/[^/]+\.woff2$/.test(f),
   (f) => f === 'fonts/OFL.txt',

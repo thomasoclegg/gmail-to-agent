@@ -128,6 +128,11 @@ function createWorld(opts = {}) {
     tabsMessages: [],
     badges: [], // chrome.action.setBadgeText / setTitle calls
     optionsOpened: 0,
+    popupsOpened: 0, // chrome.action.openPopup calls
+    popupFails: false, // openPopup rejects, as before Chrome 127
+    local: clone(opts.local || {}), // chrome.storage.local
+    // tabs.query({ active: true, currentWindow: true }) answers this tab; tabs.get looks in openTabs, then here.
+    activeTab: null,
     offscreen: null, // { ctx, chrome, textarea, execCalls }
     createDocCalls: [],
     getContextsCalls: [],
@@ -143,7 +148,14 @@ function createWorld(opts = {}) {
     queryThrows: null,
     scriptCalls: [],
     scriptFails: new Set(),
+    // Tabs where a files injection rejects although the script ran, as Firefox does when the script's last
+    // value cannot be copied back (toast.js before 1.4.0's fix); other injections there still work.
+    filesFail: new Set(),
     pageGlobals: {}, // tabId -> object exposed as window in the MAIN world
+    // tabId -> what getSelection() gives in that page, and the focused text field ({ tagName, value,
+    // selectionStart, selectionEnd }), for the selection that background.js reads after a click.
+    pageSelections: {},
+    pageFocus: {},
   };
 
   // ---- chrome.storage ----
@@ -167,6 +179,21 @@ function createWorld(opts = {}) {
       return undefined;
     }
     return p;
+  };
+  // chrome.storage.local: the AI used last. No change events: background.js does not listen for them.
+  const local = {
+    get: (keys, cb) => {
+      const saved = world.storage;
+      world.storage = world.local;
+      const out = getFrom(keys);
+      world.storage = saved;
+      return maybeCb(tick(jitter()).then(() => out), cb);
+    },
+    set: (items, cb) => {
+      Object.assign(world.local, clone(items));
+      log.push({ ev: 'storage.local.set', items: clone(items) });
+      return maybeCb(tick(jitter()), cb);
+    },
   };
   const sync = {
     get: (keys, cb) => maybeCb(tick(jitter()).then(() => getFrom(keys)), cb),
@@ -288,7 +315,8 @@ function createWorld(opts = {}) {
     onInstalled: makeEvent('runtime.onInstalled'),
     onStartup: makeEvent('runtime.onStartup'),
     onMessage: makeEvent('runtime.onMessage'),
-    getURL: (p) => `chrome-extension://test-ext/${p}`,
+    getURL: (p = '') => `chrome-extension://test-ext/${p}`,
+    getManifest: () => JSON.parse(read('manifest.json')),
     async openOptionsPage() {
       world.optionsOpened++;
       log.push({ ev: 'openOptionsPage' });
@@ -330,12 +358,18 @@ function createWorld(opts = {}) {
       log.push({ ev: 'tabs.create', url: props?.url });
       return { id: nextTabId++, ...clone(props) };
     },
+    async get(tabId) {
+      const tab = world.openTabs.find((t) => t.id === tabId) || (world.activeTab?.id === tabId ? world.activeTab : null);
+      if (!tab) throw new Error(`No tab with id: ${tabId}.`);
+      return clone(tab);
+    },
     // url filter as a match pattern ("*" = anything), like Chrome with host permission.
     async query(q) {
       world.queryCalls.push(clone(q));
       log.push({ ev: 'tabs.query' });
       await tick(jitter());
       if (world.queryThrows) throw new Error(world.queryThrows);
+      if (q?.active) return world.activeTab ? [clone(world.activeTab)] : [];
       const patterns = q?.url == null ? null : [].concat(q.url);
       const re = (p) => new RegExp(`^${p.split('*').map((x) => x.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')).join('.*')}$`);
       return clone(world.openTabs.filter((t) => !patterns || patterns.some((p) => re(p).test(t.url || ''))));
@@ -344,7 +378,9 @@ function createWorld(opts = {}) {
 
   // ---- chrome.scripting ----
   // A func is serialised and run in a fresh context whose window is the page's
-  // globals for that tab, as Chrome does for world: 'MAIN'.
+  // globals for that tab, as Chrome does for world: 'MAIN', with the page's selection
+  // (getSelection and document.activeElement). A func with args (the note and the
+  // link for selected text, which need a page) is only recorded.
   const scripting = {
     async executeScript(injection) {
       const call = {
@@ -352,14 +388,21 @@ function createWorld(opts = {}) {
         world: injection?.world,
         files: clone(injection?.files),
         func: injection?.func ? String(injection.func) : undefined,
+        args: clone(injection?.args),
       };
       world.scriptCalls.push(call);
       log.push({ ev: 'scripting.executeScript', tabId: call.target?.tabId, files: call.files, world: call.world });
       await tick(jitter());
       const tabId = call.target?.tabId;
       if (world.scriptFails.has(tabId)) throw new Error('Cannot access contents of the page. Extension manifest must request permission to access the respective host.');
-      if (call.func) {
-        const page = vm.createContext({ window: clone(world.pageGlobals[tabId] || {}) });
+      if (call.files && world.filesFail.has(tabId)) throw new Error(`Script '${call.files[0]}' result is non-structured-clonable data`);
+      if (call.func && !call.args) {
+        const selection = world.pageSelections[tabId] ?? '';
+        const page = vm.createContext({
+          window: clone(world.pageGlobals[tabId] || {}),
+          document: { activeElement: clone(world.pageFocus[tabId]) ?? null },
+          getSelection: () => ({ toString: () => selection }),
+        });
         return [{ frameId: 0, documentId: 'doc', result: clone(vm.runInContext(`(${call.func})()`, page)) }];
       }
       return [{ frameId: 0, documentId: 'doc', result: undefined }];
@@ -368,13 +411,19 @@ function createWorld(opts = {}) {
 
   const chrome = {
     contextMenus,
-    storage: { sync, onChanged },
+    storage: { sync, local, onChanged },
     runtime,
     tabs,
     scripting,
     offscreen,
+    commands: { onCommand: makeEvent('commands.onCommand') },
     action: {
       onClicked: makeEvent('action.onClicked'),
+      async openPopup() {
+        world.popupsOpened++;
+        log.push({ ev: 'action.openPopup' });
+        if (world.popupFails) throw new Error('Failed to open popup.');
+      },
       // chrome.action.setBadgeText and setTitle exist in every MV3 build, so the stub has them too.
       async setBadgeText(d) {
         world.badges.push({ badge: clone(d) });

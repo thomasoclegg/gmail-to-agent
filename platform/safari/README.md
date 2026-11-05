@@ -38,4 +38,6 @@ None of these has been tested in Safari.
 - Gmail tabs open at install. Safari has no `runtime.getBrowserInfo`, so `background.js` adds the content script to them as it does in Chrome; `content.js` ignores a second copy.
 - Settings. `storage.sync` may stay on one Mac.
 - The `claude://` and `codex://` links to the desktop apps.
+- From 1.4.0: the toolbar list (`action.default_popup`), and `action.openPopup()`, which the second shortcut uses on a page with nothing selected. The shortcuts' Mac keys, `MacCtrl+Shift+O` and `MacCtrl+Shift+L`.
+- From 1.4.0: selected text on another site. The menu click, the toolbar list and the shortcut grant `activeTab`, and `background.js` then runs `scripting.executeScript` in that tab to read the selection, add `toast.js` and show the note. Firefox refused a script's last value it could not copy back, so `toast.js` ends on `void 0`; check that Safari shows the note on the first pick on a page, and that a right-click on a word in Gmail (which Safari selects) still hands over the email.
 - Any warnings the converter prints about the manifest.

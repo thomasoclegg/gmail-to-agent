@@ -25,6 +25,10 @@
   .J-Kh { border-top: 1px solid #ddd; margin: 4px 0; }
   #results, #summary { white-space: pre-wrap; font-size: 11px; margin: 16px; }
   #results { display: none; }
+  [gh="mtb"] { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 8px; background: #fff; }
+  .G-Ni { display: inline-flex; }
+  .T-I { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; height: 40px; border-radius: 20px; cursor: pointer; }
+  .T-I-JW { background: #eceff1; }
 </style>
 </head>
 <body>
@@ -39,6 +43,7 @@
 <script src="data.js"></script>
 <!-- The real extension files, from the repository root (this page is tests/content/mail/u/1/index.html). -->
 <script src="../../../../../targets.js"></script>
+<script src="../../../../../toast.js"></script>
 <script>
   // Orphan suites: an older copy that an update orphaned runs first, in its own scope. run.mjs writes
   // these files to tests/.out/content/.
@@ -47,8 +52,8 @@
 </script>
 <script src="../../../../../content.js"></script>
 <script>
-  // Guard suite: content.js arrives a second time, as when background.js injects it into a tab that already has it.
-  if (SUITE === 'guard') document.write('<script src="../../../../../content.js"><\/script>');
+  // Guard suite: toast.js and content.js arrive a second time, as when background.js injects them into a tab that already has them.
+  if (SUITE === 'guard') document.write('<script src="../../../../../toast.js"><\/script><script src="../../../../../content.js"><\/script>');
 </script>
 <script src="gmail.js"></script>
 <script src="driver.js"></script>

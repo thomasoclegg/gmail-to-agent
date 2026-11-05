@@ -12,7 +12,8 @@ const mock = {
   calls: [], // { api, args, t }
   launches: [], // deep links caught at anchor click
   opens: [], // window.open calls
-  store: ['main', 'toast', 'guard', 'orphan', 'orphan111'].includes(SUITE) ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '' } : {},
+  store: ['main', 'toast', 'guard', 'orphan', 'orphan111', 'motion'].includes(SUITE) ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '' } : {},
+  local: {}, // chrome.storage.local (the AI used last)
   changeListeners: [],
   messageListeners: [],
   // How runtime.sendMessage answers: 'ok' | 'fail' | 'invalidated'
@@ -58,6 +59,17 @@ window.chrome = {
         }
         setTimeout(() => mock.changeListeners.forEach((f) => f(changes, 'sync')), 0);
         cb?.();
+        return Promise.resolve();
+      },
+    },
+    local: {
+      get(keys) {
+        record('storage.local.get', keys);
+        return Promise.resolve({ ...mock.local });
+      },
+      set(items) {
+        record('storage.local.set', items);
+        Object.assign(mock.local, items);
         return Promise.resolve();
       },
     },

@@ -29,6 +29,24 @@
   const tbody = document.querySelector('#inbox tbody');
   document.title = INBOX_TITLE;
 
+  // ---- Gmail's action toolbar ([gh="mtb"]) ----
+  // As verified in Gmail on 5 Nov 2026: div[role=button] buttons with classes "T-I J-J5-Ji T-I-ax7 L3", each
+  // in a G-Ni group, told apart by act (refresh 20 in the list; back 19, archive 7, spam 9, delete 10 and the
+  // rest in an open thread) and the More button by class nf, whose aria-label Gmail translates.
+  const toolbarButton = (act, label, nf = false) =>
+    el('div', { class: 'G-Ni J-J5-Ji' }, el('div', { class: `T-I J-J5-Ji${nf ? ' nf' : ''} T-I-ax7 L3`, role: 'button', tabindex: '0', 'aria-label': label, ...(act ? { act } : {}) }));
+  const toolbarParts = (acts) => [
+    el('div', { role: 'checkbox', 'aria-checked': 'false', class: 'T-Jo' }),
+    ...acts.map(([act, label]) => toolbarButton(act, label)),
+    toolbarButton(null, 'More email options', true),
+  ];
+  const LIST_ACTS = [['20', 'Refresh']];
+  const THREAD_ACTS = [['19', 'Back to Inbox'], ['7', 'Archive'], ['9', 'Report spam'], ['10', 'Delete'], ['2', 'Mark as unread'], ['290', 'Snooze'], ['95', 'Add to Tasks'], ['8', 'Move to']];
+  const listToolbar = el('div', { gh: 'mtb', class: 'G-atb', id: 'list-toolbar' }, ...toolbarParts(LIST_ACTS));
+  inbox.prepend(listToolbar);
+  // Gmail keeps hidden toolbars from other views in the page; the extension must leave them alone.
+  main.prepend(el('div', { gh: 'mtb', class: 'G-atb', id: 'hidden-toolbar', style: 'display:none' }, ...toolbarParts(THREAD_ACTS)));
+
   // ---- Inbox rows ----
   // As in Gmail, the subject is span.bqe (the node with the thread id), the snippet span.y2
   // ("&nbsp;-&nbsp;" then the text), and the checkbox carries aria-checked.
@@ -145,6 +163,7 @@
     const view = el(
       'div',
       { class: 'thread-view nH', 'data-id': id },
+      el('div', { gh: 'mtb', class: 'G-atb' }, ...toolbarParts(THREAD_ACTS)),
       el('div', { class: 'ha' }, el('h2', { class: 'hP', 'data-legacy-thread-id': id, text: th.subject }), th.messages.length > 1 ? expandBtn : ''),
     );
     main.append(view);
@@ -188,6 +207,27 @@
   }
 
   g.openThread = openThread;
+  // Gmail redraws the visible toolbar as you move around: its children are replaced, the extension's button with them.
+  g.redrawToolbar = () => {
+    const bar = [...document.querySelectorAll('[gh="mtb"]')].find((b) => b.offsetParent);
+    const acts = bar?.querySelector('[act="19"]') ? THREAD_ACTS : LIST_ACTS;
+    bar?.replaceChildren(...toolbarParts(acts));
+    log('toolbar-redrawn');
+    return bar;
+  };
+  // Gmail changes its toolbar so the extension cannot find it (no gh="mtb"), or drops the More button.
+  g.breakToolbar = (how) => {
+    for (const bar of document.querySelectorAll('[gh="mtb"]')) {
+      if (how === 'gh') bar.dataset.gh = bar.getAttribute('gh'), bar.removeAttribute('gh');
+      if (how === 'nf') bar.querySelectorAll('.nf').forEach((b) => (b.classList.remove('nf'), b.classList.add('nf-was')));
+    }
+  };
+  g.fixToolbar = () => {
+    for (const bar of document.querySelectorAll('[data-gh]')) bar.setAttribute('gh', bar.dataset.gh), delete bar.dataset.gh;
+    document.querySelectorAll('.nf-was').forEach((b) => (b.classList.remove('nf-was'), b.classList.add('nf')));
+  };
+  // Gmail changes its row menu's markup, so the extension cannot find it.
+  g.breakMenu = (broken) => menu.classList.toggle('J-M', !broken);
   // Tick rows as Gmail does. mode 'aria' sets the checkbox's aria-checked; 'x7' drops
   // aria-checked and adds class x7 to the row (the fallback); 'both-false' keeps aria-checked="false" with x7.
   g.select = (keys, mode = 'aria') => {

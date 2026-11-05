@@ -199,9 +199,26 @@ for (let i = 1; i <= 30; i++) {
   };
 }
 
+// U1..U3: unread rows (Gmail marks them zE), for Triage unread. Nothing else in the bulk suite is unread.
+const UNREAD = [
+  ['U1', 'Tuesday slot for booking 5120', 'Riverside Sports Club', 'bookings@riverside.test', 'Can you confirm the Tuesday slot for booking 5120? The club closes at noon.'],
+  ['U2', 'Your weekly garden digest', 'Garden Digest', 'news@digest.test', 'Ten plants for winter colour, and our pick of the month.'],
+  ['U3', 'Re: Bill 5120 query', 'Riverside Sports Club', 'accounts@riverside.test', 'The bill shows 30 sessions; the booking was for 28. Please send a corrected bill.'],
+];
+for (const [i, [key, subject, from, email, text]] of UNREAD.entries()) {
+  PV[key] = {
+    id: `19a0b1c2d3e4f7${String(i + 1).padStart(2, '0')}`,
+    from,
+    subject,
+    unread: true,
+    rowSnippet: text.slice(0, 40),
+    messages: [{ name: from, email, date: 'Thu, Nov 5, 2026 at 8:00 AM', to: PV_EMAIL, html: `<div>${text}</div>`, expect: text }],
+  };
+}
+
 // Rows for the bulk suite (gmail.js draws THREADS) and the print views behind them.
 const BULK_THREADS = Object.fromEntries(
-  Object.entries(PV).map(([key, f]) => [f.id, { key, from: f.from, subject: f.subject, rowSnippet: f.rowSnippet, layout: [], messages: [], neverOpens: true }]),
+  Object.entries(PV).map(([key, f]) => [f.id, { key, from: f.from, subject: f.subject, rowSnippet: f.rowSnippet, layout: [], messages: [], neverOpens: true, unread: !!f.unread }]),
 );
 function installPrintViews(mock) {
   for (const f of Object.values(PV)) {
