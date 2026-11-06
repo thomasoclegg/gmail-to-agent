@@ -1,12 +1,11 @@
-# Open in AI Agent for Gmail: https://thomasoclegg.github.io/gmail-to-agent/
+# Open in AI Agent for Gmail: https://openinaiagent.com/
 #
-# Crawlers read robots.txt only at the root of a host. While the site lives under /gmail-to-agent/ on
-# thomasoclegg.github.io, this copy is served at /gmail-to-agent/robots.txt and crawlers will not read it;
-# the host root has none, so everything may be crawled. It takes effect if the site moves to its own domain.
-# Until then, submit the sitemap below in Google Search Console and Bing Webmaster Tools.
+# Crawlers read robots.txt only at the root of a host. The site lives at the root of openinaiagent.com,
+# so this copy is served at /robots.txt and takes effect there.
+# Submit the sitemap below in Google Search Console and Bing Webmaster Tools.
 
 User-agent: *
 Allow: /
 Disallow: /og.html
 
-Sitemap: https://thomasoclegg.github.io/gmail-to-agent/sitemap.xml
+Sitemap: https://openinaiagent.com/sitemap.xml

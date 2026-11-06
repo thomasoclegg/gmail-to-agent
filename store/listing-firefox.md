@@ -118,7 +118,7 @@ Not affiliated with or endorsed by Google, Anthropic, OpenAI, Microsoft, Perplex
 
 **Support email** (optional, public): leave empty, or use an address you are happy to publish.
 **Support site:** https://github.com/thomasoclegg/gmail-to-agent/issues
-**Homepage:** https://thomasoclegg.github.io/gmail-to-agent/
+**Homepage:** https://openinaiagent.com/
 **Licence:** The MIT License.
 **Privacy policy:** AMO takes the text, not a link. Paste the contents of `PRIVACY.md`. From 1.4.0 it says "the browser" throughout and notes where the Firefox build differs: no offscreen document, desktop app links opened from the page, and Firefox's own install statement.
 **This add-on is experimental:** No. **Requires payment:** No.

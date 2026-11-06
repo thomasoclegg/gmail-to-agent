@@ -1,6 +1,6 @@
 # Open in AI Agent for Gmail
 
-**[Website](https://thomasoclegg.github.io/gmail-to-agent/) · [Chrome Web Store](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) · [Download](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip) · [Video](https://www.youtube.com/watch?v=5O1DDCq7sNY) · [Install video](https://www.youtube.com/watch?v=xGDSdIC2wjY) · [Privacy](PRIVACY.md)**
+**[Website](https://openinaiagent.com/) · [Chrome Web Store](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) · [Download](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip) · [Video](https://www.youtube.com/watch?v=5O1DDCq7sNY) · [Install video](https://www.youtube.com/watch?v=xGDSdIC2wjY) · [Privacy](PRIVACY.md)**
 
 ![In Gmail, an email is right-clicked and Ask ChatGPT picked from the top of the menu. The thread is copied, ChatGPT opens in a new tab and the thread is pasted in, ready to check before pressing Enter. An illustration with a made-up inbox.](docs/media/hero.gif)
 
@@ -188,7 +188,7 @@ On the settings page, **Check Gmail** asks an open Gmail tab whether the extensi
 
 ## Install
 
-The [Chrome Web Store listing](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) is live, for Chrome and the browsers that install from it. Edge and Firefox install from the download on GitHub until their own listings are live, and Edge can also use the Chrome Web Store. The [website](https://thomasoclegg.github.io/gmail-to-agent/#install) shows the right one for the browser you visit it with. A [54-second video](https://www.youtube.com/watch?v=xGDSdIC2wjY) shows every step in Chrome.
+The [Chrome Web Store listing](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) is live, for Chrome and the browsers that install from it. Edge and Firefox install from the download on GitHub until their own listings are live, and Edge can also use the Chrome Web Store. The [website](https://openinaiagent.com/#install) shows the right one for the browser you visit it with. A [54-second video](https://www.youtube.com/watch?v=xGDSdIC2wjY) shows every step in Chrome.
 
 | Browser | Store | Or from GitHub |
 | --- | --- | --- |

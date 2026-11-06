@@ -18,7 +18,7 @@ When the listing is live, paste its address (from the Extension overview page) i
 ## Properties
 
 **Category:** Productivity. Microsoft's documentation does not list the categories; pick the nearest one if Partner Center names it differently.
-**Website:** https://thomasoclegg.github.io/gmail-to-agent/
+**Website:** https://openinaiagent.com/
 **Support contact detail:** https://github.com/thomasoclegg/gmail-to-agent/issues
 **Mature content:** No.
 

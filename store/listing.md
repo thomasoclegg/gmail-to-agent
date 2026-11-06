@@ -86,7 +86,7 @@ Not affiliated with or endorsed by Google or any AI provider named here. All tra
 **Store icon:** `icons/icon128.png`
 **Screenshots (1280×800), in upload order:** `store/shot1.png` (the right-click menu and the note), the several-emails image from the 1.3.0 listing (`shot4-bulk`, kept outside the repo), `store/shot2.png` (what a web AI receives), `store/shot4.png` (prompt styles and saved prompts), `store/shot3.png` (the real settings page)
 **Small promo tile (440×280):** `store/promo.png`
-**Homepage URL:** https://thomasoclegg.github.io/gmail-to-agent/
+**Homepage URL:** https://openinaiagent.com/
 **Support URL:** https://github.com/thomasoclegg/gmail-to-agent/issues
 
 ## Privacy tab

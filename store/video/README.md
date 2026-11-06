@@ -23,7 +23,7 @@
 
    The video shows Windows keys. On a Mac, press Cmd V instead of Ctrl V, and Control Shift L instead of Alt Shift L.
 
-   Website and download: https://thomasoclegg.github.io/gmail-to-agent/
+   Website and download: https://openinaiagent.com/
    Source code: https://github.com/thomasoclegg/gmail-to-agent
 
    0:00 Pick your AIs
