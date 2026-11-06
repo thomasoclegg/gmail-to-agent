@@ -2,6 +2,7 @@
 #   shot1.html  1280 x 800, the Gmail drawing from docs/index.html with notes in the margin
 #   promo.html  440 x 280, the top of the same Gmail menu
 #   shot3.html  1280 x 800, the real options.html with a stand-in for chrome.storage, always light
+#   shot4.html  1280 x 800, prompt styles: the real options.html and popup.html in frames, with stand-ins, always light
 # shot2.html is written by hand. Usage: python3 store/build.py
 # Then render each page at its size with headless Chrome, for example:
 #   chrome --headless=new --hide-scrollbars --force-device-scale-factor=1 --window-size=1280,800 \
@@ -9,6 +10,7 @@
 # and copy shot1.png to docs/shot-menu.png, shot2.png to docs/shot-prompt.png and shot3.png to docs/shot-onboarding.png.
 import os
 import re
+from html import escape
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -249,6 +251,180 @@ shot3 = shot3.replace('</style>', SHOT3_CSS + '</style>', 1)
 assert 'window.chrome' in shot3 and 'Store image 3' in shot3 and '#donate { display: none' in shot3
 assert 'prefers-color-scheme: dark' not in shot3
 
-for name, html in [('shot1.html', shot1), ('promo.html', promo), ('shot3.html', shot3)]:
+# shot4: prompt styles and saved prompts (1.5.0). Three frames of the real pages as they ship, each with the same
+# stand-in for the browser's APIs and made-up settings (only the AIs picked differ, see WEB_ONLY), always light: the default style list and the saved prompt card
+# from options.html, and the toolbar list from popup.html. Each frame holds its whole page as srcdoc, with
+# <base href="../"> so its scripts, fonts and icons load from the repo, and store-only CSS that shows just its part.
+# The frame heights below are fixed and each framed page hides its overflow, so after any change to options.* or popup.*
+# re-render shot4 and check by eye that "Add a saved prompt", the hint under the styles and the toolbar list's footer
+# are whole, then adjust the heights. A frame whose page runs past its height is drawn with a red outline.
+STAND_IN = '''<base href="../">
+<!-- Store image 4. Built by store/build.py; a stand-in replaces chrome.storage, chrome.runtime, chrome.tabs and
+     chrome.commands, with made-up settings. -->
+<script>
+// The AIs picked (TARGETS, from build.py), Resolve fully as the default style, and one saved prompt with text for the
+// web AIs and Copy.
+const SETTINGS = {
+  targets: @TARGETS@,
+  promptStyle: 'resolve',
+  savedPrompt1: {
+    name: 'My instructions',
+    desktop: '',
+    web: 'Keep replies short and friendly, and sign them Sam. If a date or a price is mentioned, check it against the rest of the thread.',
+  },
+};
+// A callback, as options.js asks, or a promise, as popup.js does; either way before the page is drawn.
+const answer = (value, cb) => (cb ? void queueMicrotask(() => cb(value)) : Promise.resolve(value));
+window.chrome = {
+  runtime: { lastError: undefined, sendMessage: () => Promise.resolve({ ok: false }), openOptionsPage() {} },
+  storage: {
+    sync: { get: (d, cb) => answer({ ...d, ...SETTINGS }, cb), set: (o, cb) => answer(undefined, cb), remove: (k, cb) => answer(undefined, cb) },
+    local: { get: (d, cb) => answer({ ...d, lastTarget: 'claude' }, cb), set: (o, cb) => answer(undefined, cb), remove: (k, cb) => answer(undefined, cb) },
+    onChanged: { addListener() {} },
+  },
+  // The tab in front is Gmail with one email open.
+  tabs: {
+    query: () => Promise.resolve([{ id: 1, url: 'https://mail.google.com/mail/u/0/#inbox' }]),
+    sendMessage: () => Promise.resolve({ ok: true, ticked: 0, total: 0, thread: true }),
+  },
+  commands: { getAll: () => Promise.resolve([{ name: 'send-to-last', shortcut: '⌃⇧L' }]) },
+};
+</script>'''
+# The toolbar list opens on the default each time; here My instructions has been picked in it with the mouse for this
+# send, so no focus ring shows.
+PICKED = '''<script>
+const pickForThisSend = () => {
+  const style = document.getElementById('style');
+  if (!style?.options.length) return false;
+  style.value = 'saved1';
+  document.activeElement?.blur();
+  return true;
+};
+document.addEventListener('DOMContentLoaded', () => {
+  if (pickForThisSend()) return;
+  new MutationObserver((_, watch) => pickForThisSend() && watch.disconnect()).observe(document.getElementById('style'), { childList: true });
+});
+</script>'''
+# The part of each page a frame shows, at the zoom the store image needs.
+OPTIONS_PART = '''  /* Store image only: one part of the Prompts section, in a frame of its own at 85 %. */
+  html { zoom: 0.85; }
+  body { overflow: hidden; }
+  .sheet { display: block; padding: 20px 24px; }
+  .sheet > :not(main), main > :not(.prompts) { display: none !important; }
+  .prompts { margin-top: 0; }
+'''
+STYLES_PART = OPTIONS_PART + '''  .saved-prompts { display: none !important; }
+'''
+CARD_PART = OPTIONS_PART + '''  .prompts > :not(.saved-prompts), .saved-prompts > :not(#saved-title, #saved-list, #add-prompt) { display: none !important; }
+  .saved-prompts { margin-top: 0; }
+'''
+POPUP_PART = '''  /* Store image only: the toolbar list at 90 %. */
+  html { zoom: 0.9; }
+  body { overflow: hidden; }
+'''
+
+
+def light(page):
+    page = re.sub(r"  @media \(prefers-color-scheme: dark\) \{.*?\n  \}\n", "", page, count=1, flags=re.S)
+    return page.replace('<meta name="color-scheme" content="light dark">', '<meta name="color-scheme" content="light">', 1)
+
+
+def framed(page, part, targets, extra=''):
+    stand_in = STAND_IN.replace('@TARGETS@', '[' + ', '.join(f"'{t}'" for t in targets) + ']', 1)
+    page = light(page).replace('<head>', '<head>\n' + stand_in + extra, 1).replace('</style>', part + '</style>', 1)
+    assert 'window.chrome' in page and part in page and 'prefers-color-scheme: dark' not in page
+    return escape(page, quote=True)
+
+
+popup_page = open(os.path.join(REPO, 'popup.html')).read()
+# The last sentence of every ask a web AI gets, in every style and with a saved prompt's text (webAsk, in content.js).
+WEB_APPROVAL = re.search(r"^const WEB_APPROVAL = '([^'\\]*)';$", open(os.path.join(REPO, 'targets.js')).read(), re.M).group(1)
+options_page = open(os.path.join(REPO, 'options.html')).read()
+# The settings frames have Claude, ChatGPT and Copy picked, so the saved prompt card shows only its box for the web AIs
+# and Copy and fits; the toolbar list adds Claude Code, as shot1's menu and shot3's settings page have it.
+WEB_ONLY = ['claude', 'chatgpt', 'copy']
+frames = {
+    'styles': framed(options_page, STYLES_PART, WEB_ONLY),
+    'card': framed(options_page, CARD_PART, WEB_ONLY),
+    'popup': framed(popup_page, POPUP_PART, ['claude-code'] + WEB_ONLY, PICKED),
+}
+
+shot4 = f'''<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>Store image 4: prompt styles and saved prompts</title>
+<!-- 1280 x 800. Built by store/build.py: each frame is options.html or popup.html as it ships, with a stand-in for the
+     browser's APIs and made-up settings. -->
+<style>
+{fonts}
+
+{TOKENS}
+  * {{ box-sizing: border-box; }}
+  html, body {{ margin: 0; }}
+  body {{ position: relative; width: 1280px; height: 800px; overflow: hidden; padding: 48px 64px 0; background: var(--paper);
+         color: var(--ink); font: 400 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }}
+  .brand {{ display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }}
+  .brand svg {{ width: 26px; height: 26px; }}
+  h1 {{ margin: 30px 0 12px; font: 600 42px/1.05 var(--sans); letter-spacing: -0.03em; }}
+  .cols {{ position: absolute; left: 64px; top: 174px; display: grid; grid-template-columns: 440px 360px 288px; column-gap: 32px;
+           align-items: start; }}
+  .note {{ min-height: 75px; margin: 0 0 13px; font: 400 18px/1.42 var(--sans); color: var(--ink-2); }}
+  .note .key {{ display: block; margin-bottom: 4px; font: 600 15px/1.3 var(--sans); color: var(--ink); }}
+  .safety {{ margin-top: 20px; }}
+  .safety .note {{ min-height: 0; margin-bottom: 8px; }}
+  .line {{ margin: 0; padding: 7px 10px 8px; background: #eef0f2; font: 15px/1.5 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }}
+  iframe {{ display: block; width: 100%; border: 1px solid var(--rule); border-radius: 8px; background: var(--paper);
+            box-shadow: 0 1px 2px rgba(21, 23, 26, 0.05), 0 6px 20px rgba(21, 23, 26, 0.07); }}
+  /* Each frame fits its part: measured in headless Chrome at 1280 x 800. */
+  .styles iframe {{ height: 474px; }}
+  .card iframe {{ height: 513px; }}
+  .popup iframe {{ height: 305px; }}
+</style>
+</head>
+<body>
+<div class="brand">
+  {icon}
+  Open in AI Agent for Gmail
+</div>
+<h1>Choose how the AI is asked</h1>
+
+<div class="cols">
+  <div class="styles">
+    <p class="note"><span class="key">Three built-in styles</span>A style changes only what the AI is asked to do. The default is set in Settings.</p>
+    <iframe title="The settings page: the default style" srcdoc="{frames['styles']}"></iframe>
+  </div>
+  <div class="card">
+    <p class="note"><span class="key">Up to three of your own</span>Each one is a style you can pick in Settings or the toolbar list.</p>
+    <iframe title="The settings page: a saved prompt" srcdoc="{frames['card']}"></iframe>
+  </div>
+  <div class="popup">
+    <p class="note"><span class="key">Another style for one send</span>Pick it in the toolbar list. The default stays as it is.</p>
+    <iframe title="The toolbar list" srcdoc="{frames['popup']}"></iframe>
+    <div class="safety">
+      <p class="note"><span class="key">The approval line stays</span>In every style, the request to a web AI ends with:</p>
+      <p class="line">{escape(WEB_APPROVAL)}</p>
+    </div>
+  </div>
+</div>
+<script>
+// A frame whose page runs past its height is cropped, so it gets a red outline for the check by eye; each frame's
+// page height and frame height (CSS pixels of the frame) go in data-fit for a check with --dump-dom.
+addEventListener('load', () => {{
+  const fit = [...document.querySelectorAll('iframe')].map((f) => {{
+    const page = f.contentDocument.documentElement;
+    if (page.scrollHeight > page.clientHeight) f.style.outline = '4px solid #d93025';
+    return `${{f.parentElement.className}} ${{page.scrollHeight}}/${{page.clientHeight}}`;
+  }});
+  document.body.dataset.fit = fit.join(', ');
+}});
+</script>
+</body>
+</html>
+'''
+assert shot4.count('<iframe ') == 3 and 'Store image 4' in shot4 and WEB_APPROVAL.startswith('Do not send')
+
+for name, html in [('shot1.html', shot1), ('promo.html', promo), ('shot3.html', shot3), ('shot4.html', shot4)]:
     open(os.path.join(HERE, name), 'w').write(html)
     print('wrote', name, len(html))
