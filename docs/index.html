@@ -400,6 +400,26 @@
   .faq h3 { margin: 0; padding: 14px 0 4px; border-top: 1px solid var(--rule); font: 600 17px/1.4 var(--sans); }
   .faq p { margin: 0 0 14px; max-width: 38em; }
 
+  /* The donation: the text in columns 1 to 8, what PayPal shows in the notes column. The button is PayPal's gold,
+     drawn here (no logo, nothing loaded from PayPal), with near-black text on it in both themes (11.9 : 1). */
+  #donate { padding-top: 112px; }
+  .give { grid-column: 1 / 9; padding-top: 22px; border-top: 1px solid var(--ink); }
+  .give-do { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+  .btn.pp { display: inline-block; padding: 14px 34px 15px; border: 1.5px solid transparent; border-radius: 999px;
+            background: #ffc439; color: #111111; font: 400 17px/1.25 var(--sans); text-align: center; white-space: nowrap;
+            transition: background-color 0.15s; }
+  .btn.pp b { font-weight: 600; }
+  .btn.pp:hover { background: #f2ba36; box-shadow: none; }
+  .btn.pp:active { background: #e6ad2e; }
+  .btn.pp.sm { padding: 10px 22px 11px; font-size: 15px; }
+  .give-alt { font-size: 15.5px; white-space: nowrap; }
+  .give-note { margin: 16px 0 0; max-width: 38em; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); }
+  .give-aside { grid-column: 10 / 13; grid-row: 3; align-self: start; padding-top: 10px; border-top: 1px solid var(--ink);
+                font-size: 14.5px; line-height: 1.5; color: var(--ink-2); }
+  .give-aside .label { display: block; margin-bottom: 4px; }
+  /* In Windows' high-contrast modes the gold goes, so the button keeps an edge. */
+  @media (forced-colors: active) { .btn.pp { border-color: ButtonText; } }
+
   /* ---- Footer, with the donation. The only heavy rule on the page sits above it. ---- */
   .foot { margin-top: 72px; padding-bottom: 64px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
   .foot::before { content: ""; grid-column: 1 / -1; height: 2px; background: var(--ink); margin-bottom: 22px; }
@@ -410,9 +430,7 @@
   .foot .name { font: 600 17px/1.3 var(--sans); color: var(--ink); margin-bottom: 8px; }
   .foot .links a { display: inline-block; margin-right: 18px; color: var(--ink); white-space: nowrap; }
   .fd p { margin: 0 0 14px; font: 400 16px/1.5 var(--sans); color: var(--ink); }
-  .btn.ghost { padding-top: 11px; padding-bottom: 11px; background: transparent; color: var(--ink); border: 1.5px solid var(--ink);
-               font-size: 15px; }
-  .btn.ghost:hover { border-color: var(--rubric); box-shadow: none; }
+  .fd .give-alt { color: var(--ink); font-size: 14px; }
 
   /* ---- Narrower screens ---- */
   @media (max-width: 1100px) {
@@ -437,6 +455,8 @@
     .bulk, .part { padding-top: 88px; }
     #privacy { padding-top: 80px; }
     #install { padding-top: 96px; }
+    #donate { padding-top: 88px; }
+    .give-aside { margin-top: 30px; max-width: 26em; }
     #faq { padding-top: 88px; }
     .browsers { margin-bottom: 44px; }
     /* The store column is narrow here, so "Coming soon" goes under the store's name, flush left. */
@@ -507,6 +527,8 @@
     .browsers tr.here > * { background: none; }
     .browsers tr.here th { padding-left: 0; }
     .pick-do .btn { white-space: normal; }
+    /* With larger text the donate links may need two lines rather than run off the screen. */
+    .give-do .btn.pp, .give-alt { white-space: normal; }
     .keys th { width: 8.5em; }
     .foot { margin-top: 56px; }
   }
@@ -552,7 +574,7 @@
     <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect class="ig" width="16" height="16" rx="3.25" fill="#15171a"/><rect x="1" y="4" width="10" height="7" rx="0.5" fill="#fafaf8"/><path class="ik" d="M1.9 4.9 6 8.5l4.1-3.6" fill="none" stroke="#15171a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="4" width="3" height="2" rx="0.35" fill="#fb3e36"/><rect x="12" y="7" width="3" height="2" rx="0.35" fill="#fafaf8"/><rect x="12" y="10" width="3" height="2" rx="0.35" fill="#fafaf8"/></svg>
     Open in AI Agent for Gmail
   </a>
-  <p><a href="#install">Install</a><a href="#faq">Questions</a></p>
+  <p><a href="#install">Install</a><a href="#donate">Donate</a><a href="#faq">Questions</a></p>
 </header>
 
 <main id="main">
@@ -567,7 +589,7 @@
     <p class="ver">Version 1.5.0, November 2026</p>
     <a class="btn" id="download" href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip">Download for Chrome <svg aria-hidden="true"><use href="#i-down"/></svg></a>
     <p id="get-note">A zip you load in Chrome's developer mode, <a href="#install">four steps below</a>. The Chrome Web Store listing is coming soon.</p>
-    <p>Free, MIT licence. Tested in Chrome on macOS.</p>
+    <p>Free, MIT licence. Tested in Chrome on macOS. If it saves you time, <a href="#donate">donate to Friends of Larnaca Cats</a>.</p>
     <p>On YouTube: <a href="https://www.youtube.com/watch?v=5O1DDCq7sNY">the 90-second walkthrough</a> and <a href="https://www.youtube.com/watch?v=xGDSdIC2wjY">how to install it</a>.</p>
   </aside>
 </section>
@@ -975,6 +997,25 @@
   <p class="t small">To update a download, unzip the new version over the old folder, then press reload on the extension's card in your browser's extensions page. Open Gmail tabs pick up the new version by themselves. A store install updates itself. What changed in each version is in the <a href="https://github.com/thomasoclegg/gmail-to-agent/releases">release notes</a>.</p>
 </section>
 
+<!-- The donation. Both PayPal buttons go to the charity's own PayPal donate page, with "AI Agent" in its purpose, and
+     both "or give on their website" links go to the charity's own page with ?ref=ai-agent. Never use a
+     paypal.com/donate?token= link here: those expire. If these links change, change PRIVACY.md and README.md to match. -->
+<section class="sec page grid" id="donate" aria-labelledby="donate-title">
+  <h2 id="donate-title">It's free. If it saves you time, donate to the cats.</h2>
+  <p class="intro">Friends of Larnaca Cats is a volunteer group in Larnaca, Cyprus. They neuter, feed and treat the street cats there. If you want to give something back, please give it to them.</p>
+  <div class="give">
+    <div class="give-do">
+      <a class="btn pp" href="https://www.paypal.com/donate/?business=Spgl%40friendsoflarnacacats.org&amp;item_name=Friends+of+Larnaca+Cats+-+AI+Agent&amp;currency_code=EUR" target="_blank" rel="noopener">Donate with <b>PayPal</b><span class="vh"> to Friends of Larnaca Cats (opens in a new tab)</span></a>
+      <a class="give-alt" href="https://www.friendsoflarnacacats.org/donate?ref=ai-agent" target="_blank" rel="noopener">or give on their website<span class="vh"> (friendsoflarnacacats.org, opens in a new tab)</span></a>
+    </div>
+    <p class="give-note">Your donation goes straight to the charity, and I never see the money. The PayPal button marks it &ldquo;AI Agent&rdquo;, so they know it came from here. PayPal's page takes debit and credit cards too.</p>
+  </div>
+  <aside class="give-aside" aria-labelledby="give-shows">
+    <span class="label" id="give-shows">What PayPal shows</span>
+    Donate to Syndesmos Prostasias Gaton Larnakas, the charity's registered name, for &ldquo;Friends of Larnaca Cats - AI Agent&rdquo;. In euros, once or monthly.
+  </aside>
+</section>
+
 <section class="sec page grid" id="faq" aria-labelledby="faq-title">
   <h2 id="faq-title">Questions</h2>
   <!-- Keep these answers word for word in step with the FAQPage data in the script after this section. -->
@@ -1013,9 +1054,12 @@
     <p>A personal project. MIT licence, so you can read the source before you install it.</p>
     <p class="links"><a href="https://github.com/thomasoclegg/gmail-to-agent">Source on GitHub</a><a href="#privacy">Privacy</a><a href="https://github.com/thomasoclegg/gmail-to-agent/issues">Report a problem</a></p>
   </div>
-  <div class="fd" id="donate">
-    <p>If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. Donations go straight to them; I never see the money. Paying by PayPal? Write &ldquo;AI Agent&rdquo; in the note so they know it came from here.</p>
-    <a class="btn ghost" id="donate-link" href="https://www.friendsoflarnacacats.org/donate?ref=ai-agent" target="_blank" rel="noopener">Donate to Friends of Larnaca Cats</a>
+  <div class="fd">
+    <p>If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. Donations go straight to them; I never see the money.</p>
+    <div class="give-do">
+      <a class="btn pp sm" id="donate-link" href="https://www.paypal.com/donate/?business=Spgl%40friendsoflarnacacats.org&amp;item_name=Friends+of+Larnaca+Cats+-+AI+Agent&amp;currency_code=EUR" target="_blank" rel="noopener">Donate with <b>PayPal</b><span class="vh"> to Friends of Larnaca Cats (opens in a new tab)</span></a>
+      <a class="give-alt" href="https://www.friendsoflarnacacats.org/donate?ref=ai-agent" target="_blank" rel="noopener">or give on their website<span class="vh"> (friendsoflarnacacats.org, opens in a new tab)</span></a>
+    </div>
   </div>
   <p class="f2">Not affiliated with or endorsed by Google, Anthropic, OpenAI, Microsoft, Perplexity, xAI, Mistral AI, DeepSeek, Yahoo, Mozilla, Apple or any other browser maker. Gmail, Outlook, Yahoo Mail, Gemini, Claude, ChatGPT, Codex, Copilot, Perplexity, Grok, Le Chat, DeepSeek and the browser names on this page are trademarks of their owners.</p>
 </footer>

@@ -58,7 +58,7 @@ Like anything you copy yourself, the text stays on your clipboard until you copy
 
 Nothing is sent to me. What you hand to an AI app or website goes to that service, and its own terms and privacy policy cover what it does with it.
 
-The donate link on the settings page and website goes to Friends of Larnaca Cats with `?ref=ai-agent` added, so their site can tell the visit came from this extension. It carries nothing about you or your email.
+The website's Donate with PayPal buttons open PayPal's donate page for Friends of Larnaca Cats, with "Friends of Larnaca Cats - AI Agent" as the purpose, so the charity can tell the donation came from this extension. The donate link on the settings page, and the website's "or give on their website" link, go to the charity's own page with `?ref=ai-agent` added. None of them carries anything about you or your email.
 
 ## What it stores
 
