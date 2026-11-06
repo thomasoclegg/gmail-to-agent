@@ -1,6 +1,6 @@
 # Open in AI Agent for Gmail
 
-**[Website](https://thomasoclegg.github.io/gmail-to-agent/) · [Download](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip) · [Video](https://www.youtube.com/watch?v=5O1DDCq7sNY) · [Install video](https://www.youtube.com/watch?v=xGDSdIC2wjY) · [Privacy](PRIVACY.md)**
+**[Website](https://thomasoclegg.github.io/gmail-to-agent/) · [Chrome Web Store](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) · [Download](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip) · [Video](https://www.youtube.com/watch?v=5O1DDCq7sNY) · [Install video](https://www.youtube.com/watch?v=xGDSdIC2wjY) · [Privacy](PRIVACY.md)**
 
 ![In Gmail, an email is right-clicked and Ask ChatGPT picked from the top of the menu. The thread is copied, ChatGPT opens in a new tab and the thread is pasted in, ready to check before pressing Enter. An illustration with a made-up inbox.](docs/media/hero.gif)
 
@@ -188,12 +188,12 @@ On the settings page, **Check Gmail** asks an open Gmail tab whether the extensi
 
 ## Install
 
-None of the store listings is live yet, so every browser installs from the download on GitHub for now. The [website](https://thomasoclegg.github.io/gmail-to-agent/#install) shows the right one for the browser you visit it with. A [54-second video](https://www.youtube.com/watch?v=xGDSdIC2wjY) shows every step in Chrome.
+The [Chrome Web Store listing](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) is live, for Chrome and the browsers that install from it. Edge and Firefox install from the download on GitHub until their own listings are live, and Edge can also use the Chrome Web Store. The [website](https://thomasoclegg.github.io/gmail-to-agent/#install) shows the right one for the browser you visit it with. A [54-second video](https://www.youtube.com/watch?v=xGDSdIC2wjY) shows every step in Chrome.
 
-| Browser | Store | Until the listing is live |
+| Browser | Store | Or from GitHub |
 | --- | --- | --- |
-| Chrome, Chromium, Brave, Opera, Vivaldi, Arc, Perplexity Comet | Chrome Web Store: coming soon | [open-in-ai-agent.zip](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip), loaded unpacked (steps below) |
-| Microsoft Edge | Edge Add-ons: coming soon | The same zip, loaded unpacked in `edge://extensions`. Once the Chrome Web Store listing is live, Edge can also install from there after you allow extensions from other stores. |
+| Chrome, Chromium, Brave, Opera, Vivaldi, Arc, Perplexity Comet | [Chrome Web Store](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) | [open-in-ai-agent.zip](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip), loaded unpacked (steps below) |
+| Microsoft Edge | Edge Add-ons: coming soon | The same zip, loaded unpacked in `edge://extensions`. Edge can also install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk) once you allow extensions from other stores. |
 | Firefox 140 or later | Firefox Add-ons: coming soon | [open-in-ai-agent-firefox.zip](https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-firefox.zip), as a temporary add-on (below). Firefox removes it when it restarts. |
 | Safari | Planned | Not yet. A Safari version needs Apple's paid developer programme and Xcode. |
 | Internet Explorer | No | Microsoft retired Internet Explorer in June 2022, and it never ran extensions like this one. Use Edge. |
