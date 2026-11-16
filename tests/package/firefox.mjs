@@ -331,7 +331,7 @@ await withFirefox('install', async (s) => {
   toasts = await s.evalIn(s.gmail, `document.querySelectorAll('#vpa-toast').length`);
   step('install: Firefox adds the content script to the open Gmail tab without a reload (one toast element)', toasts === 1, toasts);
 
-  await s.evalIn(settings, `chrome.storage.sync.set({ targets: ${JSON.stringify(TARGETS_SET)} }).then(() => 1)`);
+  await s.evalIn(settings, `chrome.storage.sync.set({ targets: ${JSON.stringify(TARGETS_SET)}, bulkMode: 'batch' }).then(() => 1)`);
   await sleep(800);
   // contextMenus.update fails for an id that does not exist, so it shows which items background.js made.
   const probe = JSON.parse(

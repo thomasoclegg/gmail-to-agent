@@ -2,6 +2,20 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://openinaiagent.com/</loc>
-    <lastmod>2026-11-06</lastmod>
+  </url>
+  <url>
+    <loc>https://openinaiagent.com/claude-for-gmail/</loc>
+  </url>
+  <url>
+    <loc>https://openinaiagent.com/chatgpt-for-gmail/</loc>
+  </url>
+  <url>
+    <loc>https://openinaiagent.com/claude-code-gmail/</loc>
+  </url>
+  <url>
+    <loc>https://openinaiagent.com/antigravity-gemini-gmail/</loc>
+  </url>
+  <url>
+    <loc>https://openinaiagent.com/llms.txt</loc>
   </url>
 </urlset>

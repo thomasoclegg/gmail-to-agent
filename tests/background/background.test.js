@@ -18,6 +18,8 @@ const PROMPT = 'Help me with this email thread.\n\n<<<EMAIL THREAD\nSubject: Hi\
 const SPEC_TITLES = {
   'claude-code': 'Open thread in Claude Code',
   codex: 'Open thread in Codex',
+  antigravity: 'Open thread in Antigravity',
+  'gemini-cli': 'Open thread in Gemini CLI',
   claude: 'Ask Claude about this thread',
   chatgpt: 'Ask ChatGPT about this thread',
   gemini: 'Ask Gemini about this thread',
@@ -33,6 +35,8 @@ const ALL_IDS = Object.keys(SPEC_TITLES);
 const SELECTION_TITLES = {
   'claude-code': 'Ask Claude Code about the selected text',
   codex: 'Ask Codex about the selected text',
+  antigravity: 'Ask Antigravity about the selected text',
+  'gemini-cli': 'Ask Gemini CLI about the selected text',
   claude: 'Ask Claude about the selected text',
   chatgpt: 'Ask ChatGPT about the selected text',
   gemini: 'Ask Gemini about the selected text',
@@ -92,18 +96,20 @@ describe('static: manifest, targets, offscreen.html', () => {
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.4.0 adds "activeTab" (no install
   // warning: tests/package/gmail-tab.mjs compares Chrome's warnings with 1.1.1's), the toolbar list as the
   // action's popup and two keyboard shortcuts. scripts/package.mjs writes the Firefox and Safari manifests from it.
-  test('manifest matches the v1.5.0 spec', () => {
+  test('manifest matches the v1.6.0 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.5.0');
-    assert.equal(m.name, 'Open in AI Agent for Gmail');
+    assert.equal(m.version, '1.6.0');
+    assert.equal(m.name, 'Open in AI Agent for Gmail: Claude, ChatGPT & Codex');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
       m.description,
-      'Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or another AI. Runs on your computer.',
+      'Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity. 100% local, no server.',
     );
     assert.ok(m.description.length <= 132, `description ${m.description.length} chars`);
     eq(m.permissions, ['contextMenus', 'storage', 'offscreen', 'clipboardWrite', 'scripting', 'activeTab']);
+    eq(m.optional_permissions, ['nativeMessaging']);
+    eq(m.optional_host_permissions, ['https://claude.ai/*', 'https://chatgpt.com/*', 'https://gemini.google.com/*']);
     eq(m.host_permissions, ['https://mail.google.com/*'], 'Gmail only, the same host the content script already matches');
     eq(m.host_permissions, m.content_scripts[0].matches, 'host permission adds no host beyond the content script');
     eq(m.background, { service_worker: 'background.js' });
@@ -124,7 +130,7 @@ describe('static: manifest, targets, offscreen.html', () => {
     assert.ok(Object.values(m.commands).every((c) => !/Alt/.test(c.suggested_key.mac)), 'no Option key on a Mac');
     eq(m.content_scripts[0].js, ['targets.js', 'toast.js', 'content.js']);
     eq(m.content_scripts[0].matches, ['https://mail.google.com/*']);
-    assert.equal(m.homepage_url, 'https://github.com/thomasoclegg/gmail-to-agent');
+    assert.equal(m.homepage_url, 'https://openinaiagent.com/');
     assert.ok(m.icons['16'] && m.icons['48'] && m.icons['128']);
   });
 
@@ -155,12 +161,16 @@ describe('static: manifest, targets, offscreen.html', () => {
     assert.equal(T.find((t) => t.id === 'copy').menu, 'Copy thread for any AI');
     assert.equal(T.find((t) => t.id === 'claude-code').menu, 'Open in Claude Code');
     assert.equal(T.find((t) => t.id === 'codex').menu, 'Open in Codex');
+    assert.equal(T.find((t) => t.id === 'antigravity').menu, 'Open in Antigravity');
+    assert.equal(T.find((t) => t.id === 'gemini-cli').menu, 'Open in Gemini CLI');
     // Bulk labels in Gmail's row menu ({n} is the number of emails).
     eq(
       Object.fromEntries(T.map((t) => [t.id, t.bulkMenu])),
       {
         'claude-code': 'Open {n} in Claude Code',
         codex: 'Open {n} in Codex',
+        antigravity: 'Open {n} in Antigravity',
+        'gemini-cli': 'Open {n} in Gemini CLI',
         ...Object.fromEntries(T.filter((t) => t.kind === 'web').map((t) => [t.id, `Ask ${t.name} about {n} emails`])),
         copy: 'Copy {n} emails for any AI',
       },
@@ -958,9 +968,10 @@ describe('scripts/package.mjs: the Firefox and Safari manifests', () => {
       gecko: { id: 'open-in-ai-agent@thomasoclegg.github.io', strict_min_version: '140.0', data_collection_permissions: { required: ['personallyIdentifyingInfo', 'personalCommunications', 'websiteContent'] } },
     });
     assert.equal(f.minimum_chrome_version, undefined);
-    const same = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !['background', 'permissions', 'minimum_chrome_version', 'browser_specific_settings'].includes(k)));
+    assert.equal(f.optional_permissions, undefined, 'nativeMessaging stripped for Firefox');
+    const same = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !['background', 'permissions', 'optional_permissions', 'minimum_chrome_version', 'browser_specific_settings'].includes(k)));
     eq(same(f), same(m), 'name, version, description, icons, action, host permissions, options page and content scripts unchanged');
-    eq(Object.keys(f).filter((k) => k !== 'browser_specific_settings'), Object.keys(m).filter((k) => k !== 'minimum_chrome_version'), 'key order kept');
+    eq(Object.keys(f).filter((k) => k !== 'browser_specific_settings'), Object.keys(m).filter((k) => !['minimum_chrome_version', 'optional_permissions'].includes(k)), 'key order kept');
     eq(pkg.manifestProblems(f, 'firefox'), []);
     assert.equal(pkg.targetOf(f), 'firefox');
     assert.equal(f.version, m.version);

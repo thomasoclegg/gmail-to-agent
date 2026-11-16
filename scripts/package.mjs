@@ -78,6 +78,11 @@ function pageManifest(root, m, extra) {
   const out = {};
   for (const [key, value] of Object.entries(m)) {
     if (key === 'minimum_chrome_version') continue;
+    if (key === 'optional_permissions') {
+      const kept = (value || []).filter((p) => p !== 'nativeMessaging');
+      if (kept.length) out.optional_permissions = kept;
+      continue;
+    }
     if (key === 'permissions') out.permissions = value.filter((p) => p !== 'offscreen');
     else if (key === 'background') out.background = { scripts: backgroundScripts(root, m), ...extra.background };
     else out[key] = value;

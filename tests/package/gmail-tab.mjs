@@ -308,6 +308,8 @@ await withChrome('install', async (s) => {
   await sleep(300);
   const ownStored = await s.evalIn(`chrome.storage.sync.get({ savedPrompt1: null }).then((x) => x.savedPrompt1)`, undefined, settings);
   step('install: a saved prompt added and typed on the settings page is saved in storage.sync as its own item, as the prompts use it (the Mailbox line left out)', canon(ownStored) === canon({ name: 'Saved prompt 1', desktop: OWN_TEXT, web: '' }), ownStored);
+  await s.evalIn(`chrome.storage.sync.set({ bulkMode: 'batch' })`, undefined, settings);
+  await sleep(100);
   const codexPrompt = async (style) => {
     const url = await s.evalIn(`chrome.tabs.query({ url: 'https://mail.google.com/*' }).then(([tab]) => chrome.tabs.sendMessage(tab.id, { target: 'content', action: 'run', platform: 'codex', current: true${style ? `, style: '${style}'` : ''} }, { frameId: 0 })).then((r) => r && r.url)`, undefined, settings);
     return typeof url === 'string' ? new URL(url).searchParams.get('prompt') || '' : '';
@@ -316,6 +318,7 @@ await withChrome('install', async (s) => {
   step('install: the Codex link for the two ticked emails with saved prompt 1 picked for this send starts with its text and ends on the approval sentence; one Mailbox line', ownPrompt.startsWith(`${OWN_TEXT}\n\nMailbox: `) && /outside your working folder without my explicit approval; .*its risks\.$/.test(ownPrompt) && ownPrompt.split('Mailbox:').length === 2, ownPrompt.slice(0, 120));
   const defaultPrompt = await codexPrompt('');
   step('install: the next pick with no style (the shortcut, or the list left on the default): the default, Resolve fully', defaultPrompt.startsWith('Work through these 2 Gmail threads as one batch.') && !defaultPrompt.includes(OWN_TEXT), defaultPrompt.slice(0, 120));
+  await s.evalIn(`chrome.storage.sync.set({ bulkMode: 'separate' })`, undefined, settings);
   // Chrome's own per-item limit for one saved prompt, where the settings page's count (fitsSync) puts it: "<" takes six
   // bytes (Chromium's JSON writer escapes it), so 1,357 fit in { name: 'x', desktop, web: '' } and 1,358 do not.
   const quota = await s.evalIn(`(async () => { const item = (n) => ({ name: 'x', desktop: '<'.repeat(n), web: '' }); let n = 0; while (fitsSync('savedPrompt3', item(n + 1))) n++;

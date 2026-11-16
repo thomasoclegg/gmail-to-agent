@@ -3,6 +3,7 @@
 // shortcuts the browser assigned, and runs the Gmail self-check.
 const $ = (id) => document.getElementById(id);
 const DESKTOP_IDS = TARGETS.filter((t) => t.kind === 'app').map((t) => t.id);
+const HOST_IDS = TARGETS.filter((t) => t.via === 'host').map((t) => t.id);
 const WEB_IDS = TARGETS.filter((t) => t.kind !== 'app').map((t) => t.id);
 
 let chosen = new Set();
@@ -29,15 +30,19 @@ const flashFailed = (el) => flash(el, 'Not saved, try again', 4000);
 
 function updateSteps() {
   const desktop = DESKTOP_IDS.some((id) => chosen.has(id));
+  const needsHelper = HOST_IDS.some((id) => chosen.has(id)) || location.hash === '#helper';
   const web = WEB_IDS.some((id) => chosen.has(id));
   $('empty').hidden = pickTargets([...chosen]).length > 0;
-  $('folder-step').hidden = !desktop;
+  $('folder-step').hidden = !desktop && location.hash !== '#helper';
+  $('helper-box').hidden = !needsHelper;
+  $('autofill-row').hidden = !Object.keys(AUTOFILL_HOSTS).some((id) => chosen.has(id));
   // Prompts: in each saved prompt, a box for each group that has an AI picked; text in a hidden box is kept and still
   // used. The section shows while any AI is picked.
   shownGroups = { desktop, web };
   for (const card of cards.values()) for (const box of Object.values(card.boxes)) box.box.hidden = !shownGroups[box.group];
   showHints();
   $('prompts').hidden = !desktop && !web;
+  refreshAutoFillTile();
 }
 
 function showTargets(targets) {
@@ -938,6 +943,105 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushEdits();
 });
 
+// ---- Multiple emails mode, companion helper and web auto-fill (1.6.0) ----
+
+let savedBulkMode = DEFAULT_BULK_MODE;
+
+function bulkModeRow({ id, name, note }) {
+  const row = element('label', 'style');
+  const input = element('input');
+  input.type = 'radio';
+  input.name = 'bulk-mode';
+  input.value = id;
+  input.id = `bulk-mode-${id}`;
+  const nameEl = span('style-name', name);
+  const noteEl = span('style-note', note);
+  nameEl.id = `bulk-mode-${id}-name`;
+  noteEl.id = `bulk-mode-${id}-note`;
+  input.setAttribute('aria-labelledby', nameEl.id);
+  input.setAttribute('aria-describedby', noteEl.id);
+  row.htmlFor = input.id;
+  row.append(input, nameEl, noteEl);
+  input.addEventListener('change', () => {
+    if (!input.checked) return;
+    const prev = savedBulkMode;
+    savedBulkMode = id;
+    chrome.storage.sync.set({ bulkMode: id }, () => {
+      if (!chrome.runtime.lastError) return flashSaved($('prompts-saved'));
+      savedBulkMode = prev;
+      showBulkMode(prev);
+      flashFailed($('prompts-saved'));
+    });
+  });
+  return row;
+}
+
+function showBulkMode(mode) {
+  savedBulkMode = bulkModeOf(mode);
+  if (!$('bulk-mode-list').children.length) {
+    $('bulk-mode-list').replaceChildren(...BULK_MODES.map(bulkModeRow));
+  }
+  const radio = document.getElementById(`bulk-mode-${savedBulkMode}`);
+  if (radio && !radio.checked) radio.checked = true;
+}
+
+const activeAutoFillOrigins = () =>
+  Object.entries(AUTOFILL_HOSTS)
+    .filter(([id]) => chosen.has(id))
+    .map(([, origin]) => origin);
+
+async function refreshAutoFillTile() {
+  const origins = activeAutoFillOrigins();
+  if (!origins.length || typeof chrome.permissions?.contains !== 'function') {
+    $('autofill-tile').setAttribute('aria-pressed', 'false');
+    return;
+  }
+  const granted = await Promise.resolve(chrome.permissions.contains({ origins })).catch(() => false);
+  $('autofill-tile').setAttribute('aria-pressed', String(!!granted));
+}
+
+$('autofill-tile').addEventListener('click', async () => {
+  const origins = activeAutoFillOrigins();
+  if (!origins.length || typeof chrome.permissions?.request !== 'function') return;
+  const on = $('autofill-tile').getAttribute('aria-pressed') === 'true';
+  if (on) {
+    const removed = await Promise.resolve(chrome.permissions.remove?.({ origins })).catch(() => false);
+    if (removed) {
+      $('autofill-tile').setAttribute('aria-pressed', 'false');
+      flashSaved($('prompts-saved'));
+    }
+    return;
+  }
+  const granted = await Promise.resolve(chrome.permissions.request({ origins })).catch(() => false);
+  $('autofill-tile').setAttribute('aria-pressed', String(!!granted));
+  if (granted) flashSaved($('prompts-saved'));
+});
+
+async function refreshHelperStatus() {
+  const res = await Promise.resolve(chrome.runtime.sendMessage?.({ target: 'background', action: 'pingHost' })).catch(() => null);
+  if (!res?.permission) {
+    $('helper-status').textContent = 'Browser permission not enabled yet.';
+    return;
+  }
+  if (!res?.ok) {
+    $('helper-status').textContent = 'Browser permission granted. Run node host/install.mjs in Terminal to finish connecting.';
+    return;
+  }
+  const found = Object.entries(res.agents || {})
+    .filter(([, p]) => p)
+    .map(([k]) => targetById(k)?.name || k);
+  $('helper-status').textContent = found.length
+    ? `Connected (v${res.version}): found ${found.join(', ')}.`
+    : `Connected (v${res.version}), but no CLI binary was found on PATH yet.`;
+}
+
+$('enable-helper').addEventListener('click', async () => {
+  if (typeof chrome.permissions?.request === 'function') {
+    await Promise.resolve(chrome.permissions.request({ permissions: ['nativeMessaging'] })).catch(() => false);
+  }
+  await refreshHelperStatus();
+});
+
 // ---- Gmail's toolbar button ----
 
 let savedToolbar = true;
@@ -1150,19 +1254,24 @@ chrome.storage.onChanged.addListener((changes, area) => {
     savedToolbar = changes.toolbarButton.newValue !== false;
     showToolbarSetting(savedToolbar);
   }
+  if (changes.bulkMode) {
+    showBulkMode(changes.bulkMode.newValue);
+  }
   // The prompts: shown at once, or once a card is left if it has focus (see syncCards).
   promptsChanged(changes);
 });
 
-chrome.storage.sync.get({ targets: DEFAULT_TARGETS, folder: '', toolbarButton: true, ...PROMPT_KEYS }, (s) => {
+chrome.storage.sync.get({ targets: DEFAULT_TARGETS, folder: '', toolbarButton: true, bulkMode: DEFAULT_BULK_MODE, ...PROMPT_KEYS }, (s) => {
   savedFolder = s.folder;
   $('folder').value = s.folder;
   savedToolbar = s.toolbarButton !== false;
   showToolbarSetting(savedToolbar);
+  showBulkMode(s.bulkMode);
   // Defaults stand for absent keys: null and '' are what PROMPT_KEYS gives for nothing stored.
   showPrompts(Object.fromEntries(Object.entries(s).filter(([k, v]) => !(k in PROMPT_KEYS) || (v !== null && v !== ''))));
   $('tiles').replaceChildren(...GROUPS.map(group));
   showTargets(s.targets);
+  if (!$('helper-box').hidden) refreshHelperStatus();
 });
 showMoved();
 showShortcuts();
@@ -1170,6 +1279,8 @@ pinHint();
 setReportLink([]);
 // Opened by background.js after a menu click in a Gmail tab that needs a reload.
 $('reload-notice').hidden = location.hash !== '#reload';
+// Opened by background.js when Antigravity or Gemini CLI needs the companion helper.
+$('helper-notice').hidden = location.hash !== '#helper';
 // Opened by background.js for upgrades from 1.0.
 $('new-notice').hidden = location.hash !== '#new';
 $('try-line').replaceChildren(

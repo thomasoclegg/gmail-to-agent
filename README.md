@@ -4,13 +4,13 @@
 
 ![In Gmail, an email is right-clicked and Ask ChatGPT picked from the top of the menu. The thread is copied, ChatGPT opens in a new tab and the thread is pasted in, ready to check before pressing Enter. An illustration with a made-up inbox.](docs/media/hero.gif)
 
-Right-click an email in Gmail and pick an AI, or use the button the extension adds to Gmail's toolbar. Claude, ChatGPT, Gemini, Copilot and four other web AIs open in a new tab next to Gmail with the thread copied; Claude Code and Codex read the thread themselves on your desktop. I built it for my own inbox.
+Right-click an email in Gmail and pick an AI, or use the button the extension adds to Gmail's toolbar. Claude, ChatGPT, Gemini, Copilot and four other web AIs open in a new tab next to Gmail with the thread copied (or auto-filled into the prompt box if enabled); Claude Code, Codex, Google Antigravity and Gemini CLI read the thread themselves on your desktop. I built it for my own inbox.
 
 It runs in Chrome and the browsers that install from the Chrome Web Store, in Microsoft Edge and in Firefox. Install it from your browser's store where the listing is live, or from the download on GitHub, and pick your AIs on the page that opens (see [Install](#install)). Then right-click any email in Gmail. Tabs that were already open need no reload.
 
-- Web AIs open in a new tab next to Gmail with the thread copied for you. Press Cmd+V (Ctrl+V), then Enter.
-- Desktop agents start a session on your computer and read the thread themselves. Claude Code names the session after the email.
-- Tick several emails and right-click one of them to hand over up to 25 at once. The AI is asked to sort them into tasks and resolve each one as far as it can, then draft any replies. They stay unread.
+- Web AIs open in a new tab next to Gmail with the thread copied for you (or auto-filled into Claude, ChatGPT and Gemini if enabled on Settings). Press Enter when ready.
+- Desktop agents start a session on your computer and read the thread themselves. Claude Code, Antigravity and Gemini CLI name each session after the email subject.
+- Tick 2 to 5 emails to open a **separate named session per email** by default (or switch to **One combined batch** in Settings or the toolbar popup). Tick 6 to 25 emails to hand them over together as one batch. Unread ticked rows stay unread.
 - With nothing ticked, **Triage unread** in Gmail's toolbar hands over the unread emails on this page of the list, up to 25. The AI sorts them into four groups (Action, Consolidate, Disregard, Draft), and they stay unread.
 - The extension's icon in the browser toolbar lists your AIs too, and a keyboard shortcut sends the email you are on (or, on another site, the text you selected) to the AI you used last.
 - In Outlook, Yahoo Mail or on any other page, select the text, right-click it and pick an AI. Only the text you selected goes.
@@ -23,11 +23,13 @@ It runs in Chrome and the browsers that install from the Chrome Web Store, in Mi
 
 | AI | Where it opens | What you do |
 | --- | --- | --- |
-| Claude Code | Claude desktop app | Press Enter to start the pre-filled session |
-| Codex | ChatGPT desktop app | Nothing if a working folder is set: it starts straight away. Without one, it may ask you to pick a project |
-| Claude | claude.ai, new tab | Paste, then Enter |
-| ChatGPT | chatgpt.com, new tab | Paste, then Enter |
-| Gemini | gemini.google.com, new tab | Paste, then Enter |
+| Claude Code | Claude desktop app or `claude -n` via companion helper | Press Enter to start the pre-filled session |
+| Codex | ChatGPT desktop app or `codex` via companion helper | Nothing if a working folder is set: it starts straight away. Without one, it may ask you to pick a project |
+| Antigravity | Google Antigravity (`agy --add-dir <folder> -i`) via companion helper, or `Gemini.app` | Enable the local companion helper once (`node host/install.mjs`) |
+| Gemini CLI | Terminal (`gemini -i`) via companion helper | Enable the local companion helper once (`node host/install.mjs`) |
+| Claude | claude.ai, new tab | Paste (or enable auto-fill in Settings), then Enter |
+| ChatGPT | chatgpt.com, new tab | Paste (or enable auto-fill in Settings), then Enter |
+| Gemini | gemini.google.com, new tab | Paste (or enable auto-fill in Settings), then Enter |
 | Microsoft Copilot | copilot.microsoft.com, new tab | Paste, then Enter |
 | Perplexity | perplexity.ai, new tab | Paste, then Enter |
 | Grok | grok.com, new tab | Paste, then Enter |

@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Send Gmail threads to ChatGPT, Claude or Claude Code</title>
-<meta name="description" content="Free browser extension: right-click a Gmail thread to send it to ChatGPT, Claude or Gemini, or open it in Claude Code or Codex, for a summary and a draft reply.">
+<title>Open Gmail in Claude, ChatGPT, Claude Code, Codex, Antigravity &amp; Gemini</title>
+<meta name="description" content="Use the AI you already pay for inside Gmail. Right-click 1 or 25 threads to resolve tasks in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity. 100% local, MIT open source.">
 <link rel="canonical" href="https://openinaiagent.com/">
 <meta name="author" content="Thomas Clegg">
 <meta property="og:type" content="website">
@@ -30,12 +30,12 @@
   "@type": "SoftwareApplication",
   "name": "Open in AI Agent for Gmail",
   "alternateName": "Open in AI Agent",
-  "description": "A browser extension that adds Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat, DeepSeek, Claude Code and Codex to Gmail's right-click menu, Gmail's toolbar and the browser's toolbar. Pick one and it gets the email thread, several ticked threads or the unread ones in view, and by default is asked to resolve what it can before it drafts any reply, and to change nothing without your approval. You can choose a lighter prompt style, a quick summary and reply or drafts only, or save prompts of your own. On any other page, including other webmail, it sends the text you select. Runs on your computer.",
+  "description": "A browser extension that adds Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat, DeepSeek, Claude Code, Codex, Antigravity and Gemini CLI to Gmail's right-click menu, Gmail's toolbar and the browser's toolbar. Pick one and it gets the email thread, opens up to 5 ticked threads as separate named sessions (or up to 25 as one batch), or triages unread mail without marking anything read. Runs locally on your computer with prompt-injection defanging and zero servers.",
   "url": "https://openinaiagent.com/",
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Windows, macOS, Linux, ChromeOS",
   "softwareRequirements": "Chrome 116 or later, Microsoft Edge, Firefox 140 or later, or another browser that installs Chrome Web Store extensions",
-  "softwareVersion": "1.5.0",
+  "softwareVersion": "1.6.0",
   "downloadUrl": "https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip",
   "installUrl": "https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk",
   "license": "https://github.com/thomasoclegg/gmail-to-agent/blob/main/LICENSE",
@@ -558,17 +558,16 @@
 
 <main id="main">
 <section class="hero page grid" aria-labelledby="title">
-  <h1 id="title">Right-click a Gmail thread to open it in Claude, ChatGPT or Codex.</h1>
-  <p class="lede">I built this for my own inbox. Pick an AI from Gmail's right-click menu and it opens in a new tab next to
-    Gmail, with the whole thread on your clipboard. Claude Code and Codex open on your desktop instead and read the thread
-    through their own Gmail connection. It also takes <a href="#bulk">several emails at once</a>,
-    <a href="#triage">your unread ones</a> and <a href="#selected">text you select</a> in other webmail.</p>
+  <h1 id="title">Use Claude, ChatGPT, Claude Code, Codex or Antigravity inside Gmail.</h1>
+  <p class="lede">Use the AI accounts and local coding agents you already pay for, with no middleman server and no OAuth wrapper.
+    Right-click an email to open it in a new tab or directly on your desktop, open <a href="#bulk">several ticked threads</a> as
+    separate named sessions (or one batch), <a href="#triage">triage up to 25 unread emails</a> without marking them read, or send
+    <a href="#selected">selected text</a> from any other webmail.</p>
   <aside class="get" aria-label="Get the extension">
-    <p class="ver">Version 1.5.0, November 2026</p>
+    <p class="ver">Version 1.6.0, November 2026</p>
     <a class="btn" id="download" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Get it for Chrome</a>
     <p id="get-note">Free from the Chrome Web Store.</p>
-    <p>Open source, MIT licence. Nothing is sent to me: no server, no account, no analytics. Tested in Chrome on macOS.</p>
-    <p>If it saves you time, <a href="#donate">donate to Friends of Larnaca Cats</a>.</p>
+    <p>100% local, MIT open source: no server, no account, no analytics, and built-in prompt-injection stripping.</p>
     <p>Watch <a href="https://www.youtube.com/watch?v=5O1DDCq7sNY">the 90-second walkthrough</a>.</p>
   </aside>
 </section>
@@ -601,7 +600,7 @@
           <div class="gm-ni"><svg><use href="#i-file"/></svg>Drafts</div>
         </div>
         <div class="gm-main">
-          <div class="gm-tools"><span class="gm-box"></span><svg><use href="#i-refresh"/></svg><svg><use href="#i-more"/></svg><span class="count">1–50 of 2,184</span></div>
+          <div class="gm-tools"><span class="gm-box"></span><svg><use href="#i-refresh"/></svg><svg><use href="#i-more"/></svg><span class="count">1-50 of 2,184</span></div>
           <div class="gm-tabs"><span class="on">Primary</span><span>Promotions</span><span>Updates</span></div>
           <div class="gm-row ctx"><span class="gm-box"></span><svg class="star"><use href="#i-star"/></svg><span class="from">Marta Ioannou, me <i>2</i></span><span class="subj">Lease renewal for flat 4B <span>- Thanks Marta. Is the 4% fixed for the whole year?</span></span><span class="when">18:40</span></div>
           <div class="gm-row unread"><span class="gm-box"></span><svg class="star"><use href="#i-star"/></svg><span class="from">Andreas K.</span><span class="subj">Boat on Saturday? <span>- Forecast says 18 knots, so maybe Sunday instead</span></span><span class="when">16:05</span></div>
@@ -656,21 +655,21 @@
       </div>
     </div>
     <div class="card">
-      <h3 class="label">One email, in Claude Code or Codex</h3>
-      <p>Claude Code opens in the Claude desktop app and Codex in the ChatGPT desktop app. They get the thread ID and Gmail
-        link, never the message text, and read it through their own Gmail connection. Claude Code waits for you to press
-        Enter. Codex starts at once if you set a working folder, and is asked only to read until you reply.</p>
+      <h3 class="label">Desktop agents (Claude Code, Codex, Antigravity)</h3>
+      <p>Claude Code and Codex open via desktop links; Antigravity (<code>agy</code>) and Gemini CLI launch through the optional
+        local companion helper. They receive the mailbox, thread ID and Gmail link, read the thread through their own Gmail tool,
+        and name each session after the email's subject.</p>
       <div class="mini" aria-hidden="true">
         <p>On your desktop</p>
-        <div class="r"><svg><use href="#i-mark"/></svg><span><b>Claude Code</b><br>Claude desktop app</span></div>
-        <div class="r"><svg><use href="#i-mark"/></svg><span><b>Codex</b><br>ChatGPT desktop app</span></div>
+        <div class="r"><svg><use href="#i-mark"/></svg><span><b>Claude Code &amp; Codex</b><br>Desktop apps or CLI</span></div>
+        <div class="r"><svg><use href="#i-mark"/></svg><span><b>Antigravity &amp; Gemini CLI</b><br>Local companion helper</span></div>
       </div>
     </div>
     <div class="card" id="bulk">
-      <h3 class="label" id="triage">Several emails, or Triage unread</h3>
-      <p>Tick two or more and right-click one. The AI gets up to 25 and is asked to sort them into tasks, resolve what it
-        can and draft any replies. With nothing ticked, Triage unread in Gmail's toolbar hands over the unread ones on
-        this page of the list. They stay unread.</p>
+      <h3 class="label" id="triage">Separate named chats, batches or Triage unread</h3>
+      <p>Tick 2 to 5 emails to open each one in its own named session (or switch to one combined batch for up to 25). With
+        nothing ticked, Triage unread in Gmail's toolbar sorts the unread emails on this page into Action, Consolidate, Disregard
+        and Draft while keeping them unread.</p>
       <div class="mini" aria-hidden="true">
         <p>Three ticked, then right-click one</p>
         <div class="r"><svg><use href="#i-mark"/></svg><span>Ask Claude about 3 emails</span></div>
@@ -729,17 +728,17 @@
   <div class="ledger no">
     <ul>
       <li>It reads an email only after you pick an AI for it: the thread you right-clicked, the ones you ticked, or for Triage unread the unread ones on that page of the list. Attachments are skipped.</li>
-      <li>A web AI gets the text when you paste it and press Enter. Claude Code and Codex get the mailbox address, thread IDs and Gmail links, plus your working folder if you set one, and Claude Code the subject; they read the email through their own Gmail connection.</li>
+      <li>A web AI gets the text when you paste or review it and press Enter. Claude Code, Codex, Antigravity and Gemini CLI get the mailbox address, thread IDs and Gmail links, plus your working folder if you set one, and (except Codex) the subject; they read the email through their own Gmail connection.</li>
       <li>On other sites it gets only the text you select, and only when you pick an AI for it.</li>
       <li>Every prompt for an email asks the AI to treat the email as information, not instructions, and to send or change nothing without your explicit approval. A prompt can ask but not enforce: where the app lets you, limit its Gmail connection to reading and drafting.</li>
-      <li>It stores your picks, your working folder, your prompt style and any saved prompts in the browser's sync storage, and the AI you used last on this computer only.</li>
+      <li>It stores your picks, your working folder, your multi-email mode, your prompt style and any saved prompts in the browser's sync storage, and the AI you used last on this computer only.</li>
     </ul>
   </div>
-  <div class="ledger yes">
-    <h3 class="label">Two things it does do</h3>
+    <div class="ledger yes">
+    <h3 class="label">Two things to know</h3>
     <ul>
-      <li>Picking a web AI or Copy thread for any AI for one inbox row opens the thread, so Gmail marks it as read. Ticked emails, and Triage unread, are read without opening them and stay unread.</li>
-      <li>The copied text replaces whatever was on your clipboard, and stays there until you copy something else.</li>
+      <li>If you pick a web AI or Copy from a single inbox row, it opens that thread first so Gmail marks it read. Ticked emails and Triage unread are read from Gmail's print view in the background and stay unread, as do desktop agent picks.</li>
+      <li>Unless you enable optional composer auto-fill in Settings, the copied prompt replaces whatever was on your clipboard.</li>
     </ul>
   </div>
   <p class="t">The <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md">privacy policy</a> lists exactly what is read for each kind of AI.</p>
@@ -784,7 +783,7 @@
     </div>
     <figcaption>The top of the settings page. Each tick saves straight away. To come back to it, click the toolbar icon, then Settings.</figcaption>
   </figure>
-  <p class="t small">It needs Chrome 116 or later (or a browser built on the same version) or Firefox 140 or later, and Gmail in a desktop browser rather than the Gmail app. Web AIs need only the browser, and a sign-in where the site asks for one. Claude Code needs the Claude desktop app and Codex the ChatGPT desktop app, each with Gmail connected for the same mailbox. I have tested it with real Gmail only in Chrome on macOS, and the parts new in 1.4.0 only against a mock Gmail page so far.</p>
+  <p class="t small">Requires Chrome 116 or later (or any Chromium browser built on the same version) or Firefox 140 or later, and Gmail in a desktop browser rather than the mobile Gmail app. Web AIs need only your browser. Claude Code, Codex, Antigravity and Gemini CLI connect directly to your mailbox through their own Gmail tools.</p>
   <details class="t">
     <summary id="steps-title">From the download on GitHub</summary>
     <p class="t">Prefer to watch? <a href="https://www.youtube.com/watch?v=xGDSdIC2wjY">A 54-second video</a> shows every step in Chrome.</p>
@@ -809,11 +808,11 @@
       <a class="btn pp" href="https://www.paypal.com/donate/?business=Spgl%40friendsoflarnacacats.org&amp;item_name=Friends+of+Larnaca+Cats+-+AI+Agent&amp;currency_code=EUR" target="_blank" rel="noopener">Donate with <b>PayPal</b><span class="vh"> to Friends of Larnaca Cats (opens in a new tab)</span></a>
       <a class="give-alt" href="https://www.friendsoflarnacacats.org/donate?ref=ai-agent" target="_blank" rel="noopener">or give on their website<span class="vh"> (friendsoflarnacacats.org, opens in a new tab)</span></a>
     </div>
-    <p class="give-note">Your donation goes straight to the charity, and I never see the money. The PayPal button marks it &ldquo;AI Agent&rdquo;, so they know it came from here. PayPal's page takes debit and credit cards too.</p>
+    <p class="give-note">Your donation goes straight to the charity, and I never see the money. The PayPal button marks it "AI Agent", so they know it came from here. PayPal's page takes debit and credit cards too.</p>
   </div>
   <aside class="give-aside" aria-labelledby="give-shows">
     <span class="label" id="give-shows">What PayPal shows</span>
-    Donate to Syndesmos Prostasias Gaton Larnakas, the charity's registered name, for &ldquo;Friends of Larnaca Cats - AI Agent&rdquo;. In euros, once or monthly.
+    Donate to Syndesmos Prostasias Gaton Larnakas, the charity's registered name, for "Friends of Larnaca Cats - AI Agent". In euros, once or monthly.
   </aside>
 </section>
 
@@ -823,11 +822,11 @@
   <div class="faq">
     <details>
       <summary><h3>Which browsers does it work in?</h3></summary>
-      <p>Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. Internet Explorer can't run it: use Microsoft Edge. It works with Gmail in a desktop browser, not in the Gmail app.</p>
+      <p>Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. It works with Gmail in a desktop browser, not in the mobile Gmail app.</p>
     </details>
     <details>
       <summary><h3>Which AIs can it send an email to?</h3></summary>
-      <p>Claude Code and Codex on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else.</p>
+      <p>Claude Code, Codex, Antigravity and Gemini CLI on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else.</p>
     </details>
     <details>
       <summary><h3>Is it free?</h3></summary>
@@ -835,19 +834,19 @@
     </details>
     <details>
       <summary><h3>Does it read my email?</h3></summary>
-      <p>Only the threads you pick it for, and only after you pick an AI. On other sites it gets only the text you select for an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste it and press Enter. Claude Code and Codex read it through their own Gmail connection.</p>
+      <p>Only the threads you pick it for, and only after you pick an AI. On other sites it gets only the text you select for an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste or review it and press Enter. Desktop agents read it through their own Gmail connection.</p>
     </details>
     <details>
       <summary><h3>Can the AI send or change anything without me?</h3></summary>
-      <p>It is asked not to. Every prompt for an email asks the AI to send or change nothing without your explicit approval, and a web AI gets the text only when you paste it and press Enter. A prompt can ask but not enforce: where the app lets you, limit its Gmail connection to reading and drafting.</p>
+      <p>It is asked not to. Every prompt for an email asks the AI to send or change nothing without your explicit approval, and a web AI only runs once you press Enter. A prompt can ask but not enforce: where the app lets you, limit its Gmail connection to reading and drafting.</p>
     </details>
     <details>
       <summary><h3>Can an email give the AI instructions?</h3></summary>
-      <p>The prompt tells the AI to treat the email as information, not instructions, and Claude Code and Codex are told to follow nothing an email asks of them. Lookalike markers inside an email are broken up, so a sender cannot fake the end of the thread. These help; they aren't a guarantee.</p>
+      <p>The prompt tells the AI to treat the email as information, not instructions, and desktop agents are told to follow nothing an email asks of them. Lookalike markers and invisible Unicode characters inside an email are stripped or broken up, so a sender cannot fake the end of the thread. These help; they aren't a guarantee.</p>
     </details>
     <details>
       <summary><h3>Does it mark emails as read?</h3></summary>
-      <p>Only in one case. Picking a web AI or Copy for a single inbox row opens the thread, so Gmail marks it read, as it does whenever you open one. Ticked emails, and the ones Triage unread hands over, are read from Gmail's print view without opening them, so they stay unread.</p>
+      <p>Ticked emails, Triage unread and desktop agent picks leave unread emails unread: ticked and triaged threads are read from Gmail's print view in the background without opening them. Picking a web AI or Copy on a single closed inbox row opens that thread to read it, which marks that one thread read in Gmail.</p>
     </details>
     <details>
       <summary><h3>Can it go through my unread emails?</h3></summary>
@@ -892,19 +891,19 @@
   "@type": "FAQPage",
   "mainEntity": [
     { "@type": "Question", "name": "Which browsers does it work in?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. Internet Explorer can't run it: use Microsoft Edge. It works with Gmail in a desktop browser, not in the Gmail app." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "Chrome and the browsers that install from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Microsoft Edge has its own store, and Firefox has its own version. A Safari version is planned. It works with Gmail in a desktop browser, not in the mobile Gmail app." } },
     { "@type": "Question", "name": "Which AIs can it send an email to?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "Claude Code, Codex, Antigravity and Gemini CLI on your desktop, and Claude, ChatGPT, Gemini, Microsoft Copilot, Perplexity, Grok, Le Chat and DeepSeek in the browser. Copy thread for any AI puts the thread on your clipboard for anything else." } },
     { "@type": "Question", "name": "Is it free?",
       "acceptedAnswer": { "@type": "Answer", "text": "Yes. There is no account, no subscription and no paid version, and the source is open under the MIT licence. The AIs themselves may ask you to sign in, on their own terms." } },
     { "@type": "Question", "name": "Does it read my email?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Only the threads you pick it for, and only after you pick an AI. On other sites it gets only the text you select for an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste it and press Enter. Claude Code and Codex read it through their own Gmail connection." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "Only the threads you pick it for, and only after you pick an AI. On other sites it gets only the text you select for an AI. It runs on your computer: there is no server and no analytics, and nothing is sent to me. A web AI gets the thread when you paste or review it and press Enter. Desktop agents read it through their own Gmail connection." } },
     { "@type": "Question", "name": "Can the AI send or change anything without me?",
-      "acceptedAnswer": { "@type": "Answer", "text": "It is asked not to. Every prompt for an email asks the AI to send or change nothing without your explicit approval, and a web AI gets the text only when you paste it and press Enter. A prompt can ask but not enforce: where the app lets you, limit its Gmail connection to reading and drafting." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "It is asked not to. Every prompt for an email asks the AI to send or change nothing without your explicit approval, and a web AI only runs once you press Enter. A prompt can ask but not enforce: where the app lets you, limit its Gmail connection to reading and drafting." } },
     { "@type": "Question", "name": "Can an email give the AI instructions?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The prompt tells the AI to treat the email as information, not instructions, and Claude Code and Codex are told to follow nothing an email asks of them. Lookalike markers inside an email are broken up, so a sender cannot fake the end of the thread. These help; they aren't a guarantee." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "The prompt tells the AI to treat the email as information, not instructions, and desktop agents are told to follow nothing an email asks of them. Lookalike markers and invisible Unicode characters inside an email are stripped or broken up, so a sender cannot fake the end of the thread. These help; they aren't a guarantee." } },
     { "@type": "Question", "name": "Does it mark emails as read?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Only in one case. Picking a web AI or Copy for a single inbox row opens the thread, so Gmail marks it read, as it does whenever you open one. Ticked emails, and the ones Triage unread hands over, are read from Gmail's print view without opening them, so they stay unread." } },
+      "acceptedAnswer": { "@type": "Answer", "text": "Ticked emails, Triage unread and desktop agent picks leave unread emails unread: ticked and triaged threads are read from Gmail's print view in the background without opening them. Picking a web AI or Copy on a single closed inbox row opens that thread to read it, which marks that one thread read in Gmail." } },
     { "@type": "Question", "name": "Can it go through my unread emails?",
       "acceptedAnswer": { "@type": "Answer", "text": "Yes, up to 25 at a time. With nothing ticked, the button in Gmail's toolbar reads Triage unread. The AI you pick sorts the unread emails on this page of the list into Action, Consolidate, Disregard and Draft, and they stay unread. From Triage unread, Claude Code shows its draft replies first and saves them as Gmail drafts only when you say yes." } },
     { "@type": "Question", "name": "Can I change what the AI is asked to do?",

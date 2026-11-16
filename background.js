@@ -20,10 +20,35 @@ const CONTEXTS = ['page', 'frame', 'selection', 'link', 'editable', 'image'];
 const SELECTION = 'selection:';
 const SELECTION_SEPARATOR = 'selection-separator';
 // Web AIs open after this pause, so the paste hint shows in Gmail first.
-const OPEN_DELAY = 1200;
+const OPEN_DELAY = 250;
+// Delay between sequential deep links when opening separate desktop sessions without the companion helper.
+const MULTI_APP_DELAY = 350;
 // Gmail's session key (ik) is a short token; anything else is ignored.
 const IK_PATTERN = /^[\w-]{4,32}$/;
 const DEEP_LINK = /^(claude|codex):\/\//;
+
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function hasPermission(perm) {
+  try {
+    return typeof chrome.permissions?.contains === 'function' ? !!(await chrome.permissions.contains(perm)) : false;
+  } catch {
+    return false;
+  }
+}
+
+const hasNativeHostPermission = () => hasPermission({ permissions: ['nativeMessaging'] });
+const hasAutoFillPermission = (id) => (AUTOFILL_HOSTS[id] ? hasPermission({ origins: [AUTOFILL_HOSTS[id]] }) : Promise.resolve(false));
+
+async function callNativeHost(payload) {
+  if (typeof chrome.runtime?.sendNativeMessage !== 'function') return { ok: false, error: 'Native messaging is not supported in this browser.' };
+  try {
+    const res = await chrome.runtime.sendNativeMessage(NATIVE_HOST, payload);
+    return res && typeof res === 'object' ? res : { ok: false, error: 'Empty reply from companion helper.' };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+}
 
 // Next to the Gmail tab when Chrome allows it (an app window may not).
 const openNextTo = (tab, url) =>
@@ -412,6 +437,15 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
   const { folder } = await chrome.storage.sync.get({ folder: '' });
   // Claude Code waits for Enter, so the text goes in its prompt, marked as selected.
   if (target.id === 'claude-code' && !inGmail) return openApp(tab, deepLink('claude-code', claudeCodeSelectionPrompt(text, cut), folder));
+  if (target.via === 'host' && !inGmail) {
+    const { prompt } = selectionPrompt(text, target, cut);
+    const res = (await hasNativeHostPermission())
+      ? await callNativeHost({ action: 'launch', agent: target.id, folder, sessions: [{ subject: 'Text I selected on a web page', prompt }] })
+      : { ok: false };
+    if (res?.ok) return note(tab, `Opened in ${target.name}.`);
+    await note(tab, `Set up the companion helper in Settings to open directly in ${target.name}.`, true);
+    return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
+  }
   const { prompt, kept } = selectionPrompt(text, target, cut);
   try {
     await copyText(prompt);
@@ -421,7 +455,11 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
   const copied = kept ? `Copied the first ${thousands(kept)} characters you selected.` : 'Copied.';
   if (target.kind === 'copy') return note(tab, `${copied} Paste it into any AI with ${PASTE_KEYS}.`);
   await note(tab, `${copied} Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
-  if (target.kind === 'app') return openApp(tab, deepLink(target.id, '', folder));
+  if (target.kind === 'app') {
+    const link = deepLink(target.id, '', folder);
+    if (link) return openApp(tab, link);
+    return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
+  }
   setTimeout(() => (tab?.id ? openNextTo(tab, target.url) : chrome.tabs.create({ url: target.url })), OPEN_DELAY);
 }
 
@@ -485,12 +523,142 @@ async function copyText(text) {
   if (!res?.ok) throw new Error(res?.error || 'Copy failed');
 }
 
+// Fills a web AI's prompt box when the user has granted optional host access for that site.
+function fillComposerInPage(text) {
+  const selectors = [
+    '#prompt-textarea',
+    'div.ProseMirror[contenteditable="true"]',
+    'rich-textarea div[contenteditable="true"]',
+    'div.ql-editor[contenteditable="true"]',
+    'textarea',
+    'div[contenteditable="true"]',
+  ];
+  const el = selectors.map((s) => document.querySelector(s)).find((n) => n && n.offsetParent !== null);
+  if (!el) return false;
+  el.focus();
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+    el.value = text;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  }
+  el.textContent = text;
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
+  return true;
+}
+
+async function openAndFillWebTab(openerTab, url, text) {
+  const created = await openNextTo(openerTab, url);
+  if (!created?.id) return false;
+  for (let i = 0; i < 20; i++) {
+    await pause(350);
+    try {
+      const [res] = await chrome.scripting.executeScript({
+        target: { tabId: created.id, frameIds: [0] },
+        func: fillComposerInPage,
+        args: [text],
+      });
+      if (res?.result === true) return true;
+    } catch {
+      // Wait for navigation to commit.
+    }
+  }
+  return false;
+}
+
+function prefillWebUrl(target, prompt) {
+  const spec = PREFILL_QUERY[target.id];
+  if (!spec) return null;
+  const [base, key] = spec;
+  const trimmed = prompt.length > PREFILL_URL_CAP ? `${prompt.slice(0, PREFILL_URL_CAP).replace(/[\uD800-\uDBFF]$/, '').trimEnd()}\n[truncated]` : prompt;
+  return `${base}?${key}=${encodeURIComponent(trimmed)}`;
+}
+
 async function handOff({ platform, prompt }, tab) {
   const target = targetById(platform);
   if (!tab || !target || target.kind === 'app' || typeof prompt !== 'string') throw new Error('Bad hand-off request');
   await copyText(prompt);
-  if (target.kind === 'web') setTimeout(() => openNextTo(tab, target.url), OPEN_DELAY);
+  if (target.kind === 'web') {
+    const canFill = await hasAutoFillPermission(target.id);
+    setTimeout(() => {
+      if (canFill) openAndFillWebTab(tab, target.url, prompt).catch(() => {});
+      else openNextTo(tab, target.url);
+    }, OPEN_DELAY);
+    return canFill ? { ok: true, autoFill: true } : { ok: true };
+  }
   return { ok: true };
+}
+
+// Opens up to SEPARATE_CAP emails as separate tabs in a web AI, each named from its subject line.
+async function handOffSeparate({ platform, items, combinedPrompt }, tab) {
+  const target = targetById(platform);
+  if (!tab || !target || target.kind !== 'web' || !Array.isArray(items) || !items.length || items.length > SEPARATE_CAP) {
+    throw new Error('Bad separate hand-off request');
+  }
+  const clean = items.filter((x) => x && typeof x.prompt === 'string' && x.prompt);
+  if (!clean.length) throw new Error('No prompts to send');
+  const canFill = await hasAutoFillPermission(target.id);
+  if (canFill) {
+    await copyText(clean[0].prompt);
+    setTimeout(() => {
+      (async () => {
+        for (const item of clean) {
+          await openAndFillWebTab(tab, target.url, item.prompt).catch(() => {});
+        }
+      })();
+    }, OPEN_DELAY);
+    return { ok: true, mode: 'autofill', opened: clean.length };
+  }
+  if (PREFILL_QUERY[target.id]) {
+    await copyText(clean[0].prompt);
+    setTimeout(() => {
+      (async () => {
+        for (const item of clean) {
+          const url = prefillWebUrl(target, item.prompt) || target.url;
+          await openNextTo(tab, url);
+          await pause(120);
+        }
+      })();
+    }, OPEN_DELAY);
+    return { ok: true, mode: 'query', opened: clean.length };
+  }
+  // Sites without query pre-fill or auto-fill permission fall back to one combined clipboard prompt.
+  await copyText(typeof combinedPrompt === 'string' && combinedPrompt ? combinedPrompt : clean.map((x) => x.prompt).join('\n\n'));
+  setTimeout(() => openNextTo(tab, target.url), OPEN_DELAY);
+  return { ok: true, mode: 'batchFallback', opened: 1 };
+}
+
+// Launches one or several desktop agent sessions: through the companion Native Messaging host when permitted
+// and installed, or through sequential OS deep links for Claude Code and Codex.
+async function launchApp({ platform, folder = '', sessions }, tab) {
+  const target = targetById(platform);
+  if (!tab || !target || target.kind !== 'app' || !Array.isArray(sessions) || !sessions.length || sessions.length > BULK_CAP) {
+    throw new Error('Bad app launch request');
+  }
+  if (await hasNativeHostPermission()) {
+    const res = await callNativeHost({
+      action: 'launch',
+      agent: target.id,
+      folder: typeof folder === 'string' ? folder : '',
+      sessions: sessions.map((s) => ({ subject: String(s?.subject || ''), prompt: String(s?.prompt || '') })),
+    });
+    if (res?.ok) return { ok: true, via: 'host', launched: res.launched || sessions.length };
+    if (target.via === 'host') {
+      openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
+      return { ok: false, needsHelper: true, error: res?.error || `Install the companion helper in Settings to open in ${target.name}.` };
+    }
+  } else if (target.via === 'host') {
+    openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
+    return { ok: false, needsHelper: true, error: `Enable the companion helper in Settings to open directly in ${target.name}.` };
+  }
+  const urls = sessions.map((s) => s?.url).filter((u) => typeof u === 'string' && DEEP_LINK.test(u));
+  if (!urls.length) return { ok: false, error: `Could not build a link for ${target.name}.` };
+  (async () => {
+    for (let i = 0; i < urls.length; i++) {
+      if (i > 0) await pause(MULTI_APP_DELAY);
+      await openApp(tab, urls[i]);
+    }
+  })();
+  return { ok: true, via: 'deeplink', launched: urls.length };
 }
 
 // ---- Gmail's session key (bulk reads) ----
@@ -502,7 +670,15 @@ async function gmailKey(tab) {
   const [res] = await chrome.scripting.executeScript({
     target: { tabId: tab.id, frameIds: [0] },
     world: 'MAIN',
-    func: () => window.GLOBALS && window.GLOBALS[9],
+    func: () => {
+      const primary = window.GLOBALS && window.GLOBALS[9];
+      if (typeof primary === 'string' && /^[\w-]{4,32}$/.test(primary)) return primary;
+      if (typeof window.GM_ID_KEY === 'string' && window.GM_ID_KEY) return window.GM_ID_KEY;
+      const g = window.GLOBALS;
+      if (!Array.isArray(g)) return primary;
+      const at = g.findIndex((v, i) => typeof v === 'string' && /^[0-9a-f]{8,20}$/i.test(v) && typeof g[i + 1] === 'string' && g[i + 1].includes('@'));
+      return at >= 0 ? g[at] : primary;
+    },
   });
   const ik = res?.result;
   return { ok: true, ik: typeof ik === 'string' && IK_PATTERN.test(ik) ? ik : null };
@@ -511,7 +687,7 @@ async function gmailKey(tab) {
 // ---- Messages ----
 
 // From content.js in a Gmail tab.
-const ACTIONS = { handoff: handOff, ik: (_msg, tab) => gmailKey(tab) };
+const ACTIONS = { handoff: handOff, handoffSeparate: handOffSeparate, launchApp, ik: (_msg, tab) => gmailKey(tab) };
 
 const tabFor = (tabId) => (Number.isInteger(tabId) ? chrome.tabs.get(tabId).catch(() => null) : null);
 
@@ -519,11 +695,20 @@ const tabFor = (tabId) => (Number.isInteger(tabId) ? chrome.tabs.get(tabId).catc
 // for this pick, or, on another site, on the text selected there (opening the list grants activeTab for that tab),
 // which keeps its built-in prompt. The reply comes first, so the list can close; the pick runs on here.
 const PAGE_ACTIONS = {
-  async run({ platform, tabId, style }) {
+  async run({ platform, tabId, style, bulkMode }) {
     const tab = await tabFor(tabId);
     if (!tab?.url?.startsWith(GMAIL) || !targetById(platform)) throw new Error('Not a Gmail tab');
-    runCurrent(tab, platform, style).catch((e) => console.warn('Toolbar list:', e));
+    const extra = {
+      ...(style !== undefined ? { style: String(style).slice(0, 20) } : {}),
+      ...(bulkMode !== undefined ? { bulkMode: String(bulkMode).slice(0, 20) } : {}),
+    };
+    runInTab(tab, { target: 'content', action: 'run', platform, current: true, ...extra }).catch((e) => console.warn('Toolbar list:', e));
     return { ok: true };
+  },
+  async pingHost() {
+    if (!(await hasNativeHostPermission())) return { ok: false, permission: false };
+    const res = await callNativeHost({ action: 'ping' });
+    return { ...res, permission: true };
   },
   // Whether the tab, not Gmail, has text selected: the list then offers the selected-text items.
   async selection({ tabId }) {

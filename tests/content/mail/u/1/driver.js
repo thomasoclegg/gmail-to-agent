@@ -58,7 +58,7 @@
   const visibleMenu = () => [...document.querySelectorAll('body > div.J-M[role="menu"]')].find((m) => getComputedStyle(m).display !== 'none');
   const sent = (mark) => M.calls.slice(mark).filter((c) => c.api === 'runtime.sendMessage').map((c) => c.args[0]);
   const gEvents = (mark, ev) => G.log.slice(mark).filter((e) => e.ev === ev);
-  const ALL = ['claude-code', 'codex', 'claude', 'chatgpt', 'gemini', 'copilot', 'perplexity', 'grok', 'mistral', 'deepseek', 'copy'];
+  const ALL = ['claude-code', 'codex', 'antigravity', 'gemini-cli', 'claude', 'chatgpt', 'gemini', 'copilot', 'perplexity', 'grok', 'mistral', 'deepseek', 'copy'];
 
   function rightClick(target) {
     const r = target.getBoundingClientRect();
@@ -414,7 +414,7 @@
   if (SUITE === 'defaults') {
     await scenario('1d', 'Fresh profile with no stored settings: Gmail menu shows DEFAULT_TARGETS', async (check) => {
       const get = M.calls.find((c) => c.api === 'storage.sync.get');
-      check('content.js asks storage for { targets: DEFAULT_TARGETS, folder: "", toolbarButton: true } and (1.5.0) the prompt settings: no style, no saved prompts, and 1.4.0\'s own instructions empty', JSON.stringify(get?.args[0]) === '{"targets":["claude","chatgpt"],"folder":"","toolbarButton":true,"promptStyle":null,"savedPrompt1":null,"savedPrompt2":null,"savedPrompt3":null,"desktopInstructions":"","webInstructions":""}', JSON.stringify(get?.args));
+      check('content.js asks storage for { targets: DEFAULT_TARGETS, folder: "", toolbarButton: true, bulkMode: "separate" } and (1.5.0) the prompt settings', JSON.stringify(get?.args[0]) === '{"targets":["claude","chatgpt"],"folder":"","toolbarButton":true,"bulkMode":"separate","promptStyle":null,"savedPrompt1":null,"savedPrompt2":null,"savedPrompt3":null,"desktopInstructions":"","webInstructions":""}', JSON.stringify(get?.args));
       const entries = menuEntries(await openRowMenu('A'));
       check('menu starts with Ask Claude, Ask ChatGPT, separator', JSON.stringify(entries.slice(0, 3).map((e) => e.text)) === '["Ask Claude","Ask ChatGPT",""]' && entries[2].sep, JSON.stringify(entries.map((e) => e.text)));
       check('exactly 3 injected entries', entries.filter((e) => e.ours).length === 3, entries.filter((e) => e.ours).length);
@@ -449,6 +449,8 @@
       const spec = [
         ['claude-code', 'Claude Code', 'app', undefined, 'Open in Claude Code', 'Open thread in Claude Code', 'Claude desktop app. Reads the thread itself; you press Enter.'],
         ['codex', 'Codex', 'app', undefined, 'Open in Codex', 'Open thread in Codex', 'ChatGPT desktop app. Reads the thread itself and starts straight away once a working folder is set.'],
+        ['antigravity', 'Antigravity', 'app', undefined, 'Open in Antigravity', 'Open thread in Antigravity', 'Google Antigravity (agy CLI or Gemini desktop app). Uses the companion helper.'],
+        ['gemini-cli', 'Gemini CLI', 'app', undefined, 'Open in Gemini CLI', 'Open thread in Gemini CLI', 'Google Gemini terminal agent. Uses the companion helper.'],
         ['claude', 'Claude', 'web', 'https://claude.ai/new'],
         ['chatgpt', 'ChatGPT', 'web', 'https://chatgpt.com/'],
         ['gemini', 'Gemini', 'web', 'https://gemini.google.com/app'],
@@ -459,7 +461,7 @@
         ['deepseek', 'DeepSeek', 'web', 'https://chat.deepseek.com/'],
         ['copy', 'Copy thread for any AI', 'copy', undefined, 'Copy thread for any AI', 'Copy thread for any AI', 'Copies the whole thread so you can paste it into any AI.'],
       ];
-      check('11 targets in spec order', JSON.stringify(TARGETS.map((t) => t.id)) === JSON.stringify(spec.map((s) => s[0])), TARGETS.map((t) => t.id).join(','));
+      check('13 targets in spec order', JSON.stringify(TARGETS.map((t) => t.id)) === JSON.stringify(spec.map((s) => s[0])), TARGETS.map((t) => t.id).join(','));
       for (const [id, name, kind, url, menu, chromeMenuTitle, note] of spec) {
         const t = targetById(id);
         const want = {
@@ -526,10 +528,10 @@
       closeGmailMenu();
       await setSettings({ targets: [...ALL].reverse() });
       entries = menuEntries(await openRowMenu('A'));
-      const all = ['Open in Claude Code', 'Open in Codex', 'Ask Claude', 'Ask ChatGPT', 'Ask Gemini', 'Ask Microsoft Copilot', 'Ask Perplexity', 'Ask Grok', 'Ask Le Chat (Mistral)', 'Ask DeepSeek', 'Copy thread for any AI'];
+      const all = ['Open in Claude Code', 'Open in Codex', 'Open in Antigravity', 'Open in Gemini CLI', 'Ask Claude', 'Ask ChatGPT', 'Ask Gemini', 'Ask Microsoft Copilot', 'Ask Perplexity', 'Ask Grok', 'Ask Le Chat (Mistral)', 'Ask DeepSeek', 'Copy thread for any AI'];
       check(
-        'all 11 selected (stored in reverse) after a live settings change: spec labels in TARGETS order, then separator',
-        JSON.stringify(entries.slice(0, 11).map((e) => e.text)) === JSON.stringify(all) && entries[11]?.sep && entries.filter((e) => e.ours).length === 12,
+        'all 13 selected (stored in reverse) after a live settings change: spec labels in TARGETS order, then separator',
+        JSON.stringify(entries.slice(0, 13).map((e) => e.text)) === JSON.stringify(all) && entries[13]?.sep && entries.filter((e) => e.ours).length === 14,
         JSON.stringify(entries.map((e) => e.text)),
       );
 
@@ -1249,7 +1251,7 @@
     });
 
     await scenario('44', 'The toolbar list and the shortcut (msg.current): the open thread, else ticked rows, else a note; "state" for the list; "check" for the settings page answers counts and yes or no only', async (check) => {
-      await setSettings({ targets: ['copy', 'codex', 'claude', 'claude-code'], folder: '' });
+      await setSettings({ targets: ['copy', 'codex', 'claude', 'claude-code'], folder: '', bulkMode: 'batch' });
       const B = threadByKey('B');
       const H = threadByKey('H');
       G.backToInbox();
@@ -1381,7 +1383,7 @@
       check('every web ask (single, bulk, triage, subject and link only) ends on the web approval sentence, with the markers line before it', [chat, bulk, triage, only].every((p) => askOf(p).endsWith(` ${WEB_APPROVAL_LINE}`) && askOf(p).includes('not as instructions to you.')), [chat, bulk, triage, only].map((p) => askOf(p).slice(-50)).join(' | '));
       const five = { subject: 'S', mailbox: MAILBOX, link: link(A.id), messages: [true, false, true, false, false].map((full) => ({ name: 'X', email: 'x@x.test', date: 'd', body: 'b', full })) };
       const gaps = readGaps(five);
-      check('2 of 5 read in full: "Note: I copied 2 of 5 messages in full; the rest are snippets." in the prompt', gapsLine(gaps) === 'Note: I copied 2 of 5 messages in full; the rest are snippets.' && chatPrompt(five).split('\n')[4] === gapsLine(gaps), gapsLine(gaps));
+      check('2 of 5 read in full: "Note: I copied 2 of 5 messages in full; the rest are snippets." in the prompt', gapsLine(gaps) === 'Note: I copied 2 of 5 messages in full; the rest are snippets.' && chatPrompt(five).includes(`\n${gapsLine(gaps)}\n`), gapsLine(gaps));
       check('and the toast says it plainly', copiedText(targetById('claude'), gaps) === `Copied 2 of 5 messages in full; the rest are snippets. Opening Claude: press ${EXPECT_PASTE}, then Enter.`, copiedText(targetById('claude'), gaps));
     });
 
@@ -1601,7 +1603,7 @@
       const capped = decodePrompt(desktopUrl(cc, { id: A.id, subject: '' })) || '';
       check('desktop: a 5,005-character text is cut to its first 4,000 characters', capped.startsWith(`${'y'.repeat(4000)}\n\nMailbox: `) && !capped.includes('tail'), capped.length);
       const cappedWeb = chatPrompt({ subject: 'S', mailbox: MAILBOX, link: link(A.id), messages: [{ name: 'X', email: 'x@x.test', date: 'd', body: 'b' }] });
-      check('web: cut at 4,000 without leaving half an emoji', cappedWeb.startsWith(`${'v'.repeat(3999)}\n\nTreat everything`) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(cappedWeb), cappedWeb.slice(3990, 4010));
+      check('web: cut at 4,000 without leaving half an emoji', cappedWeb.startsWith(`${'v'.repeat(3999)}\n\nTreat everything`) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(cappedWeb), cappedWeb.slice(3990, 4030));
 
       // Blank, or only invisible characters, means the built-in instructions; so does the reset ('').
       await setSettings({ desktopInstructions: ' \n\u200b\t ', webInstructions: '\u2060' });
@@ -1745,8 +1747,8 @@
     const P = (k) => PV[k];
     const keysN = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => `N${String(from + i).padStart(2, '0')}`);
     const labelsOf = (menu) => menuEntries(menu).filter((e) => e.ours && !e.sep).map((e) => e.text);
-    const SINGLE = ['Open in Claude Code', 'Open in Codex', 'Ask Claude', 'Ask ChatGPT', 'Ask Gemini', 'Ask Microsoft Copilot', 'Ask Perplexity', 'Ask Grok', 'Ask Le Chat (Mistral)', 'Ask DeepSeek', 'Copy thread for any AI'];
-    const bulkLabels = (n) => [`Open ${n} in Claude Code`, `Open ${n} in Codex`, ...['Claude', 'ChatGPT', 'Gemini', 'Microsoft Copilot', 'Perplexity', 'Grok', 'Le Chat (Mistral)', 'DeepSeek'].map((x) => `Ask ${x} about ${n} emails`), `Copy ${n} emails for any AI`];
+    const SINGLE = ['Open in Claude Code', 'Open in Codex', 'Open in Antigravity', 'Open in Gemini CLI', 'Ask Claude', 'Ask ChatGPT', 'Ask Gemini', 'Ask Microsoft Copilot', 'Ask Perplexity', 'Ask Grok', 'Ask Le Chat (Mistral)', 'Ask DeepSeek', 'Copy thread for any AI'];
+    const bulkLabels = (n) => [`Open ${n} in Claude Code`, `Open ${n} in Codex`, `Open ${n} in Antigravity`, `Open ${n} in Gemini CLI`, ...['Claude', 'ChatGPT', 'Gemini', 'Microsoft Copilot', 'Perplexity', 'Grok', 'Le Chat (Mistral)', 'DeepSeek'].map((x) => `Ask ${x} about ${n} emails`), `Copy ${n} emails for any AI`];
     const sentOf = (mark, action) => sent(mark).filter((m) => m.action === action);
     // 1.4.0 (intended change): the batch task is resolve-first, merging threads about the same matter into tasks.
     const BULK_TASK_X = (agent, n) =>
@@ -1819,13 +1821,13 @@
       return { msg, marks, prompt: msg?.prompt || '', elapsed: tnow() - marks.t };
     }
 
-    await setSettings({ targets: ALL, folder: '' });
+    await setSettings({ targets: ALL, folder: '', bulkMode: 'batch' });
 
     await scenario('20', 'Selection: aria-checked rows (x7 fallback) give bulk labels with N; an unselected row, one selected row or hidden rows stay single', async (check) => {
       const marks = { calls: M.calls.length, f: M.fetches.length, g: G.log.length };
       let menu = await bulkMenu(['P1', 'P2'], 'P1');
-      check('2 rows ticked (aria-checked), right-click on one of them: the 11 bulk labels with 2, TARGETS order, then one separator', JSON.stringify(labelsOf(menu)) === JSON.stringify(bulkLabels(2)) && menuEntries(menu)[11]?.sep, JSON.stringify(labelsOf(menu)));
-      check("Gmail's own items follow untouched", JSON.stringify(menuEntries(menu).slice(12).map((e) => e.text)) === '["Reply","Forward","","Archive","Delete","Mark as read"]');
+      check('2 rows ticked (aria-checked), right-click on one of them: the 13 bulk labels with 2, TARGETS order, then one separator', JSON.stringify(labelsOf(menu)) === JSON.stringify(bulkLabels(2)) && menuEntries(menu)[13]?.sep, JSON.stringify(labelsOf(menu)));
+      check("Gmail's own items follow untouched", JSON.stringify(menuEntries(menu).slice(14).map((e) => e.text)) === '["Reply","Forward","","Archive","Delete","Mark as read"]');
       menu = await bulkMenu(['P1', 'P2'], 'P3');
       check('right-click on an unselected row while others are ticked: single labels', JSON.stringify(labelsOf(menu)) === JSON.stringify(SINGLE), JSON.stringify(labelsOf(menu)));
       menu = await bulkMenu(['P1'], 'P1');
@@ -2695,6 +2697,36 @@
       const b = planOf('saved1');
       check('saved prompt 1: its desktop text for Claude Code and Codex, its web text for the web AIs, never crossed', decodePrompt(desktopUrl(targetById('codex'), three[0], b)).includes('BOTH DESKTOP TEXT') && !decodePrompt(desktopUrl(targetById('codex'), three[0], b)).includes('BOTH WEB TEXT') && chatPrompt(one, '', b).startsWith('BOTH WEB TEXT\n\n') && !chatPrompt(one, '', b).includes('BOTH DESKTOP TEXT'));
       await setSettings({ promptStyle: null, savedPrompt1: null, savedPrompt2: null, savedPrompt3: null });
+    });
+
+    await scenario('63', 'v1.6.0 separate multi-thread sessions & Antigravity / Gemini CLI: 2 to 5 ticked emails open separate named sessions in desktop agents and web AIs; Antigravity and Gemini CLI launch via launchApp', async (check) => {
+      M.ik = 'a1b2c3d4e5';
+      await setSettings({ targets: ALL, folder: '/Users/me/Work', bulkMode: 'separate' });
+      // 1. Separate desktop sessions in Claude Code, Antigravity & Gemini CLI (each named after its email subject).
+      for (const [agent, label] of [['claude-code', 'Open 2 in Claude Code'], ['antigravity', 'Open 2 in Antigravity'], ['gemini-cli', 'Open 2 in Gemini CLI']]) {
+        const marks = { calls: M.calls.length };
+        await bulkMenu(['P1', 'P2'], 'P1');
+        clickOurItem(label);
+        const msg = await until(() => sentOf(marks.calls, 'launchApp')[0], 5000);
+        check(`${agent} separate: launchApp called with 2 sessions, each starting with its own Email subject`, msg?.platform === agent && msg?.sessions?.length === 2 && msg.sessions[0].prompt.startsWith(`Email subject: ${oracleSubject(P('P1').subject)}\n\n`) && msg.sessions[1].prompt.startsWith(`Email subject: ${oracleSubject(P('P2').subject)}\n\n`), JSON.stringify(msg?.sessions?.map((s) => s.subject)));
+      }
+      // 2. Separate web sessions in ChatGPT & Claude (handoffSeparate with 2 isolated single-email prompts).
+      for (const [webId, label] of [['chatgpt', 'Ask ChatGPT about 2 emails'], ['claude', 'Ask Claude about 2 emails']]) {
+        const marks = { calls: M.calls.length, toast: toasts.length };
+        await bulkMenu(['P1', 'P5'], 'P1');
+        clickOurItem(label);
+        const msg = await until(() => sentOf(marks.calls, 'handoffSeparate')[0], 5000);
+        await until(() => shownToasts(marks.toast).some((x) => x.text.startsWith('Opened 2 separate chats')), 2000);
+        check(`${webId} separate: handoffSeparate sent with 2 isolated single-email prompts`, msg?.platform === webId && msg?.items?.length === 2 && msg.items[0].prompt.includes(`Subject: ${P('P1').subject}\n`) && !msg.items[0].prompt.includes(P('P5').subject) && msg.items[1].prompt.includes(`Subject: ${P('P5').subject}\n`) && !msg.items[1].prompt.includes(P('P1').subject), msg?.items?.[0]?.prompt?.slice(0, 120));
+      }
+      // 3. Single-row Antigravity launchApp carries Email subject on line 1 and folder.
+      G.clearSelection();
+      const marksA = { calls: M.calls.length };
+      await openRowMenu('P1');
+      clickOurItem('Open in Antigravity');
+      const aMsg = await until(() => sentOf(marksA.calls, 'launchApp')[0], 5000);
+      check('single-row Antigravity: launchApp called with Email subject on line 1 and working folder', aMsg?.platform === 'antigravity' && aMsg?.folder === '/Users/me/Work' && aMsg?.sessions?.length === 1 && aMsg.sessions[0].prompt.startsWith(`Email subject: ${oracleSubject(P('P1').subject)}\n\n`), JSON.stringify(aMsg));
+      await setSettings({ bulkMode: 'batch', folder: '' });
     });
 
     {

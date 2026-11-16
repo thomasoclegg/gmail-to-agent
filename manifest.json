@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Open in AI Agent for Gmail",
+  "name": "Open in AI Agent for Gmail: Claude, ChatGPT & Codex",
   "short_name": "Open in AI Agent",
-  "version": "1.5.0",
-  "description": "Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or another AI. Runs on your computer.",
-  "homepage_url": "https://github.com/thomasoclegg/gmail-to-agent",
+  "version": "1.6.0",
+  "description": "Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity. 100% local, no server.",
+  "homepage_url": "https://openinaiagent.com/",
   "minimum_chrome_version": "116",
   "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
   "action": {
@@ -17,6 +17,8 @@
     "send-to-last": { "suggested_key": { "default": "Alt+Shift+L", "mac": "MacCtrl+Shift+L" }, "description": "Send to the AI you used last" }
   },
   "permissions": ["contextMenus", "storage", "offscreen", "clipboardWrite", "scripting", "activeTab"],
+  "optional_permissions": ["nativeMessaging"],
+  "optional_host_permissions": ["https://claude.ai/*", "https://chatgpt.com/*", "https://gemini.google.com/*"],
   "host_permissions": ["https://mail.google.com/*"],
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",

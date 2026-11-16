@@ -78,7 +78,7 @@ function nodeChecks() {
   );
   check(
     'targets.js runs in a bare worker-like global and defines TARGETS, DEFAULT_TARGETS, LEGACY_TARGETS, DONATION, helpers',
-    g.ids.length === 11 && g.d.join() === 'claude,chatgpt' && g.l.join() === 'claude-code,codex' && g.has === true && g.pick.join() === 'codex,deepseek' && g.web,
+    g.ids.length === 13 && g.d.join() === 'claude,chatgpt' && g.l.join() === 'claude-code,codex' && g.has === true && g.pick.join() === 'codex,deepseek' && g.web,
     JSON.stringify(g),
   );
   const src = fs.readFileSync(path.join(REPO, 'targets.js'), 'utf8');

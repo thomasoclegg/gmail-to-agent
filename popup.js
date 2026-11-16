@@ -80,9 +80,28 @@ function showStyles(settings, show) {
   $('style-pick').hidden = !show;
 }
 
+let defaultBulkMode = DEFAULT_BULK_MODE;
+
+function showBulkModes(mode, show) {
+  defaultBulkMode = bulkModeOf(mode);
+  $('bulk-mode').replaceChildren(
+    ...BULK_MODES.map((m) => {
+      const el = element('option', '', m.id === defaultBulkMode ? `${m.name} (default)` : m.name);
+      el.value = m.id;
+      return el;
+    }),
+  );
+  $('bulk-mode').value = defaultBulkMode;
+  $('bulk-pick').hidden = !show;
+}
+
 // The style for this pick, always sent while the picker shows, so what the list showed is what the AI gets: the
-// content script refuses one it no longer has rather than use another.
-const pickedStyle = () => ($('style-pick').hidden ? {} : { style: $('style').value });
+// content script refuses one it no longer has rather than use another. When the multiple-emails picker was changed
+// for this send, its override goes too.
+const pickedStyle = () => ({
+  ...($('style-pick').hidden ? {} : { style: $('style').value }),
+  ...(!$('bulk-pick').hidden && $('bulk-mode').value !== defaultBulkMode ? { bulkMode: $('bulk-mode').value } : {}),
+});
 
 // While a pick is under way the AIs do not take another; keyboard focus stays on the one picked.
 let busy = false;
@@ -143,7 +162,10 @@ async function showLast(chosen) {
 }
 
 async function main() {
-  const [stored, tab] = await Promise.all([chrome.storage.sync.get({ targets: DEFAULT_TARGETS, ...PROMPT_KEYS }), activeTab().catch(() => null)]);
+  const [stored, tab] = await Promise.all([
+    chrome.storage.sync.get({ targets: DEFAULT_TARGETS, bulkMode: DEFAULT_BULK_MODE, ...PROMPT_KEYS }),
+    activeTab().catch(() => null),
+  ]);
   const chosen = pickTargets(stored.targets);
   const onGmail = typeof tab?.url === 'string' && tab.url.startsWith(GMAIL);
   const state = onGmail ? await gmailState(tab) : null;
@@ -154,6 +176,7 @@ async function main() {
   $('empty').hidden = chosen.length > 0;
   $('list').hidden = !chosen.length;
   showStyles(promptSettings(stored), onGmail && !!state && chosen.length > 0);
+  showBulkModes(stored.bulkMode, onGmail && !!state && state.ticked >= 2 && state.ticked <= SEPARATE_CAP && chosen.length > 0);
   $('list').replaceChildren(
     ...chosen.map((t) => {
       const li = element('li');

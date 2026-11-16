@@ -12,7 +12,7 @@ const mock = {
   calls: [], // { api, args, t }
   launches: [], // deep links caught at anchor click
   opens: [], // window.open calls
-  store: ['main', 'toast', 'guard', 'orphan', 'orphan111', 'motion'].includes(SUITE) ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '' } : {},
+  store: ['main', 'toast', 'guard', 'orphan', 'orphan111', 'motion'].includes(SUITE) ? { targets: ['copy', 'codex', 'bogus', 'claude', 'claude-code'], folder: '', bulkMode: 'batch' } : {},
   local: {}, // chrome.storage.local (the AI used last)
   changeListeners: [],
   messageListeners: [],
@@ -86,6 +86,14 @@ window.chrome = {
         if (mock.ik === 'reject') return Promise.reject(new Error('The message port closed before a response was received.'));
         const reply = mock.ik === 'error' ? { ok: false, error: 'Cannot access contents of the page' } : { ok: true, ik: mock.ik };
         return new Promise((resolve) => setTimeout(() => resolve(reply), 10));
+      }
+      if (msg?.action === 'handoffSeparate') {
+        const reply = mock.sendMode === 'fail' ? { ok: false, error: 'Copy was blocked' } : { ok: true, mode: 'query', opened: msg.items?.length || 1 };
+        return new Promise((resolve) => setTimeout(() => resolve(reply), 20));
+      }
+      if (msg?.action === 'launchApp') {
+        const reply = mock.sendMode === 'fail' ? { ok: false, error: 'Helper unavailable' } : { ok: true, via: 'host', launched: msg.sessions?.length || 1 };
+        return new Promise((resolve) => setTimeout(() => resolve(reply), 20));
       }
       return new Promise((resolve) =>
         setTimeout(() => resolve(mock.sendMode === 'fail' ? { ok: false, error: 'Copy was blocked' } : { ok: true }), 20),

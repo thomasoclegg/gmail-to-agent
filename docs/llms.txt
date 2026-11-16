@@ -1,0 +1,19 @@
+# Open in AI Agent for Gmail
+
+> Free, MIT-licensed, 100% local browser extension (`v1.6.0`) that lets Gmail users hand individual threads, multiple selected threads, or unread inbox batches directly to the AI subscriptions and local coding/operations agents they already use, with zero middleman servers, zero Google OAuth token handoff to third parties, and built-in prompt-injection defanging.
+
+## Core capabilities
+
+- **Supported web AIs:** Claude (`claude.ai`), ChatGPT (`chatgpt.com`), Gemini (`gemini.google.com`), Microsoft Copilot, Perplexity, Grok, Le Chat (Mistral), DeepSeek, plus plain clipboard copy for any AI.
+- **Supported desktop and CLI agents:** Claude Code (`Claude.app` or `claude` CLI), OpenAI Codex (`ChatGPT.app` or `codex` CLI), Google Antigravity (`agy` CLI or `Gemini.app`), and Google Gemini CLI (`gemini`), via OS deep links or an optional local Native Messaging companion (`com.openinaiagent.host`).
+- **Multi-thread handling:** Open 2 to 5 selected Gmail threads as separate sessions, each automatically named after its email subject, or combine up to 25 threads into a single task-sorted batch.
+- **Unread inbox triage:** One-click `Triage unread` button inside Gmail's toolbar reads up to 25 unread threads from Gmail's print view without opening them or marking them as read, sorting them into Action, Consolidate, Disregard, and Draft.
+- **Security and privacy model:** Runs strictly client-side in Chrome, Edge, Brave, Arc, Vivaldi, Opera, and Firefox (`140+`). Strips invisible Unicode tag/control characters (`ASCII smuggling`) and defangs fake delimiter markers inside untrusted email bodies before building prompts.
+
+## Canonical links
+
+- Website: https://openinaiagent.com/
+- Chrome Web Store: https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk
+- Source repository (MIT): https://github.com/thomasoclegg/gmail-to-agent
+- Privacy policy: https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md
+- Latest releases (Chrome & Firefox zips): https://github.com/thomasoclegg/gmail-to-agent/releases/latest

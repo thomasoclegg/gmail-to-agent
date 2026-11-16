@@ -48,6 +48,28 @@ const TARGETS = [
     selectionMenu: 'Ask Codex about the selected text',
     note: 'ChatGPT desktop app. Reads the thread itself and starts straight away once a working folder is set.',
   },
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    kind: 'app',
+    via: 'host',
+    menu: 'Open in Antigravity',
+    bulkMenu: 'Open {n} in Antigravity',
+    chromeMenu: 'Open thread in Antigravity',
+    selectionMenu: 'Ask Antigravity about the selected text',
+    note: 'Google Antigravity (agy CLI or Gemini desktop app). Uses the companion helper.',
+  },
+  {
+    id: 'gemini-cli',
+    name: 'Gemini CLI',
+    kind: 'app',
+    via: 'host',
+    menu: 'Open in Gemini CLI',
+    bulkMenu: 'Open {n} in Gemini CLI',
+    chromeMenu: 'Open thread in Gemini CLI',
+    selectionMenu: 'Ask Gemini CLI about the selected text',
+    note: 'Google Gemini terminal agent. Uses the companion helper.',
+  },
   webTarget('claude', 'Claude', 'https://claude.ai/new'),
   webTarget('chatgpt', 'ChatGPT', 'https://chatgpt.com/'),
   webTarget('gemini', 'Gemini', 'https://gemini.google.com/app'),
@@ -67,6 +89,41 @@ const TARGETS = [
     note: 'Copies the whole thread so you can paste it into any AI.',
   },
 ];
+
+// Companion Native Messaging host for Antigravity, Gemini CLI and multi-session CLI launches (1.6.0).
+const NATIVE_HOST = 'com.openinaiagent.host';
+
+// Web AIs that support optional composer auto-fill (optional_host_permissions) or query pre-fill (1.6.0).
+const AUTOFILL_HOSTS = {
+  claude: 'https://claude.ai/*',
+  chatgpt: 'https://chatgpt.com/*',
+  gemini: 'https://gemini.google.com/*',
+};
+const PREFILL_QUERY = {
+  claude: ['https://claude.ai/new', 'q'],
+  chatgpt: ['https://chatgpt.com/', 'q'],
+  perplexity: ['https://www.perplexity.ai/search/new', 'q'],
+};
+const PREFILL_URL_CAP = 8000;
+
+// How several ticked emails are opened (1.6.0): one named session per email (up to SEPARATE_CAP; larger selections
+// stay one batch so 25 tabs or windows never open at once), or one combined batch for up to 25 emails.
+const SEPARATE_CAP = 5;
+const BULK_MODES = [
+  {
+    id: 'separate',
+    name: 'Separate session per email',
+    note: 'Opens up to 5 ticked emails in separate sessions, each named after its subject (6 to 25 combine into one batch).',
+  },
+  {
+    id: 'batch',
+    name: 'One combined batch',
+    note: 'Hands up to 25 ticked emails to one session to sort into tasks.',
+  },
+];
+const DEFAULT_BULK_MODE = 'separate';
+const isBulkMode = (id) => BULK_MODES.some((m) => m.id === id);
+const bulkModeOf = (id) => (isBulkMode(id) ? id : DEFAULT_BULK_MODE);
 
 const DEFAULT_TARGETS = ['claude', 'chatgpt']; // new installs
 const LEGACY_TARGETS = ['claude-code', 'codex']; // upgrades from 1.0.x with no targets setting

@@ -1,6 +1,6 @@
 # Privacy policy: Open in AI Agent for Gmail
 
-Last updated: 6 November 2026 (version 1.5.0)
+Last updated: 16 November 2026 (version 1.6.0)
 
 This extension runs entirely on your computer. It has no server, no analytics and no tracking. The only requests it makes itself go to Gmail, for the print view of emails you chose (see below). Nothing is sent to me.
 
@@ -8,12 +8,12 @@ This extension runs entirely on your computer. It has no server, no analytics an
 
 When you right-click in Gmail, it checks whether you clicked an email so it can add its items to the menu. In the inbox list it also notes which emails are ticked, by thread ID only, so the menu can offer them together. The toolbar list, the keyboard shortcuts and the extension's button in Gmail's toolbar make the same check in the Gmail tab you are on: whether a thread is open and which emails are ticked. The button uses it only to choose its label. On a tab that is not Gmail, the toolbar list and the second shortcut check only whether text is selected there (see Selected text below). It reads an email's details only after you pick one of its items, and only for the threads you picked it for. What it reads depends on what you pick.
 
-**Claude Code or Codex** (desktop agents), one thread:
+**Claude Code, Codex, Antigravity or Gemini CLI** (desktop agents), one thread:
 
 - the Gmail address of the mailbox you are signed in to,
 - the ID of the thread you chose,
 - the account number in the Gmail web address (for example `/u/0/`), to build a link back to the thread,
-- for Claude Code only, the thread's subject, so the session is named after the email.
+- for Claude Code, Antigravity and Gemini CLI (never Codex), the thread's subject, so the session is named after the email.
 
 It does not use the body or attachments, and Codex does not get the subject. It takes the mailbox address from the Gmail tab's title and ignores the rest of the title.
 
@@ -62,7 +62,7 @@ The website's Donate with PayPal buttons open PayPal's donate page for Friends o
 
 ## What it stores
 
-- Your settings: which AIs appear in the menus, Gmail's toolbar button and the toolbar list, whether that button shows, the working folder for desktop sessions, and (from 1.5.0) your default prompt style and saved prompts. They are saved in the browser's sync storage. If your browser syncs extension data, they follow your profile to your other computers, and your browser's sync service (Google's for Chrome, Microsoft's for Edge, Mozilla's for Firefox) stores them, your saved prompts included, under that service's terms.
+- Your settings: which AIs appear in the menus, Gmail's toolbar button and the toolbar list, whether that button shows, the working folder for desktop sessions, whether 2 to 5 ticked emails open separate sessions or one combined batch (`bulkMode`, from 1.6.0), and (from 1.5.0) your default prompt style and saved prompts. They are saved in the browser's sync storage. If your browser syncs extension data, they follow your profile to your other computers, and your browser's sync service (Google's for Chrome, Microsoft's for Edge, Mozilla's for Firefox) stores them, your saved prompts included, under that service's terms.
 - The default prompt style is one setting, `promptStyle`: the name of a built-in style (`resolve`, `quick` or `drafts`) or of a saved prompt (`saved1` to `saved3`). A style picked in the toolbar list for one send is never stored.
 - Saved prompts are up to three settings, `savedPrompt1` to `savedPrompt3`, each holding what you type on the settings page under Prompts: a name of up to 40 characters, and optional text for Claude Code and Codex and for the web AIs and Copy, each at most 4,000 characters. Characters a reader cannot see are taken out, and lines that start "Mailbox:", "Thread ID:" or "Gmail link:" are left out (the extension adds its own). The name is only a label on the settings page and in the toolbar list. The text goes only into the prompts the extension builds when you pick an AI for one email or several with that saved prompt: in the link to the desktop app, or on your clipboard. It never goes into Triage unread, selected-text prompts or a Report a problem link, and it is not sent to me. Leave out anything you would not want synced or handed to an AI, such as a password; you need not add your mailbox address, since the extension adds it.
 - 1.4.0 kept "Your own instructions" in two settings, `desktopInstructions` and `webInstructions`. When the extension updates to 1.5.0, and at each browser start while they are there, it copies them into the first empty saved prompt (on an upgrade, saved prompt 1, named "My instructions"), then removes the two old settings. If a saved prompt already holds the same text, it only removes the old settings, so a second copy is never made. If the two texts together are too long for one saved prompt, they stay in the old settings and are used as that saved prompt until you shorten one on the settings page. If all three saved prompts are taken, they stay in the old settings and are not used, and the settings page shows that they are there, with their size and a Delete. After a move, the browser's local storage on this computer notes which saved prompt they became (`promptsMoved`, a number) until the settings page has said so once.
@@ -80,8 +80,10 @@ The same in every browser, except where noted. The toolbar list, the keyboard sh
 - `scripting` (from 1.2.0): reads Gmail's session key from the Gmail page when you pick several emails for a web AI or Copy. Where the browser does not do it by itself, it also adds the extension to Gmail tabs that are already open when you install or update it, so they need no reload. From 1.4.0 it also runs in the tab where you picked a selected-text item, through `activeTab`: it reads the selection there and shows the extension's note.
 - `activeTab` (from 1.4.0): when you pick a selected-text item, or use the toolbar list or the second shortcut on a page that is not Gmail, the browser gives the extension that one tab until you leave the page. The extension uses it only to read the text you selected, show its note there and, in Firefox, open the desktop app's link from the page. It reads nothing else from the page, and it adds no warning at install.
 - Access to `mail.google.com`: adds your chosen AIs to Gmail's right-click menu and one button to Gmail's toolbar, reads the threads you pick, requests the print view of emails you ticked, shows a short note inside Gmail, and answers Check Gmail. From 1.2.0 this access is also listed as a host permission, which `scripting` needs. The extension already had it for Gmail's menu, so the browser shows no new warning.
+- Optional `nativeMessaging` (from 1.6.0, Chromium browsers only, off by default): requested only if you click **Enable companion helper** on the settings page. Passes desktop prompts locally to the optional `com.openinaiagent.host` helper script on your own computer so Antigravity (`agy`), Gemini CLI (`gemini`), Claude Code (`claude -n`) and Codex can open directly in your working folder with named sessions.
+- Optional access to `claude.ai`, `chatgpt.com` and `gemini.google.com` (from 1.6.0, off by default): requested only if you tick **Auto-fill prompt box** on the settings page. When enabled, places the prepared prompt directly into the composer box on the newly opened tab without pressing Enter, so nothing sends until you review it.
 
-The extension has no standing access to any other site: only the one tab you act on, through `activeTab`, until you leave that page.
+Unless you enable optional composer auto-fill above, the extension has no standing access to any site other than Gmail: only the one tab you act on, through `activeTab`, until you leave that page.
 
 ## What Firefox shows at install
 

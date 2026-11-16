@@ -252,12 +252,12 @@ await scenario('B02 header copy', async (check) => {
   check(h.line === "Choose the AIs that appear in Gmail's menus, its toolbar and the extension's icon. Changes save as you go.", 'header line', h.line);
 });
 
-await scenario('B03 fresh install (no settings): 11 tiles with name+note, Claude and ChatGPT pressed, nothing written', async (check) => {
+await scenario('B03 fresh install (no settings): 13 tiles with name+note, Claude and ChatGPT pressed, nothing written', async (check) => {
   await open('real', {});
   const tiles = await evaluate(`[...document.querySelectorAll('#tiles .tile')].map((b) => ({ tag: b.tagName, type: b.type,
     pressed: b.getAttribute('aria-pressed'), name: b.querySelector('.name').textContent, note: b.querySelector('.note').textContent,
     tickHidden: b.querySelector('.tick').getAttribute('aria-hidden'), h: Math.round(b.getBoundingClientRect().height) }))`);
-  check(tiles.length === 11, '11 tiles', tiles.length);
+  check(tiles.length === 13, '13 tiles', tiles.length);
   tiles.forEach((t, i) => {
     check(t.tag === 'BUTTON' && t.type === 'button', `tile ${i} is a type=button`, t);
     check(t.name === TARGETS[i].name && t.note === TARGETS[i].note, `tile ${i} name/note = TARGETS[${i}] (${TARGETS[i].id})`, t);
@@ -345,11 +345,11 @@ await scenario('B07 keyboard: Tab reaches tiles with a visible focus ring; Space
   check(!(await pressedNames()).includes('Claude Code'), 'Enter toggles off', await pressedNames());
   // walk the whole tab order
   const order = [];
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < 26; i++) {
     order.push(await evaluate(`(() => { const a = document.activeElement; return a.querySelector?.('.name')?.textContent || a.id || a.textContent.trim().slice(0, 20); })()`));
     await press('Tab');
   }
-  check(order.slice(11, 20).join('|') === "Show the button in Gmail's toolbar|Open Gmail|style-resolve|add-prompt|check-gmail|report|donate-link|Privacy|Help", "tab order: 11 tiles, the toolbar-button tile and Open Gmail (steps 1 to 4 together), then the prompts: the chosen default style (one stop for the radio group) and Add a saved prompt (where the text goes waits for a saved prompt), then Check Gmail, Report a problem, Donate, Privacy, Help", order);
+  check(order.slice(13, 24).join('|') === "Show the button in Gmail's toolbar|Open Gmail|style-resolve|add-prompt|bulk-mode-separate|Auto-fill prompt box in Claude, ChatGPT and Gemini|check-gmail|report|donate-link|Privacy|Help", "tab order: 13 tiles, the toolbar-button tile and Open Gmail (steps 1 to 4 together), then the prompts, bulk-mode, auto-fill, Check Gmail, Report a problem, Donate, Privacy, Help", order);
   await click(tileSel('Gemini'));
   const mouseFocus = await evaluate(`getComputedStyle(document.activeElement).outlineStyle`);
   check(mouseFocus === 'none', 'no focus ring after a mouse click (focus-visible only)', mouseFocus);
@@ -497,7 +497,7 @@ await scenario('B13 footer copy and links', async (check) => {
   check(f.text === 'Runs on your computer. Nothing is sent to me.', 'footer line', f.text);
   check(same(f.links, [
     { t: 'Privacy', href: 'https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md', target: '_blank', rel: 'noopener' },
-    { t: 'Help', href: 'https://thomasoclegg.github.io/gmail-to-agent/', target: '_blank', rel: 'noopener' },
+    { t: 'Help', href: 'https://openinaiagent.com/', target: '_blank', rel: 'noopener' },
   ]), 'footer links', f.links);
 });
 
@@ -518,7 +518,7 @@ await scenario('B15 donation block shown when charity and https url are set (mod
   check(d.visible, 'visible', d);
   check(d.text === "It's free. If it saves you time, please give something to Test Charity.", 'text', d.text);
   check(d.link === 'Donate to Test Charity' && d.href === 'https://example.org/donate' && d.target === '_blank' && /noopener/.test(d.rel), 'button', d);
-  check(d.small === 'Donations go straight to them. I never see the money. Paying by PayPal? Write \u201cAI Agent\u201d in the note so they know it came from here.', 'small print', d.small);
+  check(d.small === 'Donations go straight to them. I never see the money. Paying by PayPal? Write "AI Agent" in the note so they know it came from here.', 'small print', d.small);
   check(d.h >= 44, 'donate button at least 44px tall', d.h);
 });
 
@@ -531,7 +531,7 @@ await scenario('B15b the real targets.js shows the Friends of Larnaca Cats donat
   check(d.text === "It's free. If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus.", 'text names the charity and what it does', d.text);
   check(d.link === 'Donate to Friends of Larnaca Cats' && d.href === 'https://www.friendsoflarnacacats.org/donate?ref=ai-agent', 'https link to the charity', d);
   check(d.target === '_blank' && /noopener/.test(d.rel), 'opens in a new tab with rel=noopener', d);
-  check(d.small === 'Donations go straight to them. I never see the money. Paying by PayPal? Write \u201cAI Agent\u201d in the note so they know it came from here.', 'small print', d.small);
+  check(d.small === 'Donations go straight to them. I never see the money. Paying by PayPal? Write "AI Agent" in the note so they know it came from here.', 'small print', d.small);
 });
 
 await scenario('B16 donation charity with markup is rendered as text (no HTML injection)', async (check) => {
