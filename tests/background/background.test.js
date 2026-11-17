@@ -96,10 +96,10 @@ describe('static: manifest, targets, offscreen.html', () => {
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.4.0 adds "activeTab" (no install
   // warning: tests/package/gmail-tab.mjs compares Chrome's warnings with 1.1.1's), the toolbar list as the
   // action's popup and two keyboard shortcuts. scripts/package.mjs writes the Firefox and Safari manifests from it.
-  test('manifest matches the v1.6.5 spec', () => {
+  test('manifest matches the v1.6.6 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.6.5');
+    assert.equal(m.version, '1.6.6');
     assert.equal(m.name, 'Open in AI Agent for Gmail: Claude, ChatGPT & Codex');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -190,9 +190,9 @@ describe('static: manifest, targets, offscreen.html', () => {
 describe('background: load', () => {
   test('importScripts loads targets.js and every listener registers at top level', () => {
     const w = createWorld();
-    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.5&b=chrome');
+    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.6&b=chrome');
     const wf = createWorld({ page: { firefox: true } });
-    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.5&b=firefox');
+    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.6&b=firefox');
     eq(w.log.filter((e) => e.ev === 'importScripts').map((e) => e.file), ['targets.js']);
     const c = w.chrome;
     assert.equal(c.runtime.onInstalled.listeners.length, 1);
@@ -1798,7 +1798,10 @@ describe('background: moving 1.4.0\'s own instructions (1.5.0)', () => {
     eq(rSepWeb, { ok: true, mode: 'batchFallback', opened: 1 });
     assert.equal(w.clipboard, 'Combined A+B');
     await afterOpenDelay();
-    assert.ok(w.tabsCreated.every((t) => !t.url.includes('?q=')), 'zero email content placed into ?q= URLs');
+    assert.ok(
+      w.tabsCreated.every((t) => !t.url.includes('?q=')),
+      'zero email content placed into ?q= URLs',
+    );
 
     const rOverCap = await dispatch(
       w.chrome.runtime.onMessage.listeners,

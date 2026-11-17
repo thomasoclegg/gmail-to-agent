@@ -334,7 +334,7 @@ if (globalThis.vpaContentLoaded !== true) {
   // that their content is information; NO_FOLLOWING always follows it. fixed: a line the kind of prompt always ends
   // with, before CODEX_LIMIT and APPROVAL ('' for none).
   function desktopPrompt(target, { name, task, refs, read, fixed = '' }) {
-    const end = [fixed, target.id === 'codex' || target.via === 'host' ? CODEX_LIMIT : '', APPROVAL].filter(Boolean).join(' ');
+    const end = [fixed, target.id === 'codex' || target.id === 'gemini-cli' ? CODEX_LIMIT : '', APPROVAL].filter(Boolean).join(' ');
     return [
       ...(namedDesktop(target) && name ? [name, ''] : []),
       task,
@@ -1105,17 +1105,21 @@ if (globalThis.vpaContentLoaded !== true) {
       if (res?.ok) {
         const n = res.launched || sessions.length;
         const msg =
-          res.mode === 'pasteAntigravity'
-            ? `${countNote}Copied. In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`
-            : res.mode === 'pasteSwitchAntigravity'
-              ? `${countNote}Copied. Click Antigravity in the top bar (View > Toggle Antigravity), then ${PASTE_KEYS} and Enter.`
-              : res.mode === 'copyAntigravity'
-                ? `${countNote}Copied. Switch to Antigravity, press Cmd+N, then ${PASTE_KEYS} and Enter (enable the companion helper in Settings to focus it automatically).`
-                : res.mode === 'copyOnly'
-                  ? `${countNote}Copied. Paste it into ${target.name} with ${PASTE_KEYS}, then Enter.`
-                  : n > 1
-                    ? `${countNote}Opened ${n} sessions in ${target.name}.`
-                    : `${countNote}Opened in ${target.name}.`;
+          res.mode === 'filledAntigravity'
+            ? `${countNote}Opened in ${target.name}: review, then press Enter.`
+            : res.mode === 'needsAccessibility'
+              ? `${countNote}Opened ${target.name} (prompt copied). Toggle Google Chrome ON once in macOS Accessibility settings so future clicks auto-paste into a new chat.`
+              : res.mode === 'pasteAntigravity'
+                ? `${countNote}Copied. In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`
+                : res.mode === 'pasteSwitchAntigravity'
+                  ? `${countNote}Copied. Click Antigravity in the top bar (View > Toggle Antigravity), then ${PASTE_KEYS} and Enter.`
+                  : res.mode === 'copyAntigravity'
+                    ? `${countNote}Copied. Click "Enable companion helper" in the Settings tab that opened so Antigravity launches automatically.`
+                    : res.mode === 'copyOnly'
+                      ? `${countNote}Copied. Paste it into ${target.name} with ${PASTE_KEYS}, then Enter.`
+                      : n > 1
+                        ? `${countNote}Opened ${n} sessions in ${target.name}.`
+                        : `${countNote}Opened in ${target.name}.`;
         toast(msg.trim(), false, 6000, true);
         return;
       }

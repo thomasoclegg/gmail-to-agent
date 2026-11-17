@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.5';
+const VERSION = '1.6.6';
 const HOME = os.homedir();
 
 function nvmBinDirs() {
@@ -113,17 +113,20 @@ function resolveWorkingFolder(raw) {
   return { ok: false, error: `Working folder not found: ${expanded}` };
 }
 
-// Writes prompt to a mode-0600 temp file so terminal commands never hit shell argv length limits or quote injection.
-function writePromptFile(prompt, index) {
+const AUTO_START_LIMIT = 'You start before I have read this, so until I reply, only read: write no files, even in your working folder.';
+
+function writePromptFile(prompt, index, ensureAutoStartLimit = false) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'open-in-ai-agent-'));
   const file = path.join(dir, `prompt-${index + 1}.txt`);
-  const safeText = String(prompt ?? '').startsWith('-') ? `\n${prompt}` : String(prompt ?? '');
+  let text = String(prompt ?? '');
+  if (ensureAutoStartLimit && !text.includes(AUTO_START_LIMIT)) text = `${text}\n\n${AUTO_START_LIMIT}`;
+  const safeText = text.startsWith('-') ? `\n${text}` : text;
   fs.writeFileSync(file, safeText, { encoding: 'utf8', mode: 0o600 });
   return { dir, file };
 }
 
 function buildShellCommand(agent, bin, folder, session, index) {
-  const { dir, file } = writePromptFile(session.prompt, index);
+  const { dir, file } = writePromptFile(session.prompt, index, agent === 'antigravity');
   const title = String(session.subject || agent).replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 80);
   const setTitle = `printf '\\033]0;%s\\007' ${shQuote(title)}`;
   const cd = `cd ${shQuote(folder)}`;
@@ -196,6 +199,51 @@ function inAntigravityMode() {
   }
 }
 
+function openAntigravityDesktop(bin, combined) {
+  spawnSync('/usr/bin/pbcopy', [], { input: Buffer.from(combined, 'utf8'), timeout: 4000 });
+  const needsToggle = !inAntigravityMode();
+  spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
+  const script = [
+    'tell application id "com.google.GeminiMacOS" to activate',
+    'delay 0.3',
+    'tell application "System Events"',
+    '  tell process "Gemini"',
+    '    set frontmost to true',
+    ...(needsToggle
+      ? [
+          '    click menu item "Toggle Antigravity" of menu "View" of menu bar 1',
+          '    delay 0.8',
+        ]
+      : []),
+    '    click menu item "New Chat" of menu "File" of menu bar 1',
+    '    delay 0.5',
+    '    try',
+    '      click menu item "Paste" of menu "Edit" of menu bar 1',
+    '    on error',
+    '      keystroke "v" using command down',
+    '    end try',
+    '  end tell',
+    'end tell',
+  ].join('\n');
+  const r = spawnSync('/usr/bin/osascript', ['-e', script], { encoding: 'utf8', timeout: 8000 });
+  if (r.status === 0) {
+    return { ok: true, mode: 'filledAntigravity', launched: 1, binary: bin };
+  }
+  if (/assistive|not allowed|1002|-1719|-25211/i.test(r.stderr || '')) {
+    spawnSync('/usr/bin/open', ['x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'], {
+      stdio: 'ignore',
+      timeout: 3000,
+    });
+    return { ok: true, mode: 'needsAccessibility', launched: 1, binary: bin };
+  }
+  return {
+    ok: true,
+    mode: needsToggle ? 'pasteSwitchAntigravity' : 'pasteAntigravity',
+    launched: 1,
+    binary: bin,
+  };
+}
+
 function handleMessage(msg) {
   if (process.platform === 'win32') {
     return { ok: false, error: 'The companion helper currently supports macOS and Linux only.' };
@@ -207,8 +255,8 @@ function handleMessage(msg) {
   if (msg?.action === 'focusApp') {
     const bin = agents[String(msg.agent || '')];
     if (!bin || !bin.endsWith('.app')) return { ok: false };
-    spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
-    return { ok: true, mode: inAntigravityMode() ? 'pasteAntigravity' : 'pasteSwitchAntigravity' };
+    const text = typeof msg.prompt === 'string' ? msg.prompt : '';
+    return text ? openAntigravityDesktop(bin, text) : { ok: true, mode: 'pasteAntigravity' };
   }
   if (msg?.action === 'launch') {
     const agent = String(msg.agent || '');
@@ -220,15 +268,7 @@ function handleMessage(msg) {
       const cleanFolder = typeof msg.folder === 'string' ? msg.folder.replace(/[\x00-\x1f\x7f]/g, ' ').trim() : '';
       const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
       const combined = sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n');
-      spawnSync('/usr/bin/pbcopy', [], { input: Buffer.from(combined, 'utf8'), timeout: 4000 });
-      // Never call googlegemini://newchat here: that URL route exits Antigravity (CodeMode) back to standard Gemini chat.
-      spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
-      return {
-        ok: true,
-        mode: inAntigravityMode() ? 'pasteAntigravity' : 'pasteSwitchAntigravity',
-        launched: 1,
-        binary: bin,
-      };
+      return openAntigravityDesktop(bin, combined);
     }
     const resolved = resolveWorkingFolder(msg.folder);
     if (!resolved.ok) return { ok: false, error: resolved.error };

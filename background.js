@@ -36,7 +36,8 @@ async function hasPermission(perm) {
   }
 }
 
-const hasNativeHostPermission = () => hasPermission({ permissions: ['nativeMessaging'] });
+const hasNativeHostPermission = async () =>
+  !!chrome.runtime?.getManifest?.()?.permissions?.includes('nativeMessaging') || (await hasPermission({ permissions: ['nativeMessaging'] }));
 const hasAutoFillPermission = (id) => (AUTOFILL_HOSTS[id] ? hasPermission({ origins: [AUTOFILL_HOSTS[id]] }) : Promise.resolve(false));
 
 async function callNativeHost(payload) {
@@ -460,14 +461,12 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
   }
   const copied = kept ? `Copied the first ${thousands(kept)} characters you selected.` : 'Copied.';
   if (target.id === 'antigravity') {
-    const focused = (await hasNativeHostPermission()) ? await callNativeHost({ action: 'focusApp', agent: 'antigravity' }) : null;
-    if (focused?.ok) {
-      const hint =
-        focused.mode === 'pasteSwitchAntigravity'
-          ? `Click Antigravity in the top bar (View > Toggle Antigravity), then ${PASTE_KEYS} and Enter.`
-          : `In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`;
-      return note(tab, `${copied} ${hint}`);
+    const focused = (await hasNativeHostPermission()) ? await callNativeHost({ action: 'focusApp', agent: 'antigravity', prompt }) : null;
+    if (focused?.mode === 'filledAntigravity') return note(tab, 'Opened in Antigravity: review, then press Enter.');
+    if (focused?.mode === 'needsAccessibility') {
+      return note(tab, `${copied} Allow Google Chrome once in macOS Accessibility settings so Antigravity auto-pastes into a new chat.`);
     }
+    if (focused?.ok) return note(tab, `${copied} In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`);
     return note(tab, `${copied} Switch to Antigravity, press Cmd+N, then ${PASTE_KEYS} and Enter.`);
   }
   if (target.kind === 'copy' || target.id === 'gemini-cli') {
@@ -672,10 +671,18 @@ async function launchApp({ platform, folder = '', sessions, batchUrl = null }, t
     if (res?.ok) return { ok: true, via: 'host', ...(res.mode ? { mode: res.mode } : {}), launched: res.launched || sessions.length };
     if (/Working folder/i.test(res?.error || '')) return { ok: false, error: res.error };
   }
-  if (target.id === 'antigravity' || target.id === 'gemini-cli') {
+  if (target.id === 'antigravity') {
     const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
     await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
-    return { ok: true, via: 'clipboard', mode: target.id === 'antigravity' ? 'copyAntigravity' : 'copyOnly', launched: 1 };
+    if (chrome.runtime?.getManifest?.()?.optional_permissions?.includes('nativeMessaging')) {
+      openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
+    }
+    return { ok: true, via: 'clipboard', mode: 'copyAntigravity', launched: 1 };
+  }
+  if (target.id === 'gemini-cli') {
+    const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
+    await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
+    return { ok: true, via: 'clipboard', mode: 'copyOnly', launched: 1 };
   }
   const singleUrl =
     typeof batchUrl === 'string' && DEEP_LINK.test(batchUrl)

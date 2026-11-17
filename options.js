@@ -130,7 +130,15 @@ function tile(target, groupNote) {
   button.setAttribute('aria-labelledby', name.id);
   button.setAttribute('aria-describedby', groupNote ? `${note.id} ${groupNote.id}` : note.id);
   button.append(tick, name, note);
-  button.addEventListener('click', () => toggle(target.id, button));
+  button.addEventListener('click', () => {
+    const turningOn = !chosen.has(target.id);
+    toggle(target.id, button);
+    if (turningOn && target.via === 'host' && typeof chrome.permissions?.request === 'function' && chrome.runtime?.getManifest?.()?.optional_permissions?.includes('nativeMessaging')) {
+      Promise.resolve(chrome.permissions.request({ permissions: ['nativeMessaging'] }))
+        .then(() => refreshHelperStatus())
+        .catch(() => {});
+    }
+  });
   return button;
 }
 
