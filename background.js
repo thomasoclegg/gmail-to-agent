@@ -25,7 +25,7 @@ const OPEN_DELAY = 250;
 const MULTI_APP_DELAY = 350;
 // Gmail's session key (ik) is a short token; anything else is ignored.
 const IK_PATTERN = /^[\w-]{4,32}$/;
-const DEEP_LINK = /^(claude|codex):\/\//;
+const DEEP_LINK = /^(claude|codex|googlegemini):\/\//;
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -456,9 +456,14 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
     const res = (await hasNativeHostPermission())
       ? await callNativeHost({ action: 'launch', agent: target.id, folder, sessions: [{ subject: 'Text I selected on a web page', prompt }] })
       : { ok: false };
-    if (res?.ok) return note(tab, `Opened in ${target.name}.`);
-    await note(tab, `Set up the companion helper in Settings to open directly in ${target.name}.`, true);
-    return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
+    if (res?.ok) {
+      if (res.mode === 'paste') return note(tab, `Copied. Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
+      return note(tab, `Opened in ${target.name}.`);
+    }
+    if (target.id !== 'antigravity') {
+      await note(tab, `Set up the companion helper in Settings to open directly in ${target.name}.`, true);
+      return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
+    }
   }
   const { prompt, kept } = selectionPrompt(text, target, cut);
   try {
@@ -470,7 +475,7 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
   if (target.kind === 'copy') return note(tab, `${copied} Paste it into any AI with ${PASTE_KEYS}.`);
   await note(tab, `${copied} Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
   if (target.kind === 'app') {
-    const link = deepLink(target.id, '', folder);
+    const link = target.id === 'antigravity' ? 'googlegemini://newchat' : deepLink(target.id, '', folder);
     if (link) return openApp(tab, link);
     return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
   }
@@ -655,11 +660,22 @@ async function launchApp({ platform, folder = '', sessions }, tab) {
       folder: typeof folder === 'string' ? folder : '',
       sessions: sessions.map((s) => ({ subject: String(s?.subject || ''), prompt: String(s?.prompt || '') })),
     });
-    if (res?.ok) return { ok: true, via: 'host', launched: res.launched || sessions.length };
+    if (res?.ok) return { ok: true, via: 'host', ...(res.mode ? { mode: res.mode } : {}), launched: res.launched || sessions.length };
+    if (target.id === 'antigravity') {
+      const folderLine = typeof folder === 'string' && folder.trim() ? `Working folder: ${folder.trim()}\n\n` : '';
+      await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
+      await openApp(tab, 'googlegemini://newchat');
+      return { ok: true, via: 'deeplink', mode: 'paste', launched: 1 };
+    }
     if (target.via === 'host') {
       openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
       return { ok: false, needsHelper: true, error: res?.error || `Install the companion helper in Settings to open in ${target.name}.` };
     }
+  } else if (target.id === 'antigravity') {
+    const folderLine = typeof folder === 'string' && folder.trim() ? `Working folder: ${folder.trim()}\n\n` : '';
+    await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
+    await openApp(tab, 'googlegemini://newchat');
+    return { ok: true, via: 'deeplink', mode: 'paste', launched: 1 };
   } else if (target.via === 'host') {
     openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
     return { ok: false, needsHelper: true, error: `Enable the companion helper in Settings to open directly in ${target.name}.` };

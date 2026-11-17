@@ -1096,7 +1096,12 @@ if (globalThis.vpaContentLoaded !== true) {
       });
       if (res?.ok) {
         const n = sessions.length;
-        const msg = n > 1 ? `${countNote}Opened ${n} sessions in ${target.name}.` : `Opened in ${target.name}.`;
+        const msg =
+          res.mode === 'paste'
+            ? `${countNote}Copied. Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`
+            : n > 1
+              ? `${countNote}Opened ${n} sessions in ${target.name}.`
+              : `Opened in ${target.name}.`;
         toast(msg.trim(), false, 6000, true);
         return;
       }

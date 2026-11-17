@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 const HOME = os.homedir();
 const EXTRA_PATHS = [
   path.join(HOME, '.local', 'bin'),
@@ -37,11 +37,22 @@ function findBinary(names) {
   return null;
 }
 
+function hasAgyCliSession() {
+  try {
+    const cliDir = path.join(HOME, '.gemini', 'antigravity-cli');
+    if (fs.existsSync(path.join(cliDir, 'oauth_creds.json'))) return true;
+    const convs = path.join(cliDir, 'conversations');
+    return fs.existsSync(convs) && fs.readdirSync(convs).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function detectAgents() {
   const agy = findBinary(['agy']);
   const geminiApp = process.platform === 'darwin' && fs.existsSync('/Applications/Gemini.app') ? '/Applications/Gemini.app' : null;
   return {
-    antigravity: agy || geminiApp,
+    antigravity: geminiApp && !hasAgyCliSession() ? geminiApp : agy || geminiApp,
     'gemini-cli': findBinary(['gemini']),
     'claude-code': findBinary(['claude']),
     codex: findBinary(['codex']),
@@ -85,12 +96,14 @@ function buildShellCommand(agent, bin, folder, session, index) {
   return null;
 }
 
+const asQuote = (s) => `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
 function openInTerminal(command) {
   if (!command) return true;
   if (process.platform === 'darwin') {
-    const scriptFile = path.join(os.tmpdir(), `open-in-ai-agent-run-${process.pid}-${Math.random().toString(36).slice(2, 8)}.command`);
-    fs.writeFileSync(scriptFile, `#!/bin/zsh\nrm -f ${shQuote(scriptFile)}\n${command}\n`, { mode: 0o700 });
-    const r = spawnSync('/usr/bin/open', ['-a', 'Terminal', scriptFile], { stdio: 'ignore', timeout: 5000 });
+    // Runs directly in Terminal via AppleEvents (no .command file on disk, so Chrome file quarantine never triggers Gatekeeper).
+    const script = `tell application "Terminal"\n  activate\n  do script ${asQuote(command)}\nend tell`;
+    const r = spawnSync('/usr/bin/osascript', ['-e', script], { stdio: 'ignore', timeout: 8000 });
     return r.status === 0;
   }
   if (process.platform === 'linux') {
@@ -126,6 +139,14 @@ function handleMessage(msg) {
     const folder = safeFolder(msg.folder);
     const sessions = Array.isArray(msg.sessions) ? msg.sessions.slice(0, 25) : [];
     if (!sessions.length) return { ok: false, error: 'No session prompt received.' };
+    if (agent === 'antigravity' && bin.endsWith('.app')) {
+      const folderLine = typeof msg.folder === 'string' && msg.folder.trim() ? `Working folder: ${msg.folder.trim()}\n\n` : '';
+      const combined = sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n');
+      spawnSync('/usr/bin/pbcopy', [], { input: Buffer.from(combined, 'utf8'), timeout: 4000 });
+      const opened = spawnSync('/usr/bin/open', ['googlegemini://newchat'], { stdio: 'ignore', timeout: 4000 });
+      if (opened.status !== 0) spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
+      return { ok: true, mode: 'paste', launched: 1, binary: bin };
+    }
     let launched = 0;
     for (const [i, s] of sessions.entries()) {
       const cmd = buildShellCommand(agent, bin, folder, s, i);

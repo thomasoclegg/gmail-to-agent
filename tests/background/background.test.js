@@ -96,10 +96,10 @@ describe('static: manifest, targets, offscreen.html', () => {
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.4.0 adds "activeTab" (no install
   // warning: tests/package/gmail-tab.mjs compares Chrome's warnings with 1.1.1's), the toolbar list as the
   // action's popup and two keyboard shortcuts. scripts/package.mjs writes the Firefox and Safari manifests from it.
-  test('manifest matches the v1.6.2 spec', () => {
+  test('manifest matches the v1.6.3 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.6.2');
+    assert.equal(m.version, '1.6.3');
     assert.equal(m.name, 'Open in AI Agent for Gmail: Claude, ChatGPT & Codex');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -190,9 +190,9 @@ describe('static: manifest, targets, offscreen.html', () => {
 describe('background: load', () => {
   test('importScripts loads targets.js and every listener registers at top level', () => {
     const w = createWorld();
-    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.2&b=chrome');
+    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.3&b=chrome');
     const wf = createWorld({ page: { firefox: true } });
-    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.2&b=firefox');
+    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.3&b=firefox');
     eq(w.log.filter((e) => e.ev === 'importScripts').map((e) => e.file), ['targets.js']);
     const c = w.chrome;
     assert.equal(c.runtime.onInstalled.listeners.length, 1);
@@ -1737,12 +1737,22 @@ describe('background: moving 1.4.0\'s own instructions (1.5.0)', () => {
     eq(w.storage, { targets: ['claude'], desktopInstructions: 'D' }, 'a Chrome update moves nothing');
     eq(w.warnings, []);
   });
-  test('launchApp handles Antigravity / Gemini CLI (needsHelper fallback and BULK_CAP check) and deep-link agents up to 25 sessions', async () => {
+  test('launchApp handles Antigravity (Gemini.app paste deep link), Gemini CLI (needsHelper fallback), BULK_CAP check, and deep-link agents up to 25 sessions', async () => {
     const w = createWorld();
     w.openTabs = [GMAIL_TAB];
-    const rHost = await dispatch(
+    const rAgy = await dispatch(
       w.chrome.runtime.onMessage.listeners,
       { target: 'background', action: 'launchApp', platform: 'antigravity', folder: '/tmp', sessions: [{ subject: 'Inbox triage: 3 unread emails', prompt: 'Triage' }] },
+      GMAIL_SENDER,
+      w.log,
+    );
+    eq(rAgy, { ok: true, via: 'deeplink', mode: 'paste', launched: 1 });
+    assert.equal(w.clipboard, 'Working folder: /tmp\n\nTriage');
+    assert.ok(w.tabsUpdated.some((u) => u.props?.url === 'googlegemini://newchat'));
+
+    const rHost = await dispatch(
+      w.chrome.runtime.onMessage.listeners,
+      { target: 'background', action: 'launchApp', platform: 'gemini-cli', folder: '/tmp', sessions: [{ subject: 'Inbox triage: 3 unread emails', prompt: 'Triage' }] },
       GMAIL_SENDER,
       w.log,
     );
