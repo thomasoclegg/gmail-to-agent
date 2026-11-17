@@ -18,7 +18,55 @@ const extraIds = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--extension-id' && args[i + 1]) extraIds.push(args[++i]);
 }
-const ids = [...new Set([STORE_EXT_ID, ...extraIds])].filter((id) => /^[a-p]{32}$/.test(id));
+
+function discoverUnpackedIds() {
+  const found = [];
+  const home = os.homedir();
+  const roots =
+    process.platform === 'darwin'
+      ? [
+          path.join(home, 'Library/Application Support/Google/Chrome'),
+          path.join(home, 'Library/Application Support/Chromium'),
+          path.join(home, 'Library/Application Support/BraveSoftware/Brave-Browser'),
+          path.join(home, 'Library/Application Support/Microsoft Edge'),
+          path.join(home, 'Library/Application Support/Arc/User Data'),
+          path.join(home, 'Library/Application Support/Vivaldi'),
+        ]
+      : [
+          path.join(home, '.config/google-chrome'),
+          path.join(home, '.config/chromium'),
+          path.join(home, '.config/BraveSoftware/Brave-Browser'),
+          path.join(home, '.config/microsoft-edge'),
+        ];
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    let entries = [];
+    try {
+      entries = fs.readdirSync(root, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const ent of entries) {
+      if (!ent.isDirectory()) continue;
+      for (const fname of ['Secure Preferences', 'Preferences']) {
+        const p = path.join(root, ent.name, fname);
+        if (!fs.existsSync(p)) continue;
+        try {
+          const raw = fs.readFileSync(p, 'utf8');
+          if (!raw.includes('Open in AI Agent') && !raw.includes('open-in-ai-agent') && !raw.includes('gmail-to-agent')) continue;
+          const settings = JSON.parse(raw)?.extensions?.settings || {};
+          for (const [eid, info] of Object.entries(settings)) {
+            const label = `${info?.path || ''} ${info?.manifest?.name || ''}`;
+            if (/Open in AI Agent|open-in-ai-agent|gmail-to-agent/i.test(label)) found.push(eid);
+          }
+        } catch {}
+      }
+    }
+  }
+  return found;
+}
+
+const ids = [...new Set([STORE_EXT_ID, ...discoverUnpackedIds(), ...extraIds])].filter((id) => /^[a-p]{32}$/.test(id));
 
 fs.chmodSync(HOST_SCRIPT, 0o755);
 fs.writeFileSync(WRAPPER, `#!/bin/sh\nexec "${process.execPath}" "${HOST_SCRIPT}" "$@"\n`, { mode: 0o755 });

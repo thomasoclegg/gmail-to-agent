@@ -57,7 +57,6 @@ if (globalThis.vpaContentLoaded !== true) {
   const THREAD_CAP = 30000;
   const SUBJECT_CAP = 80; // Claude Code names its session from the first line
   const PROMPT_CAP = 14336; // the longest prompt the desktop apps take from a link
-  const BULK_CAP = 25; // threads per hand-off
   const BATCH_CAP = 60000; // thread text in one bulk hand-off
   const SHARE_FLOOR = 1500; // the least a cut thread gets before threads are left out
   const BLOCK_SUBJECT_CAP = 300; // subject line of a bulk block

@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.0';
+const VERSION = '1.6.2';
 const HOME = os.homedir();
 const EXTRA_PATHS = [
   path.join(HOME, '.local', 'bin'),
@@ -90,8 +90,8 @@ function openInTerminal(command) {
   if (process.platform === 'darwin') {
     const scriptFile = path.join(os.tmpdir(), `open-in-ai-agent-run-${process.pid}-${Math.random().toString(36).slice(2, 8)}.command`);
     fs.writeFileSync(scriptFile, `#!/bin/zsh\nrm -f ${shQuote(scriptFile)}\n${command}\n`, { mode: 0o700 });
-    spawn('open', [scriptFile], { detached: true, stdio: 'ignore' }).unref();
-    return true;
+    const r = spawnSync('/usr/bin/open', ['-a', 'Terminal', scriptFile], { stdio: 'ignore', timeout: 5000 });
+    return r.status === 0;
   }
   if (process.platform === 'linux') {
     for (const [term, args] of [
@@ -124,7 +124,7 @@ function handleMessage(msg) {
     const bin = agents[agent];
     if (!bin) return { ok: false, error: `${agent} was not found on this computer.` };
     const folder = safeFolder(msg.folder);
-    const sessions = Array.isArray(msg.sessions) ? msg.sessions.slice(0, 5) : [];
+    const sessions = Array.isArray(msg.sessions) ? msg.sessions.slice(0, 25) : [];
     if (!sessions.length) return { ok: false, error: 'No session prompt received.' };
     let launched = 0;
     for (const [i, s] of sessions.entries()) {

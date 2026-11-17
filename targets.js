@@ -108,6 +108,7 @@ const PREFILL_URL_CAP = 8000;
 
 // How several ticked emails are opened (1.6.0): one named session per email (up to SEPARATE_CAP; larger selections
 // stay one batch so 25 tabs or windows never open at once), or one combined batch for up to 25 emails.
+const BULK_CAP = 25;
 const SEPARATE_CAP = 5;
 const BULK_MODES = [
   {

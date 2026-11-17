@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Open in AI Agent for Gmail: Claude, ChatGPT & Codex",
   "short_name": "Open in AI Agent",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity. 100% local, no server.",
   "homepage_url": "https://openinaiagent.com/",
   "minimum_chrome_version": "116",
