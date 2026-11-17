@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.4';
+const VERSION = '1.6.5';
 const HOME = os.homedir();
 
 function nvmBinDirs() {
@@ -186,6 +186,16 @@ function openInTerminal(posixCommand) {
   return false;
 }
 
+function inAntigravityMode() {
+  if (process.platform !== 'darwin') return true;
+  try {
+    const r = spawnSync('/usr/bin/defaults', ['read', 'com.google.GeminiMacOS'], { encoding: 'utf8', timeout: 1500 });
+    return /_appMode"\s*=\s*code\b/.test(r.stdout || '');
+  } catch {
+    return true;
+  }
+}
+
 function handleMessage(msg) {
   if (process.platform === 'win32') {
     return { ok: false, error: 'The companion helper currently supports macOS and Linux only.' };
@@ -193,6 +203,12 @@ function handleMessage(msg) {
   const agents = detectAgents();
   if (msg?.action === 'ping') {
     return { ok: true, version: VERSION, platform: process.platform, agents };
+  }
+  if (msg?.action === 'focusApp') {
+    const bin = agents[String(msg.agent || '')];
+    if (!bin || !bin.endsWith('.app')) return { ok: false };
+    spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
+    return { ok: true, mode: inAntigravityMode() ? 'pasteAntigravity' : 'pasteSwitchAntigravity' };
   }
   if (msg?.action === 'launch') {
     const agent = String(msg.agent || '');
@@ -205,9 +221,14 @@ function handleMessage(msg) {
       const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
       const combined = sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n');
       spawnSync('/usr/bin/pbcopy', [], { input: Buffer.from(combined, 'utf8'), timeout: 4000 });
-      const opened = spawnSync('/usr/bin/open', ['googlegemini://newchat'], { stdio: 'ignore', timeout: 4000 });
-      if (opened.status !== 0) spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
-      return { ok: true, mode: 'paste', launched: 1, binary: bin };
+      // Never call googlegemini://newchat here: that URL route exits Antigravity (CodeMode) back to standard Gemini chat.
+      spawnSync('/usr/bin/open', ['-a', bin], { stdio: 'ignore', timeout: 4000 });
+      return {
+        ok: true,
+        mode: inAntigravityMode() ? 'pasteAntigravity' : 'pasteSwitchAntigravity',
+        launched: 1,
+        binary: bin,
+      };
     }
     const resolved = resolveWorkingFolder(msg.folder);
     if (!resolved.ok) return { ok: false, error: resolved.error };

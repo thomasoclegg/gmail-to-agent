@@ -1105,13 +1105,17 @@ if (globalThis.vpaContentLoaded !== true) {
       if (res?.ok) {
         const n = res.launched || sessions.length;
         const msg =
-          res.mode === 'paste'
-            ? `${countNote}Copied. Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`
-            : res.mode === 'copyOnly'
-              ? `${countNote}Copied. Paste it into ${target.name} with ${PASTE_KEYS}, then Enter.`
-              : n > 1
-                ? `${countNote}Opened ${n} sessions in ${target.name}.`
-                : `${countNote}Opened in ${target.name}.`;
+          res.mode === 'pasteAntigravity'
+            ? `${countNote}Copied. In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`
+            : res.mode === 'pasteSwitchAntigravity'
+              ? `${countNote}Copied. Click Antigravity in the top bar (View > Toggle Antigravity), then ${PASTE_KEYS} and Enter.`
+              : res.mode === 'copyAntigravity'
+                ? `${countNote}Copied. Switch to Antigravity, press Cmd+N, then ${PASTE_KEYS} and Enter (enable the companion helper in Settings to focus it automatically).`
+                : res.mode === 'copyOnly'
+                  ? `${countNote}Copied. Paste it into ${target.name} with ${PASTE_KEYS}, then Enter.`
+                  : n > 1
+                    ? `${countNote}Opened ${n} sessions in ${target.name}.`
+                    : `${countNote}Opened in ${target.name}.`;
         toast(msg.trim(), false, 6000, true);
         return;
       }

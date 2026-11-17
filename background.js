@@ -24,7 +24,7 @@ const OPEN_DELAY = 1200;
 const AUTOFILL_DELAY = 250;
 // Gmail's session key (ik) is a short token; anything else is ignored.
 const IK_PATTERN = /^[\w-]{4,32}$/;
-const DEEP_LINK = /^(claude|codex|googlegemini):\/\//;
+const DEEP_LINK = /^(claude|codex):\/\//;
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -459,13 +459,24 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
     return note(tab, 'Could not copy the selected text. Try again.', true);
   }
   const copied = kept ? `Copied the first ${thousands(kept)} characters you selected.` : 'Copied.';
+  if (target.id === 'antigravity') {
+    const focused = (await hasNativeHostPermission()) ? await callNativeHost({ action: 'focusApp', agent: 'antigravity' }) : null;
+    if (focused?.ok) {
+      const hint =
+        focused.mode === 'pasteSwitchAntigravity'
+          ? `Click Antigravity in the top bar (View > Toggle Antigravity), then ${PASTE_KEYS} and Enter.`
+          : `In Antigravity: press Cmd+N for a new chat, then ${PASTE_KEYS} and Enter.`;
+      return note(tab, `${copied} ${hint}`);
+    }
+    return note(tab, `${copied} Switch to Antigravity, press Cmd+N, then ${PASTE_KEYS} and Enter.`);
+  }
   if (target.kind === 'copy' || target.id === 'gemini-cli') {
     const dest = target.kind === 'copy' ? 'any AI' : target.name;
     return note(tab, `${copied} Paste it into ${dest} with ${PASTE_KEYS}.`);
   }
   await note(tab, `${copied} Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
   if (target.kind === 'app') {
-    const link = target.id === 'antigravity' ? 'googlegemini://newchat' : deepLink(target.id, '', folder);
+    const link = deepLink(target.id, '', folder);
     if (link) return openApp(tab, link);
     return;
   }
@@ -661,16 +672,10 @@ async function launchApp({ platform, folder = '', sessions, batchUrl = null }, t
     if (res?.ok) return { ok: true, via: 'host', ...(res.mode ? { mode: res.mode } : {}), launched: res.launched || sessions.length };
     if (/Working folder/i.test(res?.error || '')) return { ok: false, error: res.error };
   }
-  if (target.id === 'antigravity') {
+  if (target.id === 'antigravity' || target.id === 'gemini-cli') {
     const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
     await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
-    await openApp(tab, 'googlegemini://newchat');
-    return { ok: true, via: 'deeplink', mode: 'paste', launched: 1 };
-  }
-  if (target.id === 'gemini-cli') {
-    const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
-    await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
-    return { ok: true, via: 'clipboard', mode: 'copyOnly', launched: 1 };
+    return { ok: true, via: 'clipboard', mode: target.id === 'antigravity' ? 'copyAntigravity' : 'copyOnly', launched: 1 };
   }
   const singleUrl =
     typeof batchUrl === 'string' && DEEP_LINK.test(batchUrl)

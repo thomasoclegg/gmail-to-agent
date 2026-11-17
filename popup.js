@@ -109,6 +109,9 @@ async function pick(target, tab, selected, button) {
   if (busy) return;
   busy = true;
   for (const b of document.querySelectorAll('.ai')) b.setAttribute('aria-disabled', 'true');
+  if (target.via === 'host' && typeof chrome.permissions?.request === 'function' && chrome.runtime?.getManifest?.()?.optional_permissions?.includes('nativeMessaging')) {
+    await Promise.resolve(chrome.permissions.request({ permissions: ['nativeMessaging'] })).catch(() => false);
+  }
   const action = selected ? 'runSelection' : 'run';
   const res = await chrome.runtime
     .sendMessage({ target: 'background', action, platform: target.id, tabId: tab.id, ...(selected ? {} : pickedStyle()) })
