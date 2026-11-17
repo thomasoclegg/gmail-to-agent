@@ -20,9 +20,8 @@ const CONTEXTS = ['page', 'frame', 'selection', 'link', 'editable', 'image'];
 const SELECTION = 'selection:';
 const SELECTION_SEPARATOR = 'selection-separator';
 // Web AIs open after this pause, so the paste hint shows in Gmail first.
-const OPEN_DELAY = 250;
-// Delay between sequential deep links when opening separate desktop sessions without the companion helper.
-const MULTI_APP_DELAY = 350;
+const OPEN_DELAY = 1200;
+const AUTOFILL_DELAY = 250;
 // Gmail's session key (ik) is a short token; anything else is ignored.
 const IK_PATTERN = /^[\w-]{4,32}$/;
 const DEEP_LINK = /^(claude|codex|googlegemini):\/\//;
@@ -51,9 +50,9 @@ async function callNativeHost(payload) {
 }
 
 // Next to the Gmail tab when Chrome allows it (an app window may not).
-const openNextTo = (tab, url) =>
+const openNextTo = (tab, url, offset = 0) =>
   chrome.tabs
-    .create({ url, index: tab.index + 1, openerTabId: tab.id, windowId: tab.windowId })
+    .create({ url, index: tab.index + 1 + offset, openerTabId: tab.id, windowId: tab.windowId })
     .catch(() => chrome.tabs.create({ url }));
 
 // ---- Install, update and settings ----
@@ -102,7 +101,8 @@ function syncUninstallUrl() {
   if (typeof chrome.runtime?.setUninstallURL !== 'function') return;
   try {
     const v = chrome.runtime.getManifest?.()?.version || '';
-    const b = FIREFOX ? 'firefox' : 'chrome';
+    const ua = globalThis.navigator?.userAgent || '';
+    const b = FIREFOX ? 'firefox' : /\bEdg\//.test(ua) ? 'edge' : 'chrome';
     const res = chrome.runtime.setUninstallURL(`${UNINSTALL_URL}?v=${encodeURIComponent(v)}&b=${b}`);
     if (res && typeof res.catch === 'function') res.catch(() => {});
   } catch {}
@@ -450,21 +450,8 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
   remember(target);
   const { folder } = await chrome.storage.sync.get({ folder: '' });
   // Claude Code waits for Enter, so the text goes in its prompt, marked as selected.
+  // Never pass selected web text to callNativeHost: CLI agents execute immediately on launch.
   if (target.id === 'claude-code' && !inGmail) return openApp(tab, deepLink('claude-code', claudeCodeSelectionPrompt(text, cut), folder));
-  if (target.via === 'host' && !inGmail) {
-    const { prompt } = selectionPrompt(text, target, cut);
-    const res = (await hasNativeHostPermission())
-      ? await callNativeHost({ action: 'launch', agent: target.id, folder, sessions: [{ subject: 'Text I selected on a web page', prompt }] })
-      : { ok: false };
-    if (res?.ok) {
-      if (res.mode === 'paste') return note(tab, `Copied. Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
-      return note(tab, `Opened in ${target.name}.`);
-    }
-    if (target.id !== 'antigravity') {
-      await note(tab, `Set up the companion helper in Settings to open directly in ${target.name}.`, true);
-      return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
-    }
-  }
   const { prompt, kept } = selectionPrompt(text, target, cut);
   try {
     await copyText(prompt);
@@ -472,12 +459,15 @@ async function sendSelection(target, text, tab, cut = 0, inGmail = false) {
     return note(tab, 'Could not copy the selected text. Try again.', true);
   }
   const copied = kept ? `Copied the first ${thousands(kept)} characters you selected.` : 'Copied.';
-  if (target.kind === 'copy') return note(tab, `${copied} Paste it into any AI with ${PASTE_KEYS}.`);
+  if (target.kind === 'copy' || target.id === 'gemini-cli') {
+    const dest = target.kind === 'copy' ? 'any AI' : target.name;
+    return note(tab, `${copied} Paste it into ${dest} with ${PASTE_KEYS}.`);
+  }
   await note(tab, `${copied} Opening ${target.name}: press ${PASTE_KEYS}, then Enter.`);
   if (target.kind === 'app') {
     const link = target.id === 'antigravity' ? 'googlegemini://newchat' : deepLink(target.id, '', folder);
     if (link) return openApp(tab, link);
-    return tab?.id ? openNextTo(tab, chrome.runtime.getURL('options.html#helper')) : chrome.tabs.create({ url: chrome.runtime.getURL('options.html#helper') });
+    return;
   }
   setTimeout(() => (tab?.id ? openNextTo(tab, target.url) : chrome.tabs.create({ url: target.url })), OPEN_DELAY);
 }
@@ -543,7 +533,7 @@ async function copyText(text) {
 }
 
 // Fills a web AI's prompt box when the user has granted optional host access for that site.
-function fillComposerInPage(text) {
+function fillComposerInPage(text, checkOnly = false) {
   const selectors = [
     '#prompt-textarea',
     'div.ProseMirror[contenteditable="true"]',
@@ -554,42 +544,58 @@ function fillComposerInPage(text) {
   ];
   const el = selectors.map((s) => document.querySelector(s)).find((n) => n && n.offsetParent !== null);
   if (!el) return false;
+  const linkMatch = text.match(/Gmail link:\s*(\S+)/);
+  const probe = linkMatch ? linkMatch[1] : text.replace(/\s+/g, ' ').trim().slice(-40);
+  const readVal = () => (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' ? el.value || '' : el.innerText || '').replace(/\s+/g, ' ').trim();
+  if (checkOnly) return !probe || readVal().includes(probe);
   el.focus();
   if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
-    el.value = text;
+    const proto = el.tagName === 'INPUT' ? HTMLInputElement.prototype : HTMLTextAreaElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (setter) setter.call(el, text);
+    else el.value = text;
     el.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
+    return !probe || readVal().includes(probe);
   }
-  el.textContent = text;
-  el.dispatchEvent(new InputEvent('input', { bubbles: true, data: text, inputType: 'insertText' }));
-  return true;
+  try {
+    const sel = window.getSelection?.();
+    if (sel) sel.selectAllChildren(el);
+    if (document.execCommand?.('insertText', false, text) && (!probe || readVal().includes(probe))) return true;
+  } catch {}
+  try {
+    el.textContent = '';
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    el.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+    if (!probe || readVal().includes(probe)) return true;
+  } catch {}
+  return false;
 }
 
-async function openAndFillWebTab(openerTab, url, text) {
-  const created = await openNextTo(openerTab, url);
+async function openAndFillWebTab(openerTab, url, text, offset = 0) {
+  const created = await openNextTo(openerTab, url, offset);
   if (!created?.id) return false;
-  for (let i = 0; i < 20; i++) {
-    await pause(350);
+  const tryFill = async (checkOnly) => {
     try {
       const [res] = await chrome.scripting.executeScript({
         target: { tabId: created.id, frameIds: [0] },
         func: fillComposerInPage,
-        args: [text],
+        args: [text, checkOnly],
       });
-      if (res?.result === true) return true;
+      return res?.result === true;
     } catch {
-      // Wait for navigation to commit.
+      return false;
+    }
+  };
+  for (let i = 0; i < 20; i++) {
+    await pause(350);
+    if (await tryFill(false)) {
+      // Re-verify after hydration; if hydration wiped the editor, continue the loop to re-fill.
+      await pause(350);
+      if (await tryFill(true)) return true;
     }
   }
   return false;
-}
-
-function prefillWebUrl(target, prompt) {
-  const spec = PREFILL_QUERY[target.id];
-  if (!spec) return null;
-  const [base, key] = spec;
-  const trimmed = prompt.length > PREFILL_URL_CAP ? `${prompt.slice(0, PREFILL_URL_CAP).replace(/[\uD800-\uDBFF]$/, '').trimEnd()}\n[truncated]` : prompt;
-  return `${base}?${key}=${encodeURIComponent(trimmed)}`;
 }
 
 async function handOff({ platform, prompt }, tab) {
@@ -597,17 +603,18 @@ async function handOff({ platform, prompt }, tab) {
   if (!tab || !target || target.kind === 'app' || typeof prompt !== 'string') throw new Error('Bad hand-off request');
   await copyText(prompt);
   if (target.kind === 'web') {
-    const canFill = await hasAutoFillPermission(target.id);
-    setTimeout(() => {
-      if (canFill) openAndFillWebTab(tab, target.url, prompt).catch(() => {});
-      else openNextTo(tab, target.url);
-    }, OPEN_DELAY);
-    return canFill ? { ok: true, autoFill: true } : { ok: true };
+    if (await hasAutoFillPermission(target.id)) {
+      await pause(AUTOFILL_DELAY);
+      const filled = await openAndFillWebTab(tab, target.url, prompt);
+      return filled ? { ok: true, autoFill: true } : { ok: true };
+    }
+    setTimeout(() => openNextTo(tab, target.url), OPEN_DELAY);
   }
   return { ok: true };
 }
 
-// Opens up to SEPARATE_CAP emails as separate tabs in a web AI, each named from its subject line.
+// Opens up to SEPARATE_CAP emails as separate tabs in a web AI when optional composer auto-fill is granted;
+// otherwise keeps email content off URLs and falls back to one combined clipboard prompt.
 async function handOffSeparate({ platform, items, combinedPrompt }, tab) {
   const target = targetById(platform);
   if (!tab || !target || target.kind !== 'web' || !Array.isArray(items) || !items.length || items.length > SEPARATE_CAP) {
@@ -615,80 +622,63 @@ async function handOffSeparate({ platform, items, combinedPrompt }, tab) {
   }
   const clean = items.filter((x) => x && typeof x.prompt === 'string' && x.prompt);
   if (!clean.length) throw new Error('No prompts to send');
-  const canFill = await hasAutoFillPermission(target.id);
-  if (canFill) {
+  const combined = typeof combinedPrompt === 'string' && combinedPrompt ? combinedPrompt : clean.map((x) => x.prompt).join('\n\n');
+  if (await hasAutoFillPermission(target.id)) {
     await copyText(clean[0].prompt);
-    setTimeout(() => {
-      (async () => {
-        for (const item of clean) {
-          await openAndFillWebTab(tab, target.url, item.prompt).catch(() => {});
-        }
-      })();
-    }, OPEN_DELAY);
-    return { ok: true, mode: 'autofill', opened: clean.length };
+    await pause(AUTOFILL_DELAY);
+    const failed = [];
+    for (const [i, item] of clean.entries()) {
+      const ok = await openAndFillWebTab(tab, target.url, item.prompt, i);
+      if (!ok) failed.push(item.prompt);
+    }
+    if (failed.length === clean.length) {
+      await copyText(combined).catch(() => {});
+      return { ok: true, mode: 'autofillAllFailed', opened: clean.length, failed: failed.length };
+    }
+    if (failed.length) await copyText(failed.join('\n\n---\n\n')).catch(() => {});
+    return { ok: true, mode: 'autofill', opened: clean.length - failed.length, failed: failed.length };
   }
-  if (PREFILL_QUERY[target.id]) {
-    await copyText(clean[0].prompt);
-    setTimeout(() => {
-      (async () => {
-        for (const item of clean) {
-          const url = prefillWebUrl(target, item.prompt) || target.url;
-          await openNextTo(tab, url);
-          await pause(120);
-        }
-      })();
-    }, OPEN_DELAY);
-    return { ok: true, mode: 'query', opened: clean.length };
-  }
-  // Sites without query pre-fill or auto-fill permission fall back to one combined clipboard prompt.
-  await copyText(typeof combinedPrompt === 'string' && combinedPrompt ? combinedPrompt : clean.map((x) => x.prompt).join('\n\n'));
+  await copyText(combined);
   setTimeout(() => openNextTo(tab, target.url), OPEN_DELAY);
   return { ok: true, mode: 'batchFallback', opened: 1 };
 }
 
 // Launches one or several desktop agent sessions: through the companion Native Messaging host when permitted
-// and installed, or through sequential OS deep links for Claude Code and Codex.
-async function launchApp({ platform, folder = '', sessions }, tab) {
+// and installed, or through a single OS deep link / clipboard hand-off without the helper.
+async function launchApp({ platform, folder = '', sessions, batchUrl = null }, tab) {
   const target = targetById(platform);
   if (!tab || !target || target.kind !== 'app' || !Array.isArray(sessions) || !sessions.length || sessions.length > BULK_CAP) {
     throw new Error('Bad app launch request');
   }
+  const cleanFolder = typeof folder === 'string' ? defang(visibleText(folder)).replace(/[\r\n]+/g, ' ').trim() : '';
   if (await hasNativeHostPermission()) {
     const res = await callNativeHost({
       action: 'launch',
       agent: target.id,
-      folder: typeof folder === 'string' ? folder : '',
+      folder: cleanFolder,
       sessions: sessions.map((s) => ({ subject: String(s?.subject || ''), prompt: String(s?.prompt || '') })),
     });
     if (res?.ok) return { ok: true, via: 'host', ...(res.mode ? { mode: res.mode } : {}), launched: res.launched || sessions.length };
-    if (target.id === 'antigravity') {
-      const folderLine = typeof folder === 'string' && folder.trim() ? `Working folder: ${folder.trim()}\n\n` : '';
-      await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
-      await openApp(tab, 'googlegemini://newchat');
-      return { ok: true, via: 'deeplink', mode: 'paste', launched: 1 };
-    }
-    if (target.via === 'host') {
-      openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
-      return { ok: false, needsHelper: true, error: res?.error || `Install the companion helper in Settings to open in ${target.name}.` };
-    }
-  } else if (target.id === 'antigravity') {
-    const folderLine = typeof folder === 'string' && folder.trim() ? `Working folder: ${folder.trim()}\n\n` : '';
+    if (/Working folder/i.test(res?.error || '')) return { ok: false, error: res.error };
+  }
+  if (target.id === 'antigravity') {
+    const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
     await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
     await openApp(tab, 'googlegemini://newchat');
     return { ok: true, via: 'deeplink', mode: 'paste', launched: 1 };
-  } else if (target.via === 'host') {
-    openNextTo(tab, chrome.runtime.getURL('options.html#helper'));
-    return { ok: false, needsHelper: true, error: `Enable the companion helper in Settings to open directly in ${target.name}.` };
   }
-  const urls = sessions.map((s) => s?.url).filter((u) => typeof u === 'string' && DEEP_LINK.test(u));
-  if (!urls.length) return { ok: false, error: `Could not build a link for ${target.name}.` };
-  (async () => {
-    for (let i = 0; i < urls.length; i++) {
-      if (i > 0) await pause(MULTI_APP_DELAY);
-      await openApp(tab, urls[i]);
-    }
-  })();
-  return { ok: true, via: 'deeplink', launched: urls.length };
+  if (target.id === 'gemini-cli') {
+    const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
+    await copyText(sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n'));
+    return { ok: true, via: 'clipboard', mode: 'copyOnly', launched: 1 };
+  }
+  const singleUrl =
+    typeof batchUrl === 'string' && DEEP_LINK.test(batchUrl)
+      ? batchUrl
+      : sessions.map((s) => s?.url).find((u) => typeof u === 'string' && DEEP_LINK.test(u));
+  if (!singleUrl) return { ok: false, error: `Could not build a link for ${target.name}.` };
+  await openApp(tab, singleUrl);
+  return { ok: true, via: 'deeplink', launched: 1 };
 }
 
 // ---- Gmail's session key (bulk reads) ----

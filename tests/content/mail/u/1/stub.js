@@ -88,7 +88,7 @@ window.chrome = {
         return new Promise((resolve) => setTimeout(() => resolve(reply), 10));
       }
       if (msg?.action === 'handoffSeparate') {
-        const reply = mock.sendMode === 'fail' ? { ok: false, error: 'Copy was blocked' } : { ok: true, mode: 'query', opened: msg.items?.length || 1 };
+        const reply = mock.sendMode === 'fail' ? { ok: false, error: 'Copy was blocked' } : { ok: true, mode: 'autofill', opened: msg.items?.length || 1 };
         return new Promise((resolve) => setTimeout(() => resolve(reply), 20));
       }
       if (msg?.action === 'launchApp') {

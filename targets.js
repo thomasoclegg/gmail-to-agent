@@ -93,18 +93,12 @@ const TARGETS = [
 // Companion Native Messaging host for Antigravity, Gemini CLI and multi-session CLI launches (1.6.0).
 const NATIVE_HOST = 'com.openinaiagent.host';
 
-// Web AIs that support optional composer auto-fill (optional_host_permissions) or query pre-fill (1.6.0).
+// Web AIs that support optional composer auto-fill (optional_host_permissions) (1.6.0).
 const AUTOFILL_HOSTS = {
   claude: 'https://claude.ai/*',
   chatgpt: 'https://chatgpt.com/*',
   gemini: 'https://gemini.google.com/*',
 };
-const PREFILL_QUERY = {
-  claude: ['https://claude.ai/new', 'q'],
-  chatgpt: ['https://chatgpt.com/', 'q'],
-  perplexity: ['https://www.perplexity.ai/search/new', 'q'],
-};
-const PREFILL_URL_CAP = 8000;
 
 // How several ticked emails are opened (1.6.0): one named session per email (up to SEPARATE_CAP; larger selections
 // stay one batch so 25 tabs or windows never open at once), or one combined batch for up to 25 emails.
@@ -144,13 +138,14 @@ const pickTargets = (ids) => TARGETS.filter((t) => Array.isArray(ids) && ids.inc
 const hasDonation = () => !!(DONATION.charity && DONATION.url);
 
 // The AI the "send to the AI you used last" shortcut uses: the one used last while it is still picked, else
-// the first one picked other than Codex. Never Codex: it would start work at once, with no review, on whatever is
-// open or ticked, so when Codex was used last the shortcut opens the toolbar list instead. Null when there is no
-// AI to use; the toolbar list then asks.
+// the first one picked that waits for review. Never Codex or a companion-host CLI agent: they can start work at once
+// on whatever is open or ticked, so when one of them was used last the shortcut opens the toolbar list instead. Null
+// when there is no AI to use; the toolbar list then asks.
+const autoStarts = (t) => t?.id === 'codex' || t?.via === 'host';
 function shortcutTarget(chosen, lastTarget) {
   const last = chosen.find((t) => t.id === lastTarget);
-  if (last?.id === 'codex') return null;
-  return last || chosen.find((t) => t.id !== 'codex') || null;
+  if (autoStarts(last)) return null;
+  return last || chosen.find((t) => !autoStarts(t)) || null;
 }
 
 // A shortcut as the browser reports it, with Firefox's "MacCtrl" named as the key is labelled on a Mac.

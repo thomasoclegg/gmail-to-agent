@@ -1,6 +1,6 @@
 # Open in AI Agent for Gmail
 
-> Free, MIT-licensed, 100% local browser extension (`v1.6.0`) that lets Gmail users hand individual threads, multiple selected threads, or unread inbox batches directly to the AI subscriptions and local coding/operations agents they already use, with zero middleman servers, zero Google OAuth token handoff to third parties, and built-in prompt-injection defanging.
+> Free, MIT-licensed, 100% local browser extension (`v1.6.4`) that lets Gmail users hand individual threads, multiple selected threads, or unread inbox batches directly to the AI subscriptions and local coding/operations agents they already use, with zero middleman servers, zero Google OAuth token handoff to third parties, and built-in prompt-injection defanging.
 
 ## Core capabilities
 

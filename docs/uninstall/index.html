@@ -108,6 +108,7 @@
         <label class="label" for="email">Email address <span class="sub-label">(optional: only if you want me to follow up)</span></label>
         <input type="email" id="email" name="email" maxlength="254" autocomplete="email" placeholder="you@example.com">
       </div>
+      <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
 
       <p class="err" id="err" role="alert" hidden></p>
 
@@ -138,9 +139,9 @@
   const SHEET_WEBHOOK_URL = '';
 
   const params = new URLSearchParams(location.search);
-  const version = (params.get('v') || '').slice(0, 24);
-  const browser = (params.get('b') || '').slice(0, 24);
-  const storeUrl = browser === 'firefox'
+  const version = (params.get('v') || '').replace(/[^0-9a-z.-]/gi, '').slice(0, 24);
+  const browser = (params.get('b') || '').replace(/[^a-z0-9-]/gi, '').slice(0, 24);
+  const storeUrl = (browser === 'firefox' || browser === 'edge')
     ? 'https://openinaiagent.com/#install'
     : 'https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk';
 
@@ -204,13 +205,15 @@
     }
 
     const reasons = [...selected];
+    const honeypot = document.getElementById('website').value;
     const payload = {
       timestamp: new Date().toISOString(),
       version: version || 'unknown',
-      browser: browser || navigator.userAgent.slice(0, 80),
+      browser: browser || 'unknown',
       reasons,
       comment,
-      email
+      email,
+      ...(honeypot ? { website: honeypot } : {})
     };
 
     const btn = document.getElementById('submit-btn');
@@ -219,23 +222,30 @@
 
     if (SHEET_WEBHOOK_URL) {
       try {
-        await fetch(SHEET_WEBHOOK_URL, {
+        const res = await fetch(SHEET_WEBHOOK_URL, {
           method: 'POST',
-          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
-      } catch {}
+        const body = await res.json().catch(() => null);
+        if (!res.ok || body?.ok === false) throw new Error(body?.error || 'Request refused');
+      } catch {
+        err.textContent = 'Could not submit right now. Please try again in a moment.';
+        err.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Send feedback';
+        return;
+      }
     } else {
       const lines = [
         `Version: ${payload.version} (${payload.browser})`,
         reasons.length ? `Reasons: ${reasons.join(', ')}` : '',
-        comment ? `\nFeedback:\n${comment}` : '',
-        email ? `\nReply contact: ${email}` : ''
+        comment ? `\nFeedback:\n${comment}` : ''
       ].filter(Boolean).join('\n');
-      const subject = encodeURIComponent(`Open in AI Agent uninstall feedback (${payload.version})`);
+      const title = encodeURIComponent(`Uninstall feedback (${payload.version})`);
       const body = encodeURIComponent(lines);
-      location.href = `mailto:thomas.o.clegg@gmail.com?subject=${subject}&body=${body}`;
+      window.open(`https://github.com/thomasoclegg/gmail-to-agent/issues/new?title=${title}&body=${body}`, '_blank', 'noopener');
+      document.getElementById('thanks-note').textContent = "Opened GitHub's feedback form in a new tab so you can submit your note there.";
     }
 
     document.getElementById('fb-form').hidden = true;

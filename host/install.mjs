@@ -7,11 +7,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+if (process.platform === 'win32') {
+  console.error('The companion Native Messaging installer currently supports macOS and Linux only.');
+  process.exit(1);
+}
+
 const HOST_NAME = 'com.openinaiagent.host';
 const STORE_EXT_ID = 'edkjbbalbddogimodiepllbkpglcihjk';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST_SCRIPT = path.join(HERE, 'open-in-ai-agent-host.mjs');
 const WRAPPER = path.join(HERE, 'run-host.sh');
+const shQuote = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
 const args = process.argv.slice(2);
 const extraIds = [];
@@ -19,7 +25,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--extension-id' && args[i + 1]) extraIds.push(args[++i]);
 }
 
-function discoverUnpackedIds() {
+function discoverInstalledIds() {
   const found = [];
   const home = os.homedir();
   const roots =
@@ -53,11 +59,12 @@ function discoverUnpackedIds() {
         if (!fs.existsSync(p)) continue;
         try {
           const raw = fs.readFileSync(p, 'utf8');
-          if (!raw.includes('Open in AI Agent') && !raw.includes('open-in-ai-agent') && !raw.includes('gmail-to-agent')) continue;
+          if (!/Open in AI Agent|openinaiagent\.com|open-in-ai-agent|gmail-to-agent/i.test(raw)) continue;
           const settings = JSON.parse(raw)?.extensions?.settings || {};
           for (const [eid, info] of Object.entries(settings)) {
-            const label = `${info?.path || ''} ${info?.manifest?.name || ''}`;
-            if (/Open in AI Agent|open-in-ai-agent|gmail-to-agent/i.test(label)) found.push(eid);
+            const m = info?.manifest || {};
+            const label = `${info?.path || ''} ${m.name || ''} ${m.short_name || ''} ${m.homepage_url || ''}`;
+            if (/Open in AI Agent|openinaiagent\.com|open-in-ai-agent|gmail-to-agent/i.test(label)) found.push(eid);
           }
         } catch {}
       }
@@ -66,10 +73,10 @@ function discoverUnpackedIds() {
   return found;
 }
 
-const ids = [...new Set([STORE_EXT_ID, ...discoverUnpackedIds(), ...extraIds])].filter((id) => /^[a-p]{32}$/.test(id));
+const ids = [...new Set([STORE_EXT_ID, ...discoverInstalledIds(), ...extraIds])].filter((id) => /^[a-p]{32}$/.test(id));
 
 fs.chmodSync(HOST_SCRIPT, 0o755);
-fs.writeFileSync(WRAPPER, `#!/bin/sh\nexec "${process.execPath}" "${HOST_SCRIPT}" "$@"\n`, { mode: 0o755 });
+fs.writeFileSync(WRAPPER, `#!/bin/sh\nexec ${shQuote(process.execPath)} ${shQuote(HOST_SCRIPT)} "$@"\n`, { mode: 0o755 });
 
 const manifest = {
   name: HOST_NAME,

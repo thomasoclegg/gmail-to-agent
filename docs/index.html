@@ -35,7 +35,7 @@
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Windows, macOS, Linux, ChromeOS",
   "softwareRequirements": "Chrome 116 or later, Microsoft Edge, Firefox 140 or later, or another browser that installs Chrome Web Store extensions",
-  "softwareVersion": "1.6.3",
+  "softwareVersion": "1.6.4",
   "downloadUrl": "https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip",
   "installUrl": "https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk",
   "license": "https://github.com/thomasoclegg/gmail-to-agent/blob/main/LICENSE",
@@ -564,7 +564,7 @@
     separate named sessions (or one batch), <a href="#triage">triage up to 25 unread emails</a> without marking them read, or send
     <a href="#selected">selected text</a> from any other webmail.</p>
   <aside class="get" aria-label="Get the extension">
-    <p class="ver">Version 1.6.3, November 2026</p>
+    <p class="ver">Version 1.6.4, November 2026</p>
     <a class="btn" id="download" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Get it for Chrome</a>
     <p id="get-note">Free from the Chrome Web Store.</p>
     <p>100% local, MIT open source: no server, no account, no analytics, and built-in prompt-injection stripping.</p>
@@ -738,7 +738,7 @@
     <h3 class="label">Two things to know</h3>
     <ul>
       <li>If you pick a web AI or Copy from a single inbox row, it opens that thread first so Gmail marks it read. Ticked emails and Triage unread are read from Gmail's print view in the background and stay unread, as do desktop agent picks.</li>
-      <li>Unless you enable optional composer auto-fill in Settings, the copied prompt replaces whatever was on your clipboard.</li>
+      <li>For web AIs and Copy, the prepared prompt is copied to your clipboard (even when optional composer auto-fill also fills the input box), replacing whatever was on your clipboard before.</li>
     </ul>
   </div>
   <p class="t">The <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md">privacy policy</a> lists exactly what is read for each kind of AI.</p>
@@ -783,7 +783,7 @@
     </div>
     <figcaption>The top of the settings page. Each tick saves straight away. To come back to it, click the toolbar icon, then Settings.</figcaption>
   </figure>
-  <p class="t small">Requires Chrome 116 or later (or any Chromium browser built on the same version) or Firefox 140 or later, and Gmail in a desktop browser rather than the mobile Gmail app. Web AIs need only your browser. Claude Code, Codex, Antigravity and Gemini CLI connect directly to your mailbox through their own Gmail tools.</p>
+  <p class="t small">Requires Chrome 116 or later (or any Chromium browser built on the same version) or Firefox 140 or later, and Gmail in a desktop browser rather than the mobile Gmail app. Web AIs need only your browser. Claude Code, Codex, Antigravity and Gemini CLI read threads through whatever Gmail tool or browser session you connect in them.</p>
   <details class="t">
     <summary id="steps-title">From the download on GitHub</summary>
     <p class="t">Prefer to watch? <a href="https://www.youtube.com/watch?v=xGDSdIC2wjY">A 54-second video</a> shows every step in Chrome.</p>

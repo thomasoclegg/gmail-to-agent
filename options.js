@@ -1018,6 +1018,11 @@ $('autofill-tile').addEventListener('click', async () => {
 });
 
 async function refreshHelperStatus() {
+  const manifest = chrome.runtime?.getManifest?.();
+  if (manifest && !manifest.optional_permissions?.includes('nativeMessaging')) {
+    if ($('helper')) $('helper').hidden = true;
+    return;
+  }
   const res = await Promise.resolve(chrome.runtime.sendMessage?.({ target: 'background', action: 'pingHost' })).catch(() => null);
   if (!res?.permission) {
     $('helper-status').textContent = 'Browser permission not enabled yet.';

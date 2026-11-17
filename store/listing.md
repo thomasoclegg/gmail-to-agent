@@ -1,6 +1,6 @@
 # Chrome Web Store listing: Open in AI Agent for Gmail: Claude, ChatGPT & Codex
 
-Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.0.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.0).
+Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.4.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.4).
 
 This one listing serves Chrome and every browser that installs from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Edge has its own store (`store/listing-edge.md`, same package) and Firefox its own package and store (`store/listing-firefox.md`). Safari is planned. Internet Explorer is retired and has no extensions.
 
@@ -29,7 +29,7 @@ New in 1.6.0: separate sessions, desktop companion and auto-fill
 What happens when you click
 • Inbox list: your picks appear at the top of the inbox's own right-click menu.
 • Inside an open thread: right-click and use the browser's menu.
-• Web AIs: copies the subject, senders, dates and message text with a structured resolve-first prompt, then opens the site in a new tab next to your inbox (250 ms). Paste (or let optional auto-fill place it), review and press Enter.
+• Web AIs: copies the subject, senders, dates and message text with a structured resolve-first prompt, then opens the site in a new tab next to your inbox (1.2 s, or 250 ms with optional auto-fill). Paste (or let optional auto-fill place it), review and press Enter.
 • Copy thread for any AI: copies the prepared prompt and thread to your clipboard and opens nothing.
 • Inbox toolbar button: sits just before More. Reads Send to AI in an open thread, Send 3 to AI with three ticked, and Triage unread with nothing ticked.
 • Browser toolbar icon and keyboard shortcuts: open the quick-pick list (with a per-send prompt style selector) or send straight to the AI you used last, never to an agent that starts before you review.

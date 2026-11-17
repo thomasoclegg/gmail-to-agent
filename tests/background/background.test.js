@@ -96,10 +96,10 @@ describe('static: manifest, targets, offscreen.html', () => {
   // 1.2.0 added "scripting" and a host permission for Gmail only. 1.4.0 adds "activeTab" (no install
   // warning: tests/package/gmail-tab.mjs compares Chrome's warnings with 1.1.1's), the toolbar list as the
   // action's popup and two keyboard shortcuts. scripts/package.mjs writes the Firefox and Safari manifests from it.
-  test('manifest matches the v1.6.3 spec', () => {
+  test('manifest matches the v1.6.4 spec', () => {
     const m = JSON.parse(read('manifest.json'));
     assert.equal(m.manifest_version, 3);
-    assert.equal(m.version, '1.6.3');
+    assert.equal(m.version, '1.6.4');
     assert.equal(m.name, 'Open in AI Agent for Gmail: Claude, ChatGPT & Codex');
     assert.equal(m.short_name, 'Open in AI Agent');
     assert.equal(
@@ -190,9 +190,9 @@ describe('static: manifest, targets, offscreen.html', () => {
 describe('background: load', () => {
   test('importScripts loads targets.js and every listener registers at top level', () => {
     const w = createWorld();
-    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.3&b=chrome');
+    assert.equal(w.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.4&b=chrome');
     const wf = createWorld({ page: { firefox: true } });
-    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.3&b=firefox');
+    assert.equal(wf.uninstallUrl, 'https://openinaiagent.com/uninstall/?v=1.6.4&b=firefox');
     eq(w.log.filter((e) => e.ev === 'importScripts').map((e) => e.file), ['targets.js']);
     const c = w.chrome;
     assert.equal(c.runtime.onInstalled.listeners.length, 1);
@@ -1412,8 +1412,12 @@ describe('background: keyboard shortcuts (1.4.0)', () => {
     // The same rule in targets.js, which the toolbar list uses for its shortcut line. Codex used last but no longer
     // picked gives way to the first AI picked, as any other would.
     eq(
-      clone(w.evalIn("[shortcutTarget(pickTargets(['codex', 'copy']), ''), shortcutTarget(pickTargets(['codex']), ''), shortcutTarget(pickTargets(['codex']), 'codex'), shortcutTarget(pickTargets(['codex', 'claude']), 'codex'), shortcutTarget(pickTargets(['claude']), 'codex')].map((t) => t && t.id)")),
-      ['copy', null, null, null, 'claude'],
+      clone(
+        w.evalIn(
+          "[shortcutTarget(pickTargets(['codex', 'copy']), ''), shortcutTarget(pickTargets(['codex']), ''), shortcutTarget(pickTargets(['codex']), 'codex'), shortcutTarget(pickTargets(['codex', 'claude']), 'codex'), shortcutTarget(pickTargets(['claude']), 'codex'), shortcutTarget(pickTargets(['antigravity', 'gemini-cli', 'claude']), 'antigravity'), shortcutTarget(pickTargets(['gemini-cli', 'copy']), '')].map((t) => t && t.id)",
+        ),
+      ),
+      ['copy', null, null, null, 'claude', null, 'copy'],
     );
   });
 
@@ -1737,7 +1741,7 @@ describe('background: moving 1.4.0\'s own instructions (1.5.0)', () => {
     eq(w.storage, { targets: ['claude'], desktopInstructions: 'D' }, 'a Chrome update moves nothing');
     eq(w.warnings, []);
   });
-  test('launchApp handles Antigravity (Gemini.app paste deep link), Gemini CLI (needsHelper fallback), BULK_CAP check, and deep-link agents up to 25 sessions', async () => {
+  test('launchApp & handOffSeparate handle Antigravity, Gemini CLI clipboard fallback, single-link batch fallback, and no-query web fallback', async () => {
     const w = createWorld();
     w.openTabs = [GMAIL_TAB];
     const rAgy = await dispatch(
@@ -1750,23 +1754,51 @@ describe('background: moving 1.4.0\'s own instructions (1.5.0)', () => {
     assert.equal(w.clipboard, 'Working folder: /tmp\n\nTriage');
     assert.ok(w.tabsUpdated.some((u) => u.props?.url === 'googlegemini://newchat'));
 
-    const rHost = await dispatch(
+    const rGem = await dispatch(
       w.chrome.runtime.onMessage.listeners,
       { target: 'background', action: 'launchApp', platform: 'gemini-cli', folder: '/tmp', sessions: [{ subject: 'Inbox triage: 3 unread emails', prompt: 'Triage' }] },
       GMAIL_SENDER,
       w.log,
     );
-    assert.equal(rHost.ok, false);
-    assert.equal(rHost.needsHelper, true);
-    assert.match(rHost.error, /Enable the companion helper/);
+    eq(rGem, { ok: true, via: 'clipboard', mode: 'copyOnly', launched: 1 });
+    assert.equal(w.clipboard, 'Working folder: /tmp\n\nTriage');
 
     const rLink = await dispatch(
       w.chrome.runtime.onMessage.listeners,
-      { target: 'background', action: 'launchApp', platform: 'claude-code', folder: '', sessions: [{ subject: 'S', prompt: 'P', url: 'claude://code/new?q=P' }] },
+      {
+        target: 'background',
+        action: 'launchApp',
+        platform: 'claude-code',
+        folder: '',
+        batchUrl: 'claude://code/new?q=BATCH',
+        sessions: [
+          { subject: 'S1', prompt: 'P1', url: 'claude://code/new?q=P1' },
+          { subject: 'S2', prompt: 'P2', url: 'claude://code/new?q=P2' },
+        ],
+      },
       GMAIL_SENDER,
       w.log,
     );
     eq(rLink, { ok: true, via: 'deeplink', launched: 1 });
+    assert.ok(w.tabsUpdated.some((u) => u.props?.url === 'claude://code/new?q=BATCH'), 'without helper, opens single batch deep link');
+    assert.ok(!w.tabsUpdated.some((u) => u.props?.url === 'claude://code/new?q=P2'), 'does not fire dropped 2nd protocol link');
+
+    const rSepWeb = await dispatch(
+      w.chrome.runtime.onMessage.listeners,
+      {
+        target: 'background',
+        action: 'handoffSeparate',
+        platform: 'chatgpt',
+        items: [{ subject: 'A', prompt: 'Secret email A' }, { subject: 'B', prompt: 'Secret email B' }],
+        combinedPrompt: 'Combined A+B',
+      },
+      GMAIL_SENDER,
+      w.log,
+    );
+    eq(rSepWeb, { ok: true, mode: 'batchFallback', opened: 1 });
+    assert.equal(w.clipboard, 'Combined A+B');
+    await afterOpenDelay();
+    assert.ok(w.tabsCreated.every((t) => !t.url.includes('?q=')), 'zero email content placed into ?q= URLs');
 
     const rOverCap = await dispatch(
       w.chrome.runtime.onMessage.listeners,
