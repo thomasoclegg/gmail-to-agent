@@ -411,3 +411,5 @@ function defang(text) {
     .replace(GT_RUN, '>>')
     .replace(NEAR_MARKER, (near) => near.replace(MARKER_SPACES, '-'));
 }
+
+const UNINSTALL_URL = 'https://openinaiagent.com/uninstall/';

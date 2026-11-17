@@ -98,6 +98,18 @@ async function migratePrompts() {
 // clicked in the page leaves the page open.
 const FIREFOX = typeof chrome.runtime.getBrowserInfo === 'function';
 
+function syncUninstallUrl() {
+  if (typeof chrome.runtime?.setUninstallURL !== 'function') return;
+  try {
+    const v = chrome.runtime.getManifest?.()?.version || '';
+    const b = FIREFOX ? 'firefox' : 'chrome';
+    const res = chrome.runtime.setUninstallURL(`${UNINSTALL_URL}?v=${encodeURIComponent(v)}&b=${b}`);
+    if (res && typeof res.catch === 'function') res.catch(() => {});
+  } catch {}
+}
+
+syncUninstallUrl();
+
 // Gmail tabs that were open before an install or update get the content script
 // now, so they need no reload. content.js runs once per tab; a tab that cannot
 // take it keeps the reload fallback (needsReload). A tab still loading gets the
@@ -117,6 +129,7 @@ async function injectIntoGmailTabs() {
 }
 
 chrome.runtime.onInstalled.addListener(async (details) => {
+  syncUninstallUrl();
   await firstRun(details).catch((e) => console.warn('First run:', e));
   if (details.reason === 'update') await migratePrompts().catch((e) => console.warn('Prompts:', e));
   rebuildMenus();
@@ -126,6 +139,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
+  syncUninstallUrl();
   rebuildMenus();
   migratePrompts().catch((e) => console.warn('Prompts:', e));
 });

@@ -331,6 +331,10 @@ function createWorld(opts = {}) {
     onMessage: makeEvent('runtime.onMessage'),
     getURL: (p = '') => `chrome-extension://test-ext/${p}`,
     getManifest: () => JSON.parse(read('manifest.json')),
+    setUninstallURL(url) {
+      world.uninstallUrl = String(url);
+      return Promise.resolve();
+    },
     async openOptionsPage() {
       world.optionsOpened++;
       log.push({ ev: 'openOptionsPage' });

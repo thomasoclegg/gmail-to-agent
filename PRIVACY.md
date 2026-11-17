@@ -47,6 +47,7 @@ Gmail requires a session key in that request. Each time you pick several emails 
 
 - Check Gmail runs only when you click it. It asks the extension in your open Gmail tab whether it can find the inbox rows, an open thread and Gmail's menu, and gets back counts and yes-or-no answers. It reads no email text, subjects or addresses for this. The answers show on the settings page and are not stored.
 - Report a problem opens GitHub's form for a new issue in a new tab, with the extension's version, your browser's name, version and operating system, and the Check Gmail answers filled in. They travel in that page's web address, which is how GitHub fills in its form, so GitHub receives them when the page opens. They never include email text, subjects, addresses, your working folder or your saved prompts. Nothing is posted until you submit the issue yourself, and what you submit is public on GitHub, under GitHub's own terms.
+- Uninstalling (from 1.6.1): the extension sets `chrome.runtime.setUninstallURL` to `https://openinaiagent.com/uninstall/` with only the extension's version and browser family (`?v=...&b=...`). No email text, mailbox address or identifier is included, and nothing is sent or recorded unless you choose to fill in and submit the optional feedback form on that page.
 
 ## Where it goes
 

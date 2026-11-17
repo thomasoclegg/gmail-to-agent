@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>Why did you uninstall Open in AI Agent?</title>
+<meta name="description" content="Tell us what did not work in Open in AI Agent for Gmail so we can fix or simplify it next.">
+<link rel="icon" href="../icon.svg" type="image/svg+xml">
+<link rel="icon" href="../icon.png" sizes="128x128">
+<style>
+  @font-face { font-family: 'Libre Franklin'; font-weight: 400; font-style: normal; font-display: swap; src: url(../fonts/libre-franklin-latin-400-normal.woff2) format('woff2'); }
+  @font-face { font-family: 'Libre Franklin'; font-weight: 600; font-style: normal; font-display: swap; src: url(../fonts/libre-franklin-latin-600-normal.woff2) format('woff2'); }
+  :root {
+    --paper: #fafaf8; --card: #ffffff; --ink: #15171a; --ink-2: #555a61;
+    --rule: #dcdfe3; --rubric: #fb3e36; --tint: #f2f3f5;
+    --sans: 'Libre Franklin', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #121315; --card: #191b1f; --ink: #e8e9eb; --ink-2: #9aa0a8; --rule: #2c2f34; --tint: #202329; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+  .page { max-width: 720px; margin: 0 auto; padding: 28px 24px 72px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; border-bottom: 1px solid var(--rule); font-size: 14px; }
+  a { color: inherit; text-decoration-color: var(--rubric); text-underline-offset: 0.22em; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+  .brand img { width: 24px; height: 24px; }
+  h1 { margin: 40px 0 10px; font: 600 clamp(28px, 4vw, 40px)/1.08 var(--sans); letter-spacing: -0.025em; }
+  .lead { margin: 0 0 28px; color: var(--ink-2); font-size: 17px; max-width: 40em; }
+  .form-card { padding: 26px 26px 28px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+  .label { display: block; margin: 0 0 10px; font: 600 14px/1.3 var(--sans); }
+  .sub-label { font-weight: 400; color: var(--ink-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+  .chip {
+    padding: 9px 13px; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper);
+    color: var(--ink); font: 400 14px/1.25 var(--sans); cursor: pointer; transition: border-color 0.12s, background 0.12s;
+  }
+  .chip:hover { border-color: var(--ink); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
+  .winback {
+    margin: 0 0 20px; padding: 14px 16px; border-left: 3px solid var(--rubric);
+    background: var(--tint); border-radius: 0 4px 4px 0; font-size: 15px;
+  }
+  .winback p { margin: 0 0 10px; }
+  .winback p:last-child { margin-bottom: 0; }
+  .winback a.reinstall { font-weight: 600; }
+  .field { margin-top: 20px; }
+  textarea, input[type="email"] {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--paper); color: var(--ink); font: 400 15px/1.45 var(--sans);
+  }
+  textarea { min-height: 104px; resize: vertical; }
+  textarea:focus, input[type="email"]:focus, .chip:focus-visible, .btn:focus-visible {
+    outline: 2px solid var(--rubric); outline-offset: 2px;
+  }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 22px; }
+  .btn {
+    padding: 12px 22px; border: 0; border-radius: 3px; background: var(--ink); color: var(--paper);
+    font: 600 15px/1.25 var(--sans); cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .btn:hover { box-shadow: inset 0 -3px 0 var(--rubric); }
+  .btn[disabled] { opacity: 0.55; cursor: default; box-shadow: none; }
+  .note { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .err { margin: 12px 0 0; font-size: 14px; color: var(--rubric); font-weight: 600; }
+  .thanks { padding: 28px 26px; border: 1px solid var(--rule); border-radius: 6px; background: var(--card); }
+  .thanks h2 { margin: 0 0 8px; font: 600 22px/1.2 var(--sans); }
+  .thanks p { margin: 0 0 16px; color: var(--ink-2); }
+  .reinstall-bar { margin-top: 26px; font-size: 15px; color: var(--ink-2); }
+  footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-2); }
+  code { font: 0.9em var(--mono); }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <a class="brand" href="../"><img src="../icon.svg" alt="">Open in AI Agent for Gmail</a>
+    <nav><a href="../#install">Reinstall</a> &middot; <a href="https://github.com/thomasoclegg/gmail-to-agent">GitHub</a></nav>
+  </header>
+
+  <main>
+    <h1>Why did you uninstall Open in AI Agent?</h1>
+    <p class="lead">No survey maze. One tap or a sentence in your own words helps me decide what to fix, simplify or build next.</p>
+
+    <form class="form-card" id="fb-form" novalidate>
+      <span class="label" id="reasons-label">Main reason <span class="sub-label">(tap any that fit)</span></span>
+      <div class="chips" role="group" aria-labelledby="reasons-label" id="chips">
+        <button type="button" class="chip" data-reason="manual-paste" aria-pressed="false">Had to paste manually every time</button>
+        <button type="button" class="chip" data-reason="multi-thread" aria-pressed="false">Multiple emails merged into one chat</button>
+        <button type="button" class="chip" data-reason="missing-ai" aria-pressed="false">Missing my AI or Outlook</button>
+        <button type="button" class="chip" data-reason="gmail-ui" aria-pressed="false">Menu or button did not show in Gmail</button>
+        <button type="button" class="chip" data-reason="just-testing" aria-pressed="false">Just testing / Do not need it right now</button>
+      </div>
+
+      <div class="winback" id="winback" hidden aria-live="polite">
+        <p id="winback-text"></p>
+        <p><a class="reinstall" id="winback-link" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Reinstall the latest version</a></p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="comment">What made you leave, or what would make it worth keeping?</label>
+        <textarea id="comment" name="comment" maxlength="2000" placeholder="Tell me in your own words..."></textarea>
+      </div>
+
+      <div class="field">
+        <label class="label" for="email">Email address <span class="sub-label">(optional: only if you want me to follow up)</span></label>
+        <input type="email" id="email" name="email" maxlength="254" autocomplete="email" placeholder="you@example.com">
+      </div>
+
+      <p class="err" id="err" role="alert" hidden></p>
+
+      <div class="actions">
+        <button type="submit" class="btn" id="submit-btn">Send feedback</button>
+        <p class="note">Nothing was sent automatically when you uninstalled.</p>
+      </div>
+    </form>
+
+    <div class="thanks" id="thanks" hidden role="status">
+      <h2>Thank you for telling me.</h2>
+      <p id="thanks-note">I read every reply personally and use it to decide what ships next.</p>
+      <a class="btn" id="reinstall-after" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Reinstall Open in AI Agent</a>
+    </div>
+
+    <p class="reinstall-bar">Uninstalled by accident? <a id="reinstall-bottom" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Reinstall Open in AI Agent</a> or <a href="../#install">get the Edge / Firefox build</a>.</p>
+  </main>
+
+  <footer>
+    <p>Open in AI Agent for Gmail is free and open source under the MIT licence. See <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md">Privacy</a>.</p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  // Paste your deployed Google Apps Script Web App URL (scripts/uninstall-sheet-webhook.gs) here.
+  // While empty, submissions open a pre-filled GitHub feedback form so nothing is silently lost.
+  const SHEET_WEBHOOK_URL = '';
+
+  const params = new URLSearchParams(location.search);
+  const version = (params.get('v') || '').slice(0, 24);
+  const browser = (params.get('b') || '').slice(0, 24);
+  const storeUrl = browser === 'firefox'
+    ? 'https://openinaiagent.com/#install'
+    : 'https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk';
+
+  for (const id of ['winback-link', 'reinstall-after', 'reinstall-bottom']) {
+    const el = document.getElementById(id);
+    if (el) el.href = storeUrl;
+  }
+
+  const TIPS = {
+    'manual-paste': 'Good news: version 1.6 added optional "Auto-fill prompt box in Claude, ChatGPT and Gemini" on Settings, so the prepared prompt lands straight in the input box without manual pasting.',
+    'multi-thread': 'Fixed in version 1.6: ticking 2 to 5 emails in Gmail now opens a separate named chat or desktop session per email by default instead of combining them.',
+    'missing-ai': 'Version 1.6 added Google Antigravity and Gemini CLI alongside Claude Code, Codex and 8 web AIs. In Outlook or Yahoo Mail, select text and right-click to send it; let me know below which integration you wanted next.',
+    'gmail-ui': 'It works in Gmail in a desktop browser (not the mobile Gmail app). Open Settings and click "Check Gmail" to see what the extension detects in your tab.'
+  };
+
+  const selected = new Set();
+  const winback = document.getElementById('winback');
+  const winbackText = document.getElementById('winback-text');
+  const err = document.getElementById('err');
+
+  function updateWinback() {
+    const match = ['manual-paste', 'multi-thread', 'missing-ai', 'gmail-ui'].find((k) => selected.has(k));
+    if (match) {
+      winbackText.textContent = TIPS[match];
+      winback.hidden = false;
+    } else {
+      winback.hidden = true;
+    }
+  }
+
+  document.getElementById('chips').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    const key = btn.dataset.reason;
+    if (selected.has(key)) {
+      selected.delete(key);
+      btn.setAttribute('aria-pressed', 'false');
+    } else {
+      selected.add(key);
+      btn.setAttribute('aria-pressed', 'true');
+    }
+    err.hidden = true;
+    updateWinback();
+  });
+
+  document.getElementById('fb-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    err.hidden = true;
+    const comment = document.getElementById('comment').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!selected.size && !comment) {
+      err.textContent = 'Tap a reason above or write a few words before sending.';
+      err.hidden = false;
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = 'Enter a valid email address, or leave the email box blank.';
+      err.hidden = false;
+      return;
+    }
+
+    const reasons = [...selected];
+    const payload = {
+      timestamp: new Date().toISOString(),
+      version: version || 'unknown',
+      browser: browser || navigator.userAgent.slice(0, 80),
+      reasons,
+      comment,
+      email
+    };
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    if (SHEET_WEBHOOK_URL) {
+      try {
+        await fetch(SHEET_WEBHOOK_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+      } catch {}
+    } else {
+      const lines = [
+        `Version: ${payload.version} (${payload.browser})`,
+        reasons.length ? `Reasons: ${reasons.join(', ')}` : '',
+        comment ? `\nFeedback:\n${comment}` : '',
+        email ? `\nReply contact: ${email}` : ''
+      ].filter(Boolean).join('\n');
+      const subject = encodeURIComponent(`Open in AI Agent uninstall feedback (${payload.version})`);
+      const body = encodeURIComponent(lines);
+      location.href = `mailto:thomas.o.clegg@gmail.com?subject=${subject}&body=${body}`;
+    }
+
+    document.getElementById('fb-form').hidden = true;
+    document.getElementById('thanks').hidden = false;
+  });
+})();
+</script>
+</body>
+</html>
