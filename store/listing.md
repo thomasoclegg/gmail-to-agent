@@ -1,6 +1,6 @@
 # Chrome Web Store listing: Open in AI Agent for Gmail: Claude, ChatGPT & Codex
 
-Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.6.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.6).
+Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.7.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.7).
 
 This one listing serves Chrome and every browser that installs from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Edge has its own store (`store/listing-edge.md`, same package) and Firefox its own package and store (`store/listing-firefox.md`). Safari is planned. Internet Explorer is retired and has no extensions.
 

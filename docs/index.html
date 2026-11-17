@@ -35,7 +35,7 @@
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Windows, macOS, Linux, ChromeOS",
   "softwareRequirements": "Chrome 116 or later, Microsoft Edge, Firefox 140 or later, or another browser that installs Chrome Web Store extensions",
-  "softwareVersion": "1.6.6",
+  "softwareVersion": "1.6.7",
   "downloadUrl": "https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent.zip",
   "installUrl": "https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk",
   "license": "https://github.com/thomasoclegg/gmail-to-agent/blob/main/LICENSE",
@@ -511,6 +511,12 @@
     .give-do .btn.pp, .give-alt { white-space: normal; }
     .foot { margin-top: 56px; }
   }
+  .os-tabs { display: inline-flex; gap: 6px; margin: 14px 0 12px; }
+  .os-tab { padding: 7px 14px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper); color: var(--ink-2);
+            font: 600 14px/1.2 var(--sans); cursor: pointer; }
+  .os-tab[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .os-clip { max-width: 780px; margin: 4px 0 14px; }
+  .os-clip video { display: block; width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; background: #15171a; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -564,7 +570,7 @@
     separate named sessions (or one batch), <a href="#triage">triage up to 25 unread emails</a> without marking them read, or send
     <a href="#selected">selected text</a> from any other webmail.</p>
   <aside class="get" aria-label="Get the extension">
-    <p class="ver">Version 1.6.6, November 2026</p>
+    <p class="ver">Version 1.6.7, November 2026</p>
     <a class="btn" id="download" href="https://chromewebstore.google.com/detail/open-in-ai-agent-for-gmai/edkjbbalbddogimodiepllbkpglcihjk">Get it for Chrome</a>
     <p id="get-note">Free from the Chrome Web Store.</p>
     <p>100% local, MIT open source: no server, no account, no analytics, and built-in prompt-injection stripping.</p>
@@ -794,6 +800,41 @@
     </ol>
     <p class="t">In Firefox, download <a href="https://github.com/thomasoclegg/gmail-to-agent/releases/latest/download/open-in-ai-agent-firefox.zip">the Firefox zip</a>, open <code>about:debugging</code>, click This Firefox, then Load Temporary Add-on and pick the zip. Firefox removes it when it restarts.</p>
     <p class="t small">To update a download, unzip the new version over the old folder, then press reload on the extension's card in your browser's extensions page. Open Gmail tabs pick up the new version by themselves. A store install updates itself. What changed in each version is in the <a href="https://github.com/thomasoclegg/gmail-to-agent/releases">release notes</a>.</p>
+  </details>
+  <details class="t" id="desktop-setup">
+    <summary id="desktop-setup-title">Setting up Antigravity &amp; CLI agents (Mac &amp; Windows video)</summary>
+    <div class="os-tabs" role="tablist" aria-label="Choose your computer">
+      <button type="button" class="os-tab" role="tab" id="os-tab-mac" aria-selected="true" aria-controls="os-panel-mac">Mac</button>
+      <button type="button" class="os-tab" role="tab" id="os-tab-win" aria-selected="false" aria-controls="os-panel-win">Windows</button>
+    </div>
+    <div id="os-panel-mac" role="tabpanel" aria-labelledby="os-tab-mac">
+      <div class="os-clip">
+        <video controls playsinline preload="metadata" width="1280" height="800" poster="media/clip-setup-mac-poster.png"
+               aria-label="17-second silent clip with captions showing desktop setup on a Mac: click Enable companion helper on Settings, pick Open in Antigravity in Gmail, switch Google Chrome ON once in macOS System Settings under Privacy and Security then Accessibility, and land in a new Antigravity chat ready to press Enter.">
+          <source src="media/clip-setup-mac.webm" type="video/webm">
+          <source src="media/clip-setup-mac.mp4" type="video/mp4">
+        </video>
+      </div>
+      <ol class="steps">
+        <li>In Terminal, run <code>node host/install.mjs</code> once inside the downloaded repository folder, then click <b>Enable companion helper</b> on Settings.</li>
+        <li>In Gmail, right-click an email (or click <b>Triage unread</b>) and pick <b>Open in Antigravity</b>.</li>
+        <li>The first time on a Mac, <b>System Settings &gt; Privacy &amp; Security &gt; Accessibility</b> opens: switch <b>Google Chrome</b> ON once. Every click after that opens a new Antigravity chat with your prompt already pasted, ready to press Enter.</li>
+      </ol>
+    </div>
+    <div id="os-panel-win" role="tabpanel" aria-labelledby="os-tab-win" hidden>
+      <div class="os-clip">
+        <video controls playsinline preload="metadata" width="1280" height="800" poster="media/clip-setup-win-poster.png"
+               aria-label="16-second silent clip with captions showing desktop setup on Windows: run node host\install.mjs once in PowerShell, click Enable companion helper on Settings, right-click an email in Gmail and pick Open in Antigravity, opening straight in your working folder with no extra Windows toggle needed.">
+          <source src="media/clip-setup-win.webm" type="video/webm">
+          <source src="media/clip-setup-win.mp4" type="video/mp4">
+        </video>
+      </div>
+      <ol class="steps">
+        <li>Open PowerShell in the downloaded repository folder and run <code>node host\install.mjs</code> once to register Chrome and Edge.</li>
+        <li>On the extension's Settings page, click <b>Enable companion helper</b>.</li>
+        <li>In Gmail, right-click any email and pick <b>Open in Antigravity</b> (or Claude Code, Codex or Gemini CLI). Windows needs no extra Accessibility toggle: your session opens in your working folder ready to review.</li>
+      </ol>
+    </div>
   </details>
 </section>
 
@@ -1116,6 +1157,28 @@ var FIREFOX_ZIP = 'https://github.com/thomasoclegg/gmail-to-agent/releases/lates
     if (a) reveal(a.getAttribute('href').slice(1), false);
   });
   fromAddress(false);
+})();
+
+/* Auto-selects the visitor's OS (Mac vs Windows) in the desktop companion setup video tabs, and switches tabs cleanly. */
+(function () {
+  var macBtn = document.getElementById('os-tab-mac');
+  var winBtn = document.getElementById('os-tab-win');
+  var macPanel = document.getElementById('os-panel-mac');
+  var winPanel = document.getElementById('os-panel-win');
+  if (!macBtn || !winBtn || !macPanel || !winPanel) return;
+  function selectOs(which) {
+    var isMac = which === 'mac';
+    macBtn.setAttribute('aria-selected', String(isMac));
+    winBtn.setAttribute('aria-selected', String(!isMac));
+    macPanel.hidden = !isMac;
+    winPanel.hidden = isMac;
+    var other = (isMac ? winPanel : macPanel).querySelector('video');
+    if (other && typeof other.pause === 'function') other.pause();
+  }
+  var p = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  selectOs(/^mac/i.test(p) ? 'mac' : 'win');
+  macBtn.addEventListener('click', function () { selectOs('mac'); });
+  winBtn.addEventListener('click', function () { selectOs('win'); });
 })();
 
 /* The hero loop. From 600 px up it plays muted on a loop in the drawing's place, with the Mac keys on a Mac, and

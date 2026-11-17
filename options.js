@@ -1027,9 +1027,19 @@ $('autofill-tile').addEventListener('click', async () => {
 
 async function refreshHelperStatus() {
   const manifest = chrome.runtime?.getManifest?.();
-  if (manifest && !manifest.optional_permissions?.includes('nativeMessaging')) {
-    if ($('helper')) $('helper').hidden = true;
+  if (manifest && !manifest.permissions?.includes('nativeMessaging') && !manifest.optional_permissions?.includes('nativeMessaging')) {
+    if ($('helper-box')) $('helper-box').hidden = true;
     return;
+  }
+  const winOs = /win/i.test(navigator.userAgentData?.platform || navigator.platform || '');
+  if ($('helper-cmd')) $('helper-cmd').textContent = winOs ? 'node host\\install.mjs' : 'node host/install.mjs';
+  if ($('helper-hint') && winOs) {
+    $('helper-hint').textContent = '';
+    $('helper-hint').append(
+      'Run ',
+      element('code', '', 'node host\\install.mjs'),
+      ' once in PowerShell from the downloaded repository folder, then click below. Windows needs no extra Accessibility toggle.',
+    );
   }
   const res = await Promise.resolve(chrome.runtime.sendMessage?.({ target: 'background', action: 'pingHost' })).catch(() => null);
   if (!res?.permission) {

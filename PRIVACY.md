@@ -1,6 +1,6 @@
 # Privacy policy: Open in AI Agent for Gmail
 
-Last updated: 17 November 2026 (version 1.6.6)
+Last updated: 17 November 2026 (version 1.6.7)
 
 This extension runs entirely on your computer. It has no server, no analytics and no tracking. The only requests it makes itself go to Gmail, for the print view of emails you chose (see below). Nothing is sent to me.
 

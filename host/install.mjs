@@ -1,22 +1,19 @@
 #!/usr/bin/env node
-// Registers com.openinaiagent.host for Chrome, Chromium, Brave, Edge, Arc and Vivaldi on macOS or Linux.
+// Registers com.openinaiagent.host for Chrome, Chromium, Brave, Edge, Arc and Vivaldi on macOS, Windows or Linux.
 // Usage: node host/install.mjs [--extension-id <32-char-id>]
 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-
-if (process.platform === 'win32') {
-  console.error('The companion Native Messaging installer currently supports macOS and Linux only.');
-  process.exit(1);
-}
 
 const HOST_NAME = 'com.openinaiagent.host';
 const STORE_EXT_ID = 'edkjbbalbddogimodiepllbkpglcihjk';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST_SCRIPT = path.join(HERE, 'open-in-ai-agent-host.mjs');
-const WRAPPER = path.join(HERE, 'run-host.sh');
+const IS_WIN = process.platform === 'win32';
+const WRAPPER = path.join(HERE, IS_WIN ? 'run-host.cmd' : 'run-host.sh');
 const shQuote = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 
 const args = process.argv.slice(2);
@@ -25,26 +22,39 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--extension-id' && args[i + 1]) extraIds.push(args[++i]);
 }
 
+function browserRoots() {
+  const home = os.homedir();
+  if (IS_WIN) {
+    const local = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+    return [
+      path.join(local, 'Google', 'Chrome', 'User Data'),
+      path.join(local, 'Microsoft', 'Edge', 'User Data'),
+      path.join(local, 'BraveSoftware', 'Brave-Browser', 'User Data'),
+      path.join(local, 'Chromium', 'User Data'),
+      path.join(local, 'Vivaldi', 'User Data'),
+    ];
+  }
+  if (process.platform === 'darwin') {
+    return [
+      path.join(home, 'Library/Application Support/Google/Chrome'),
+      path.join(home, 'Library/Application Support/Chromium'),
+      path.join(home, 'Library/Application Support/BraveSoftware/Brave-Browser'),
+      path.join(home, 'Library/Application Support/Microsoft Edge'),
+      path.join(home, 'Library/Application Support/Arc/User Data'),
+      path.join(home, 'Library/Application Support/Vivaldi'),
+    ];
+  }
+  return [
+    path.join(home, '.config/google-chrome'),
+    path.join(home, '.config/chromium'),
+    path.join(home, '.config/BraveSoftware/Brave-Browser'),
+    path.join(home, '.config/microsoft-edge'),
+  ];
+}
+
 function discoverInstalledIds() {
   const found = [];
-  const home = os.homedir();
-  const roots =
-    process.platform === 'darwin'
-      ? [
-          path.join(home, 'Library/Application Support/Google/Chrome'),
-          path.join(home, 'Library/Application Support/Chromium'),
-          path.join(home, 'Library/Application Support/BraveSoftware/Brave-Browser'),
-          path.join(home, 'Library/Application Support/Microsoft Edge'),
-          path.join(home, 'Library/Application Support/Arc/User Data'),
-          path.join(home, 'Library/Application Support/Vivaldi'),
-        ]
-      : [
-          path.join(home, '.config/google-chrome'),
-          path.join(home, '.config/chromium'),
-          path.join(home, '.config/BraveSoftware/Brave-Browser'),
-          path.join(home, '.config/microsoft-edge'),
-        ];
-  for (const root of roots) {
+  for (const root of browserRoots()) {
     if (!fs.existsSync(root)) continue;
     let entries = [];
     try {
@@ -75,8 +85,16 @@ function discoverInstalledIds() {
 
 const ids = [...new Set([STORE_EXT_ID, ...discoverInstalledIds(), ...extraIds])].filter((id) => /^[a-p]{32}$/.test(id));
 
-fs.chmodSync(HOST_SCRIPT, 0o755);
-fs.writeFileSync(WRAPPER, `#!/bin/sh\nexec ${shQuote(process.execPath)} ${shQuote(HOST_SCRIPT)} "$@"\n`, { mode: 0o755 });
+if (IS_WIN) {
+  if (/[%"\r\n]/.test(process.execPath) || /[%"\r\n]/.test(HOST_SCRIPT)) {
+    console.error('Install path must not contain quotes or % signs on Windows.');
+    process.exit(1);
+  }
+  fs.writeFileSync(WRAPPER, `@echo off\r\n"${process.execPath}" "${HOST_SCRIPT}" %*\r\n`, 'utf8');
+} else {
+  fs.chmodSync(HOST_SCRIPT, 0o755);
+  fs.writeFileSync(WRAPPER, `#!/bin/sh\nexec ${shQuote(process.execPath)} ${shQuote(HOST_SCRIPT)} "$@"\n`, { mode: 0o755 });
+}
 
 const manifest = {
   name: HOST_NAME,
@@ -85,6 +103,31 @@ const manifest = {
   type: 'stdio',
   allowed_origins: ids.map((id) => `chrome-extension://${id}/`),
 };
+
+if (IS_WIN) {
+  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const manifestDir = path.join(local, 'OpenInAIAgent');
+  fs.mkdirSync(manifestDir, { recursive: true });
+  const manifestFile = path.join(manifestDir, `${HOST_NAME}.json`);
+  fs.writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\r\n`, 'utf8');
+  const regKeys = [
+    `HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\${HOST_NAME}`,
+    `HKCU\\Software\\Microsoft\\Edge\\NativeMessagingHosts\\${HOST_NAME}`,
+    `HKCU\\Software\\BraveSoftware\\Brave-Browser\\NativeMessagingHosts\\${HOST_NAME}`,
+    `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST_NAME}`,
+    `HKCU\\Software\\Vivaldi\\NativeMessagingHosts\\${HOST_NAME}`,
+  ];
+  let written = 0;
+  for (const key of regKeys) {
+    const r = spawnSync('reg.exe', ['add', key, '/ve', '/t', 'REG_SZ', '/d', manifestFile, '/f'], { encoding: 'utf8' });
+    if (r.status === 0) {
+      console.log(`Registered ${key}`);
+      written++;
+    }
+  }
+  console.log(written ? `Done (${written} Windows browser registry keys -> ${manifestFile}).` : 'Could not write Windows registry keys.');
+  process.exit(written ? 0 : 1);
+}
 
 const home = os.homedir();
 const dirs =

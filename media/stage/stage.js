@@ -1507,6 +1507,126 @@
       if (select) COMMANDS.winSelect({ id, row: select });
       return {};
     },
+    macAx({ id = 'mac-ax', show = 1, dur = 280, w = 660, hgt = 340 } = {}) {
+      if (!S.wins[id]) {
+        const sw = h('div', { class: 'os-sw', id: 'mac-ax-sw' }, h('i'));
+        const el = h(
+          'div',
+          { class: 'os-win', id, hidden: true, style: { width: `${w}px`, height: `${hgt}px`, left: `${(S.W - w) / 2}px`, top: `${76 + 52}px` } },
+          h('div', { class: 'os-bar' }, h('div', { class: 'os-dots' }, h('i'), h('i'), h('i')), h('span', { text: 'System Settings' })),
+          h(
+            'div',
+            { class: 'os-body' },
+            h(
+              'div',
+              { class: 'os-side' },
+              h('div', { text: 'General' }),
+              h('div', { text: 'Desktop & Dock' }),
+              h('div', { class: 'on', text: 'Privacy & Security' }),
+              h('div', { text: 'Keyboard' }),
+            ),
+            h(
+              'div',
+              { class: 'os-main' },
+              h('p', { class: 'os-crumb', text: 'Privacy & Security  >  Accessibility' }),
+              h('p', { class: 'os-h', text: 'Accessibility' }),
+              h('p', { class: 'os-sub', text: 'Allow the applications below to control your computer.' }),
+              h(
+                'div',
+                { class: 'os-list' },
+                h('div', { class: 'os-row' }, h('div', { class: 'os-app' }, h('i'), h('span', { text: 'Terminal' })), h('div', { class: 'os-sw on' }, h('i'))),
+                h('div', { class: 'os-row hi' }, h('div', { class: 'os-app' }, h('i', { class: 'ch' }), h('span', { text: 'Google Chrome' })), sw),
+              ),
+            ),
+          ),
+        );
+        document.body.append(el);
+        S.wins[id] = { el, sw, show: 0 };
+      }
+      if (!dimEl) {
+        dimEl = h('div', { id: 'dim', hidden: true });
+        document.body.append(dimEl);
+      }
+      tween(S.wins[id], 'show', show, dur, 'out');
+      return {};
+    },
+    macAxToggle({ id = 'mac-ax', on = true } = {}) {
+      S.wins[id]?.sw?.classList.toggle('on', on);
+      return {};
+    },
+    termWin({ id = 'term-win', os = 'win', cmd = '', lines = [], show = 1, dur = 280, w = 680, hgt = 270 } = {}) {
+      if (cmd || !S.wins[id]) {
+        S.wins[id]?.el?.remove();
+        const promptPrefix = os === 'win' ? 'PS C:\\Users\\you\\open-in-ai-agent> ' : 'you@mac open-in-ai-agent % ';
+        const title = os === 'win' ? 'Windows PowerShell' : 'Terminal';
+        const el = h(
+          'div',
+          { class: 'term-win', id, hidden: true, style: { width: `${w}px`, height: `${hgt}px`, left: `${(S.W - w) / 2}px`, top: `${76 + 76}px` } },
+          h('div', { class: 't-bar' }, h('span', { text: title }), h('span', { text: os === 'win' ? 'PowerShell' : 'zsh' })),
+          h(
+            'div',
+            { class: 't-body' },
+            h('p', { class: 't-line' }, h('span', { class: 't-ps', text: promptPrefix }), h('span', { text: cmd })),
+            ...lines.map((l) => h('p', { class: `t-line ${l.cls || 't-ok'}`, text: l.text })),
+          ),
+        );
+        document.body.append(el);
+        S.wins[id] = { el, show: S.wins[id]?.show ?? 0 };
+      }
+      if (!dimEl) {
+        dimEl = h('div', { id: 'dim', hidden: true });
+        document.body.append(dimEl);
+      }
+      tween(S.wins[id], 'show', show, dur, 'out');
+      return {};
+    },
+    agyWin({ id = 'agy-win', os = 'mac', folder = '/Users/you/Documents/Work', subject = 'Delivery date for order 1042', show = 1, dur = 280, w = 740, hgt = 380 } = {}) {
+      if (subject || !S.wins[id]) {
+        S.wins[id]?.el?.remove();
+        const promptLines = [
+          `Working folder: ${folder}`,
+          `Email subject: ${subject}`,
+          '',
+          'Resolve the matter behind this Gmail thread as far as you can, not just the email...',
+          'Mailbox: sam.morgan@example.com  |  Thread ID: 1847c90e2b4a1042',
+          'Without waiting for me, do any investigation and preparation you are allowed to do, but ask first before sending.',
+        ].join('\n');
+        const el = h(
+          'div',
+          { class: 'agy-win', id, hidden: true, style: { width: `${w}px`, height: `${hgt}px`, left: `${(S.W - w) / 2}px`, top: `${76 + 34}px` } },
+          h('div', { class: 'a-bar' }, h('span', { text: os === 'win' ? 'Antigravity (Windows)' : 'Antigravity' }), h('span', { class: 'a-badge', text: 'NEW CHAT READY' })),
+          h(
+            'div',
+            { class: 'a-body' },
+            h(
+              'div',
+              { class: 'a-side' },
+              h('div', { class: 'a-new', text: '+ New Conversation' }),
+              h('div', { class: 'a-ws', text: `Workspace:\n${folder}` }),
+            ),
+            h(
+              'div',
+              { class: 'a-main' },
+              h('div', {}, h('p', { class: 'a-head', text: 'New Conversation' }), h('p', { class: 'a-sub', text: 'Prompt pasted automatically. Nothing runs until you press Enter.' })),
+              h(
+                'div',
+                { class: 'a-box' },
+                h('p', { class: 'a-pre', text: promptLines }),
+                h('div', { class: 'a-foot' }, h('span', { text: 'Review or edit prompt above' }), h('span', { class: 'a-send', id: 'agy-enter', text: 'Press Enter' })),
+              ),
+            ),
+          ),
+        );
+        document.body.append(el);
+        S.wins[id] = { el, show: S.wins[id]?.show ?? 0 };
+      }
+      if (!dimEl) {
+        dimEl = h('div', { id: 'dim', hidden: true });
+        document.body.append(dimEl);
+      }
+      tween(S.wins[id], 'show', show, dur, 'out');
+      return {};
+    },
     // When an armed caption started (null while it waits). now: commit it at this time if it still waits.
     armed({ now } = {}) {
       if (S.capArm && now !== undefined) {

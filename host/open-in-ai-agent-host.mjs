@@ -8,8 +8,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.6';
+const VERSION = '1.6.7';
 const HOME = os.homedir();
+const IS_WIN = process.platform === 'win32';
 
 function nvmBinDirs() {
   try {
@@ -25,18 +26,25 @@ function nvmBinDirs() {
   }
 }
 
-const EXTRA_PATHS = [
-  path.join(HOME, '.local', 'bin'),
-  path.join(HOME, '.claude', 'local'),
-  path.join(HOME, '.npm-global', 'bin'),
-  path.join(HOME, '.volta', 'bin'),
-  path.join(HOME, '.asdf', 'shims'),
-  path.join(HOME, '.local', 'share', 'fnm', 'aliases', 'default', 'bin'),
-  ...nvmBinDirs(),
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  '/Applications/Gemini.app/Contents/Helpers',
-];
+const EXTRA_PATHS = IS_WIN
+  ? [
+      path.join(process.env.LOCALAPPDATA || path.join(HOME, 'AppData', 'Local'), 'Programs', 'Antigravity', 'bin'),
+      path.join(process.env.APPDATA || path.join(HOME, 'AppData', 'Roaming'), 'npm'),
+      path.join(HOME, '.local', 'bin'),
+      path.join(HOME, '.claude', 'local'),
+    ]
+  : [
+      path.join(HOME, '.local', 'bin'),
+      path.join(HOME, '.claude', 'local'),
+      path.join(HOME, '.npm-global', 'bin'),
+      path.join(HOME, '.volta', 'bin'),
+      path.join(HOME, '.asdf', 'shims'),
+      path.join(HOME, '.local', 'share', 'fnm', 'aliases', 'default', 'bin'),
+      ...nvmBinDirs(),
+      '/opt/homebrew/bin',
+      '/usr/local/bin',
+      '/Applications/Gemini.app/Contents/Helpers',
+    ];
 
 const shellCache = new Map();
 
@@ -160,6 +168,39 @@ function buildShellCommand(agent, bin, folder, session, index) {
   return null;
 }
 
+const psQuote = (s) => `'${String(s ?? '').replace(/'/g, "''")}'`;
+
+function buildWindowsPowerShell(agent, bin, folder, session, index) {
+  const { dir, file } = writePromptFile(session.prompt, index, agent === 'antigravity');
+  const title = String(session.subject || agent).replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 80);
+  let invoke = `& ${psQuote(bin)} -- $p`;
+  if (agent === 'antigravity') invoke = `& ${psQuote(bin)} --add-dir ${psQuote(folder)} -i $p`;
+  else if (agent === 'gemini-cli') invoke = `& ${psQuote(bin)} -i $p`;
+  else if (agent === 'claude-code' && title) invoke = `& ${psQuote(bin)} -n ${psQuote(title)} -- $p`;
+  const ps = [
+    `$Host.UI.RawUI.WindowTitle = ${psQuote(title)}`,
+    `Set-Location -LiteralPath ${psQuote(folder)}`,
+    `$p = [System.IO.File]::ReadAllText(${psQuote(file)}, [System.Text.Encoding]::UTF8)`,
+    `Remove-Item -LiteralPath ${psQuote(dir)} -Recurse -Force -ErrorAction SilentlyContinue`,
+    invoke,
+  ].join('; ');
+  return { dir, encoded: Buffer.from(ps, 'utf16le').toString('base64') };
+}
+
+function openInWindowsPowerShell(encoded) {
+  try {
+    const child = spawn('powershell.exe', ['-NoLogo', '-NoExit', '-EncodedCommand', encoded], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const asQuote = (s) => `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
 function openInTerminal(posixCommand) {
@@ -245,14 +286,12 @@ function openAntigravityDesktop(bin, combined) {
 }
 
 function handleMessage(msg) {
-  if (process.platform === 'win32') {
-    return { ok: false, error: 'The companion helper currently supports macOS and Linux only.' };
-  }
   const agents = detectAgents();
   if (msg?.action === 'ping') {
     return { ok: true, version: VERSION, platform: process.platform, agents };
   }
   if (msg?.action === 'focusApp') {
+    if (IS_WIN) return { ok: false };
     const bin = agents[String(msg.agent || '')];
     if (!bin || !bin.endsWith('.app')) return { ok: false };
     const text = typeof msg.prompt === 'string' ? msg.prompt : '';
@@ -264,7 +303,7 @@ function handleMessage(msg) {
     if (!bin) return { ok: false, error: `${agent} was not found on this computer.` };
     const sessions = Array.isArray(msg.sessions) ? msg.sessions.slice(0, 25) : [];
     if (!sessions.length) return { ok: false, error: 'No session prompt received.' };
-    if (agent === 'antigravity' && bin.endsWith('.app')) {
+    if (!IS_WIN && agent === 'antigravity' && bin.endsWith('.app')) {
       const cleanFolder = typeof msg.folder === 'string' ? msg.folder.replace(/[\x00-\x1f\x7f]/g, ' ').trim() : '';
       const folderLine = cleanFolder ? `Working folder: ${cleanFolder}\n\n` : '';
       const combined = sessions.map((s) => `${folderLine}${String(s?.prompt || '')}`).join('\n\n---\n\n');
@@ -274,6 +313,12 @@ function handleMessage(msg) {
     if (!resolved.ok) return { ok: false, error: resolved.error };
     let launched = 0;
     for (const [i, s] of sessions.entries()) {
+      if (IS_WIN) {
+        const builtWin = buildWindowsPowerShell(agent, bin, resolved.folder, s, i);
+        if (openInWindowsPowerShell(builtWin.encoded)) launched++;
+        else fs.rmSync(builtWin.dir, { recursive: true, force: true });
+        continue;
+      }
       const built = buildShellCommand(agent, bin, resolved.folder, s, i);
       if (!built) continue;
       if (openInTerminal(built.cmd)) {
