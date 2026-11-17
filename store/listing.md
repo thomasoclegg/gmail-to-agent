@@ -1,6 +1,6 @@
-# Chrome Web Store listing: Open in AI Agent for Gmail: Claude, ChatGPT & Codex
+# Chrome Web Store listing: Open in AI Agent for Gmail
 
-Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.7.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.7).
+Paste-ready answers for the Developer Dashboard. Upload `dist/open-in-ai-agent-v1.6.8.zip`, built by `node scripts/package.mjs` (the Chrome package, manifest at the zip root, version 1.6.8).
 
 This one listing serves Chrome and every browser that installs from the Chrome Web Store: Chromium, Brave, Opera, Vivaldi, Arc and Perplexity Comet. Edge has its own store (`store/listing-edge.md`, same package) and Firefox its own package and store (`store/listing-firefox.md`). Safari is planned. Internet Explorer is retired and has no extensions.
 
@@ -8,31 +8,31 @@ When the listing is live, paste its address into `STORES.chrome` at the top of t
 
 ## Store listing tab
 
-**Name** (from manifest): Open in AI Agent for Gmail: Claude, ChatGPT & Codex
+**Name** (from manifest): Open in AI Agent for Gmail
 
-**Summary** (from manifest, 123 of 132 characters): Right-click Gmail threads to open separate sessions in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity. Private.
+**Summary** (from manifest, 121 of 132 characters): Right-click Gmail threads to open separate sessions in Claude, ChatGPT or your local coding agent, or triage unread mail.
 
 **Description:**
 
-Right-click one email or tick several in Gmail to open separate named sessions in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity, plus six more web AIs shown in the screenshots. Triage up to 25 unread threads at once without marking them read. Runs locally on your computer: open source (MIT), no server, no account and no subscription.
+Right-click one email or tick several in Gmail to open separate named sessions in Claude or ChatGPT, or launch local desktop agents such as Claude Code, Codex and Antigravity. Six more web chats and terminal agents are available in Settings, as shown in the screenshots and on the website. Triage up to 25 unread threads at once without marking them read. Runs locally on your computer: open source (MIT), no server, no account and no subscription.
 
 Set up in two steps
 1. Add the extension.
-2. Tick the AIs you use on the settings page that opens.
-Then right-click any email. Tabs that are already open need no reload.
+2. Tick the tools you use on the settings page that opens.
+Then right-click any email in your inbox. Tabs that are already open need no reload.
 
-New in 1.6.0: separate sessions, desktop companion and auto-fill
+New in 1.6: separate sessions, desktop companion and auto-fill
 • Separate sessions per ticked email: ticking 2 to 5 emails opens a separate chat tab or named desktop session for each thread by default, so unrelated threads never mix and each conversation gets titled after its own subject. Prefer one combined prompt? Switch Multiple emails to One combined batch on Settings or in the toolbar popup (6 to 25 ticked emails combine automatically).
-• Four desktop agents: Claude Code, Codex, Antigravity and Gemini CLI launch in your working folder and read threads through their own mailbox connection. Run the optional local companion script once to open CLI and IDE sessions directly with named titles.
-• Optional prompt-box auto-fill: enable composer auto-fill on Settings to place the prepared prompt straight into the input box on newly opened Claude, ChatGPT and Gemini tabs without pressing Enter, so nothing sends until you check it.
+• Local desktop and CLI companion: run the optional companion script once on Mac or Windows (with short setup walkthrough clips on the website) so desktop and terminal coding agents launch straight into your chosen working folder with named sessions and read threads through their own mailbox connection.
+• Optional prompt-box auto-fill: turn on composer auto-fill on Settings to place the prepared prompt straight into the input box on newly opened web chat tabs without pressing Enter, so nothing sends until you review it.
 
 What happens when you click
 • Inbox list: your picks appear at the top of the inbox's own right-click menu.
 • Inside an open thread: right-click and use the browser's menu.
-• Web AIs: copies the subject, senders, dates and message text with a structured resolve-first prompt, then opens the site in a new tab next to your inbox (1.2 s, or 250 ms with optional auto-fill). Paste (or let optional auto-fill place it), review and press Enter.
-• Copy thread for any AI: copies the prepared prompt and thread to your clipboard and opens nothing.
+• Web chat tabs: copies the subject, senders, dates and message text with a structured resolve-first prompt, then opens your chosen site in a new tab next to your inbox (250 ms). Paste (or let optional auto-fill place it), review and press Enter.
+• Copy thread: copies the prepared prompt and thread to your clipboard and opens nothing.
 • Inbox toolbar button: sits just before More. Reads Send to AI in an open thread, Send 3 to AI with three ticked, and Triage unread with nothing ticked.
-• Browser toolbar icon and keyboard shortcuts: open the quick-pick list (with a per-send prompt style selector) or send straight to the AI you used last, never to an agent that starts before you review.
+• Browser toolbar icon and keyboard shortcuts: open the quick-pick list (with a per-send prompt style selector) or send straight to the tool you used last, never to an agent that starts before you review.
 
 Several emails and Triage unread
 • Tick up to 25 emails, or click Triage unread in the inbox toolbar with nothing ticked.
@@ -41,7 +41,7 @@ Several emails and Triage unread
 
 Prompt styles, saved prompts and selected text on any page
 • Choose Resolve fully (default), Quick summary and reply, or Draft replies only, or save up to three custom prompts of your own (up to 4,000 characters per group, synced with your browser profile).
-• Select text on any other webmail or web page, right-click it and pick an AI: uses activeTab on that one tab only, strips hidden characters and reads nothing else on the page.
+• Select text on any other webmail or web page, right-click it and pick a tool: uses activeTab on that one tab only, strips hidden characters and reads nothing else on the page.
 
 Privacy and safety
 • Runs entirely on your computer: zero external servers, zero analytics and zero tracking.
@@ -49,10 +49,10 @@ Privacy and safety
 • Built-in inbox self-check and a Report a problem link that never includes email text or addresses.
 
 Compatibility
-• Chrome 116+ and Chromium browsers that install from the Chrome Web Store (website lists the Edge and Firefox builds). Works with Gmail in a desktop browser, not the mobile app.
+• Chrome 116 or later on macOS, Windows and Linux (the website also lists the Edge and Firefox builds). Works in a desktop browser, not the mobile app.
 • Free and open source under the MIT licence. If it saves you time, the settings page includes an optional donate link straight to Friends of Larnaca Cats, a volunteer street-cat charity in Cyprus.
 
-Not affiliated with or endorsed by Google, Anthropic, OpenAI or any other AI provider. All trademarks belong to their respective owners.
+Not affiliated with or endorsed by Google or any AI provider named here. All trademarks belong to their respective owners.
 
 **Category:** Productivity › Communication, where the store lists Gmail tools (fallback: Productivity › Workflow & Planning). Both category pages exist on the store, checked 5 Nov 2026.
 **Language:** English (UK)

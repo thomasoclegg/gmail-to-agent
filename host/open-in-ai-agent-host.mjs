@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
-const VERSION = '1.6.7';
+const VERSION = '1.6.8';
 const HOME = os.homedir();
 const IS_WIN = process.platform === 'win32';
 
