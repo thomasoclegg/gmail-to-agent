@@ -5,10 +5,19 @@
 <!-- Store image 3, 1280 x 800. Built by store/build.py from options.html; a stand-in replaces chrome.storage. -->
 <script>
 window.chrome = {
-  runtime: { lastError: undefined },
+  runtime: {
+    lastError: undefined,
+    sendMessage: (_m, cb) => {
+      const r = { ok: true, binaries: { agy: true, claude: true, codex: true, gemini: true } };
+      return cb ? setTimeout(() => cb(r), 0) : Promise.resolve(r);
+    },
+  },
+  permissions: {
+    contains: (_q, cb) => (cb ? setTimeout(() => cb(true), 0) : Promise.resolve(true)),
+  },
   storage: {
     sync: {
-      get: (d, cb) => setTimeout(() => cb({ ...d, targets: ['claude-code', 'claude', 'chatgpt', 'copy'], folder: '/Users/you/Documents/Work' }), 0),
+      get: (d, cb) => setTimeout(() => cb({ ...d, targets: ['claude-code', 'antigravity', 'claude', 'chatgpt', 'copy'], folder: '/Users/you/Documents/Work', bulkMode: 'separate' }), 0),
       set: (o, cb) => setTimeout(() => cb && cb(), 0),
     },
     onChanged: { addListener() {} },
@@ -242,9 +251,9 @@ window.chrome = {
     .step-head { align-items: last baseline; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  /* Store image only: the page at 92 %, in a fixed 1280 x 800 frame, without the donation block. */
-  html { zoom: 0.92; }
-  body { width: 1391px; height: 870px; overflow: hidden; }
+  /* Store image only: the page at 84 %, in a fixed 1280 x 800 frame, without the donation block. */
+  html { zoom: 0.84; }
+  body { width: 1524px; height: 952px; overflow: hidden; }
   #donate { display: none !important; }
 </style>
 </head>
@@ -260,6 +269,8 @@ window.chrome = {
     tick several emails in Gmail and send them all at once. Claude Code now names each session after its email.</p>
   <p class="notice" id="reload-notice" hidden><b>One more step.</b> Reload your Gmail tab, then try again.
     That Gmail tab could not pick up the extension by itself, so it needs one reload.</p>
+  <p class="notice" id="helper-notice" hidden><b>One more step for Antigravity and Gemini CLI.</b> Click <b>Enable companion helper</b> under
+    Pick a working folder, and run the one-line installer once in Terminal so the browser can launch local CLI sessions.</p>
 
   <main>
     <section class="pick step" aria-labelledby="pick-title">
@@ -279,13 +290,21 @@ window.chrome = {
           <h2 id="folder-title"><span class="num" aria-hidden="true"></span>Pick a working folder</h2>
           <span class="saved" id="folder-saved" role="status"></span>
         </div>
-        <p class="sub">Only Claude Code and Codex use this.</p>
+        <p class="sub">Desktop agents use this.</p>
         <label for="folder">Working folder</label>
         <input id="folder" type="text" placeholder="/Users/you/Documents/Work" spellcheck="false" autocomplete="off"
                aria-describedby="folder-hint">
         <p class="hint" id="folder-hint"><b>Recommended.</b> Without one, Codex may ask you to pick a project and Claude Code uses
           its default folder. On a Mac, right-click the folder in Finder, hold <kbd>Option</kbd> and choose Copy as Pathname. On
           Windows, <span class="nw"><kbd>Shift</kbd>+right-click</span> it and choose Copy as path.</p>
+        <div id="helper-box" hidden>
+          <p class="where-label">Companion helper (Antigravity &amp; Gemini CLI)</p>
+          <p class="hint">Run <code>node host/install.mjs</code> once from the downloaded repository folder, then grant browser access below.</p>
+          <div class="check-do" style="margin-top: 12px">
+            <button type="button" class="button ghost" id="enable-helper">Enable companion helper</button>
+          </div>
+          <p class="hint" id="helper-status" role="status"></p>
+        </div>
       </section>
 
       <section class="step" id="toolbar-step" aria-labelledby="toolbar-title">
@@ -391,6 +410,21 @@ window.chrome = {
         <p class="undo-line" id="undo-line" hidden><span id="undo-text" role="status"></span> <button type="button" class="link" id="undo">Undo</button></p>
         <button type="button" class="button ghost" id="add-prompt">Add a saved prompt</button>
       </div>
+
+      <fieldset class="styles" style="margin-top: 34px" aria-describedby="bulk-mode-hint">
+        <legend class="group-label">When several emails are ticked</legend>
+        <div class="style-list" id="bulk-mode-list"></div>
+      </fieldset>
+      <p class="own-hint" id="bulk-mode-hint">Separate sessions open one named tab or agent session per email for 2 to 5 ticked emails; 6 to 25 combine into one batch.</p>
+
+      <div class="rows single" style="margin-top: 26px" id="autofill-row">
+        <button type="button" class="tile" id="autofill-tile" data-id="autofill" aria-pressed="false"
+                aria-labelledby="autofill-tile-name" aria-describedby="autofill-tile-note">
+          <span class="tick" aria-hidden="true"></span>
+          <span class="name" id="autofill-tile-name">Auto-fill prompt box in Claude, ChatGPT and Gemini</span>
+          <span class="note" id="autofill-tile-note">Fills the composer automatically so you only press Enter, and opens separate Gemini tabs when several emails are ticked.</span>
+        </button>
+      </div>
     </section>
 
     <!-- The self-check asks a Gmail tab for counts and yes or no only; the report carries those, never email text. -->
@@ -412,7 +446,7 @@ window.chrome = {
     <section class="donate" id="donate" aria-label="Donation" hidden>
       <p id="donate-text"></p>
       <a class="button" id="donate-link" target="_blank" rel="noopener"></a>
-      <p class="small">Donations go straight to them. I never see the money. Paying by PayPal? Write &ldquo;AI Agent&rdquo; in the note so they know it came from here.</p>
+      <p class="small">Donations go straight to them. I never see the money. Paying by PayPal? Write "AI Agent" in the note so they know it came from here.</p>
     </section>
   </main>
 
@@ -420,7 +454,7 @@ window.chrome = {
     <span>Runs on your computer. Nothing is sent to me.</span>
     <nav>
       <a href="https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
-      <a href="https://thomasoclegg.github.io/gmail-to-agent/" target="_blank" rel="noopener">Help</a>
+      <a href="https://openinaiagent.com/" target="_blank" rel="noopener">Help</a>
     </nav>
   </footer>
 </div>

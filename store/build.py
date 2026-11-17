@@ -45,8 +45,8 @@ def mi(icon_id, text, cls='', sub=False):
     return f'<div class="gm-mi {cls}"><svg><use href="#{icon_id}"/></svg>{text}{chev}</div>'
 
 
-OURS = [mi('i-mark', 'Open in Claude Code'), mi('i-mark', 'Ask Claude'), mi('i-mark', 'Ask ChatGPT', 'hover'),
-        mi('i-mark', 'Copy thread for any AI')]
+OURS = [mi('i-mark', 'Open in Claude Code'), mi('i-mark', 'Open in Antigravity'), mi('i-mark', 'Ask Claude'),
+        mi('i-mark', 'Ask ChatGPT', 'hover')]
 
 rows = '\n        '.join([
     row('Marta Ioannou, me <i>2</i>', 'Lease renewal for flat 4B', 'Thanks Marta. Is the 4% fixed for the whole year?', '18:40', 'ctx'),
@@ -135,7 +135,7 @@ shot1 = f'''<!doctype html>
         <div class="gm-ni"><svg><use href="#i-file"/></svg>Drafts</div>
       </div>
       <div class="gm-main">
-        <div class="gm-tools"><span class="gm-box"></span><svg><use href="#i-refresh"/></svg><svg><use href="#i-more"/></svg><span class="count">1–12 of 12</span></div>
+        <div class="gm-tools"><span class="gm-box"></span><svg><use href="#i-refresh"/></svg><svg><use href="#i-more"/></svg><span class="count">1-12 of 12</span></div>
         <div class="gm-tabs"><span class="on">Primary</span><span>Promotions</span><span>Updates</span></div>
         {rows}
       </div>
@@ -156,7 +156,7 @@ shot1 = f'''<!doctype html>
     {icon}
     Open in AI Agent for Gmail
   </div>
-  <h1>Right-click a Gmail thread to open it in Claude, ChatGPT or Codex.</h1>
+  <h1>Right-click Gmail threads to open them in Claude, ChatGPT, Codex or Antigravity.</h1>
   <p class="note n1">The AIs you picked sit at the top of Gmail's own menu.</p>
   <p class="note n3">Gmail's own menu carries on below, unchanged.</p>
   <p class="note n2">Click one. The AI opens in a new tab next to Gmail, and this note goes after six seconds.</p>
@@ -229,10 +229,19 @@ STUB = '''<base href="../">
 <!-- Store image 3, 1280 x 800. Built by store/build.py from options.html; a stand-in replaces chrome.storage. -->
 <script>
 window.chrome = {
-  runtime: { lastError: undefined },
+  runtime: {
+    lastError: undefined,
+    sendMessage: (_m, cb) => {
+      const r = { ok: true, binaries: { agy: true, claude: true, codex: true, gemini: true } };
+      return cb ? setTimeout(() => cb(r), 0) : Promise.resolve(r);
+    },
+  },
+  permissions: {
+    contains: (_q, cb) => (cb ? setTimeout(() => cb(true), 0) : Promise.resolve(true)),
+  },
   storage: {
     sync: {
-      get: (d, cb) => setTimeout(() => cb({ ...d, targets: ['claude-code', 'claude', 'chatgpt', 'copy'], folder: '/Users/you/Documents/Work' }), 0),
+      get: (d, cb) => setTimeout(() => cb({ ...d, targets: ['claude-code', 'antigravity', 'claude', 'chatgpt', 'copy'], folder: '/Users/you/Documents/Work', bulkMode: 'separate' }), 0),
       set: (o, cb) => setTimeout(() => cb && cb(), 0),
     },
     onChanged: { addListener() {} },
@@ -240,9 +249,9 @@ window.chrome = {
 };
 </script>'''
 # The donation block would run past the bottom of the frame; the listing text covers it instead.
-SHOT3_CSS = '''  /* Store image only: the page at 92 %, in a fixed 1280 x 800 frame, without the donation block. */
-  html { zoom: 0.92; }
-  body { width: 1391px; height: 870px; overflow: hidden; }
+SHOT3_CSS = '''  /* Store image only: the page at 84 %, in a fixed 1280 x 800 frame, without the donation block. */
+  html { zoom: 0.84; }
+  body { width: 1524px; height: 952px; overflow: hidden; }
   #donate { display: none !important; }
 '''
 shot3 = options.replace('<head>', '<head>\n' + STUB, 1)
@@ -313,7 +322,7 @@ OPTIONS_PART = '''  /* Store image only: one part of the Prompts section, in a f
   .sheet > :not(main), main > :not(.prompts) { display: none !important; }
   .prompts { margin-top: 0; }
 '''
-STYLES_PART = OPTIONS_PART + '''  .saved-prompts { display: none !important; }
+STYLES_PART = OPTIONS_PART + '''  .saved-prompts, .saved-prompts ~ * { display: none !important; }
 '''
 CARD_PART = OPTIONS_PART + '''  .prompts > :not(.saved-prompts), .saved-prompts > :not(#saved-title, #saved-list, #add-prompt) { display: none !important; }
   .saved-prompts { margin-top: 0; }

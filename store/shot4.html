@@ -314,7 +314,7 @@ window.chrome = {
   .sheet { display: block; padding: 20px 24px; }
   .sheet &gt; :not(main), main &gt; :not(.prompts) { display: none !important; }
   .prompts { margin-top: 0; }
-  .saved-prompts { display: none !important; }
+  .saved-prompts, .saved-prompts ~ * { display: none !important; }
 &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
@@ -329,6 +329,8 @@ window.chrome = {
     tick several emails in Gmail and send them all at once. Claude Code now names each session after its email.&lt;/p&gt;
   &lt;p class=&quot;notice&quot; id=&quot;reload-notice&quot; hidden&gt;&lt;b&gt;One more step.&lt;/b&gt; Reload your Gmail tab, then try again.
     That Gmail tab could not pick up the extension by itself, so it needs one reload.&lt;/p&gt;
+  &lt;p class=&quot;notice&quot; id=&quot;helper-notice&quot; hidden&gt;&lt;b&gt;One more step for Antigravity and Gemini CLI.&lt;/b&gt; Click &lt;b&gt;Enable companion helper&lt;/b&gt; under
+    Pick a working folder, and run the one-line installer once in Terminal so the browser can launch local CLI sessions.&lt;/p&gt;
 
   &lt;main&gt;
     &lt;section class=&quot;pick step&quot; aria-labelledby=&quot;pick-title&quot;&gt;
@@ -348,13 +350,21 @@ window.chrome = {
           &lt;h2 id=&quot;folder-title&quot;&gt;&lt;span class=&quot;num&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;Pick a working folder&lt;/h2&gt;
           &lt;span class=&quot;saved&quot; id=&quot;folder-saved&quot; role=&quot;status&quot;&gt;&lt;/span&gt;
         &lt;/div&gt;
-        &lt;p class=&quot;sub&quot;&gt;Only Claude Code and Codex use this.&lt;/p&gt;
+        &lt;p class=&quot;sub&quot;&gt;Desktop agents use this.&lt;/p&gt;
         &lt;label for=&quot;folder&quot;&gt;Working folder&lt;/label&gt;
         &lt;input id=&quot;folder&quot; type=&quot;text&quot; placeholder=&quot;/Users/you/Documents/Work&quot; spellcheck=&quot;false&quot; autocomplete=&quot;off&quot;
                aria-describedby=&quot;folder-hint&quot;&gt;
         &lt;p class=&quot;hint&quot; id=&quot;folder-hint&quot;&gt;&lt;b&gt;Recommended.&lt;/b&gt; Without one, Codex may ask you to pick a project and Claude Code uses
           its default folder. On a Mac, right-click the folder in Finder, hold &lt;kbd&gt;Option&lt;/kbd&gt; and choose Copy as Pathname. On
           Windows, &lt;span class=&quot;nw&quot;&gt;&lt;kbd&gt;Shift&lt;/kbd&gt;+right-click&lt;/span&gt; it and choose Copy as path.&lt;/p&gt;
+        &lt;div id=&quot;helper-box&quot; hidden&gt;
+          &lt;p class=&quot;where-label&quot;&gt;Companion helper (Antigravity &amp;amp; Gemini CLI)&lt;/p&gt;
+          &lt;p class=&quot;hint&quot;&gt;Run &lt;code&gt;node host/install.mjs&lt;/code&gt; once from the downloaded repository folder, then grant browser access below.&lt;/p&gt;
+          &lt;div class=&quot;check-do&quot; style=&quot;margin-top: 12px&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;button ghost&quot; id=&quot;enable-helper&quot;&gt;Enable companion helper&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;p class=&quot;hint&quot; id=&quot;helper-status&quot; role=&quot;status&quot;&gt;&lt;/p&gt;
+        &lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;step&quot; id=&quot;toolbar-step&quot; aria-labelledby=&quot;toolbar-title&quot;&gt;
@@ -460,6 +470,21 @@ window.chrome = {
         &lt;p class=&quot;undo-line&quot; id=&quot;undo-line&quot; hidden&gt;&lt;span id=&quot;undo-text&quot; role=&quot;status&quot;&gt;&lt;/span&gt; &lt;button type=&quot;button&quot; class=&quot;link&quot; id=&quot;undo&quot;&gt;Undo&lt;/button&gt;&lt;/p&gt;
         &lt;button type=&quot;button&quot; class=&quot;button ghost&quot; id=&quot;add-prompt&quot;&gt;Add a saved prompt&lt;/button&gt;
       &lt;/div&gt;
+
+      &lt;fieldset class=&quot;styles&quot; style=&quot;margin-top: 34px&quot; aria-describedby=&quot;bulk-mode-hint&quot;&gt;
+        &lt;legend class=&quot;group-label&quot;&gt;When several emails are ticked&lt;/legend&gt;
+        &lt;div class=&quot;style-list&quot; id=&quot;bulk-mode-list&quot;&gt;&lt;/div&gt;
+      &lt;/fieldset&gt;
+      &lt;p class=&quot;own-hint&quot; id=&quot;bulk-mode-hint&quot;&gt;Separate sessions open one named tab or agent session per email for 2 to 5 ticked emails; 6 to 25 combine into one batch.&lt;/p&gt;
+
+      &lt;div class=&quot;rows single&quot; style=&quot;margin-top: 26px&quot; id=&quot;autofill-row&quot;&gt;
+        &lt;button type=&quot;button&quot; class=&quot;tile&quot; id=&quot;autofill-tile&quot; data-id=&quot;autofill&quot; aria-pressed=&quot;false&quot;
+                aria-labelledby=&quot;autofill-tile-name&quot; aria-describedby=&quot;autofill-tile-note&quot;&gt;
+          &lt;span class=&quot;tick&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;name&quot; id=&quot;autofill-tile-name&quot;&gt;Auto-fill prompt box in Claude, ChatGPT and Gemini&lt;/span&gt;
+          &lt;span class=&quot;note&quot; id=&quot;autofill-tile-note&quot;&gt;Fills the composer automatically so you only press Enter, and opens separate Gemini tabs when several emails are ticked.&lt;/span&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
     &lt;/section&gt;
 
     &lt;!-- The self-check asks a Gmail tab for counts and yes or no only; the report carries those, never email text. --&gt;
@@ -481,7 +506,7 @@ window.chrome = {
     &lt;section class=&quot;donate&quot; id=&quot;donate&quot; aria-label=&quot;Donation&quot; hidden&gt;
       &lt;p id=&quot;donate-text&quot;&gt;&lt;/p&gt;
       &lt;a class=&quot;button&quot; id=&quot;donate-link&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;&lt;/a&gt;
-      &lt;p class=&quot;small&quot;&gt;Donations go straight to them. I never see the money. Paying by PayPal? Write &amp;ldquo;AI Agent&amp;rdquo; in the note so they know it came from here.&lt;/p&gt;
+      &lt;p class=&quot;small&quot;&gt;Donations go straight to them. I never see the money. Paying by PayPal? Write &quot;AI Agent&quot; in the note so they know it came from here.&lt;/p&gt;
     &lt;/section&gt;
   &lt;/main&gt;
 
@@ -489,7 +514,7 @@ window.chrome = {
     &lt;span&gt;Runs on your computer. Nothing is sent to me.&lt;/span&gt;
     &lt;nav&gt;
       &lt;a href=&quot;https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Privacy&lt;/a&gt;
-      &lt;a href=&quot;https://thomasoclegg.github.io/gmail-to-agent/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Help&lt;/a&gt;
+      &lt;a href=&quot;https://openinaiagent.com/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Help&lt;/a&gt;
     &lt;/nav&gt;
   &lt;/footer&gt;
 &lt;/div&gt;
@@ -785,6 +810,8 @@ window.chrome = {
     tick several emails in Gmail and send them all at once. Claude Code now names each session after its email.&lt;/p&gt;
   &lt;p class=&quot;notice&quot; id=&quot;reload-notice&quot; hidden&gt;&lt;b&gt;One more step.&lt;/b&gt; Reload your Gmail tab, then try again.
     That Gmail tab could not pick up the extension by itself, so it needs one reload.&lt;/p&gt;
+  &lt;p class=&quot;notice&quot; id=&quot;helper-notice&quot; hidden&gt;&lt;b&gt;One more step for Antigravity and Gemini CLI.&lt;/b&gt; Click &lt;b&gt;Enable companion helper&lt;/b&gt; under
+    Pick a working folder, and run the one-line installer once in Terminal so the browser can launch local CLI sessions.&lt;/p&gt;
 
   &lt;main&gt;
     &lt;section class=&quot;pick step&quot; aria-labelledby=&quot;pick-title&quot;&gt;
@@ -804,13 +831,21 @@ window.chrome = {
           &lt;h2 id=&quot;folder-title&quot;&gt;&lt;span class=&quot;num&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;Pick a working folder&lt;/h2&gt;
           &lt;span class=&quot;saved&quot; id=&quot;folder-saved&quot; role=&quot;status&quot;&gt;&lt;/span&gt;
         &lt;/div&gt;
-        &lt;p class=&quot;sub&quot;&gt;Only Claude Code and Codex use this.&lt;/p&gt;
+        &lt;p class=&quot;sub&quot;&gt;Desktop agents use this.&lt;/p&gt;
         &lt;label for=&quot;folder&quot;&gt;Working folder&lt;/label&gt;
         &lt;input id=&quot;folder&quot; type=&quot;text&quot; placeholder=&quot;/Users/you/Documents/Work&quot; spellcheck=&quot;false&quot; autocomplete=&quot;off&quot;
                aria-describedby=&quot;folder-hint&quot;&gt;
         &lt;p class=&quot;hint&quot; id=&quot;folder-hint&quot;&gt;&lt;b&gt;Recommended.&lt;/b&gt; Without one, Codex may ask you to pick a project and Claude Code uses
           its default folder. On a Mac, right-click the folder in Finder, hold &lt;kbd&gt;Option&lt;/kbd&gt; and choose Copy as Pathname. On
           Windows, &lt;span class=&quot;nw&quot;&gt;&lt;kbd&gt;Shift&lt;/kbd&gt;+right-click&lt;/span&gt; it and choose Copy as path.&lt;/p&gt;
+        &lt;div id=&quot;helper-box&quot; hidden&gt;
+          &lt;p class=&quot;where-label&quot;&gt;Companion helper (Antigravity &amp;amp; Gemini CLI)&lt;/p&gt;
+          &lt;p class=&quot;hint&quot;&gt;Run &lt;code&gt;node host/install.mjs&lt;/code&gt; once from the downloaded repository folder, then grant browser access below.&lt;/p&gt;
+          &lt;div class=&quot;check-do&quot; style=&quot;margin-top: 12px&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;button ghost&quot; id=&quot;enable-helper&quot;&gt;Enable companion helper&lt;/button&gt;
+          &lt;/div&gt;
+          &lt;p class=&quot;hint&quot; id=&quot;helper-status&quot; role=&quot;status&quot;&gt;&lt;/p&gt;
+        &lt;/div&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;step&quot; id=&quot;toolbar-step&quot; aria-labelledby=&quot;toolbar-title&quot;&gt;
@@ -916,6 +951,21 @@ window.chrome = {
         &lt;p class=&quot;undo-line&quot; id=&quot;undo-line&quot; hidden&gt;&lt;span id=&quot;undo-text&quot; role=&quot;status&quot;&gt;&lt;/span&gt; &lt;button type=&quot;button&quot; class=&quot;link&quot; id=&quot;undo&quot;&gt;Undo&lt;/button&gt;&lt;/p&gt;
         &lt;button type=&quot;button&quot; class=&quot;button ghost&quot; id=&quot;add-prompt&quot;&gt;Add a saved prompt&lt;/button&gt;
       &lt;/div&gt;
+
+      &lt;fieldset class=&quot;styles&quot; style=&quot;margin-top: 34px&quot; aria-describedby=&quot;bulk-mode-hint&quot;&gt;
+        &lt;legend class=&quot;group-label&quot;&gt;When several emails are ticked&lt;/legend&gt;
+        &lt;div class=&quot;style-list&quot; id=&quot;bulk-mode-list&quot;&gt;&lt;/div&gt;
+      &lt;/fieldset&gt;
+      &lt;p class=&quot;own-hint&quot; id=&quot;bulk-mode-hint&quot;&gt;Separate sessions open one named tab or agent session per email for 2 to 5 ticked emails; 6 to 25 combine into one batch.&lt;/p&gt;
+
+      &lt;div class=&quot;rows single&quot; style=&quot;margin-top: 26px&quot; id=&quot;autofill-row&quot;&gt;
+        &lt;button type=&quot;button&quot; class=&quot;tile&quot; id=&quot;autofill-tile&quot; data-id=&quot;autofill&quot; aria-pressed=&quot;false&quot;
+                aria-labelledby=&quot;autofill-tile-name&quot; aria-describedby=&quot;autofill-tile-note&quot;&gt;
+          &lt;span class=&quot;tick&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;name&quot; id=&quot;autofill-tile-name&quot;&gt;Auto-fill prompt box in Claude, ChatGPT and Gemini&lt;/span&gt;
+          &lt;span class=&quot;note&quot; id=&quot;autofill-tile-note&quot;&gt;Fills the composer automatically so you only press Enter, and opens separate Gemini tabs when several emails are ticked.&lt;/span&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
     &lt;/section&gt;
 
     &lt;!-- The self-check asks a Gmail tab for counts and yes or no only; the report carries those, never email text. --&gt;
@@ -937,7 +987,7 @@ window.chrome = {
     &lt;section class=&quot;donate&quot; id=&quot;donate&quot; aria-label=&quot;Donation&quot; hidden&gt;
       &lt;p id=&quot;donate-text&quot;&gt;&lt;/p&gt;
       &lt;a class=&quot;button&quot; id=&quot;donate-link&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;&lt;/a&gt;
-      &lt;p class=&quot;small&quot;&gt;Donations go straight to them. I never see the money. Paying by PayPal? Write &amp;ldquo;AI Agent&amp;rdquo; in the note so they know it came from here.&lt;/p&gt;
+      &lt;p class=&quot;small&quot;&gt;Donations go straight to them. I never see the money. Paying by PayPal? Write &quot;AI Agent&quot; in the note so they know it came from here.&lt;/p&gt;
     &lt;/section&gt;
   &lt;/main&gt;
 
@@ -945,7 +995,7 @@ window.chrome = {
     &lt;span&gt;Runs on your computer. Nothing is sent to me.&lt;/span&gt;
     &lt;nav&gt;
       &lt;a href=&quot;https://github.com/thomasoclegg/gmail-to-agent/blob/main/PRIVACY.md&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Privacy&lt;/a&gt;
-      &lt;a href=&quot;https://thomasoclegg.github.io/gmail-to-agent/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Help&lt;/a&gt;
+      &lt;a href=&quot;https://openinaiagent.com/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Help&lt;/a&gt;
     &lt;/nav&gt;
   &lt;/footer&gt;
 &lt;/div&gt;
@@ -1071,6 +1121,10 @@ document.addEventListener(&#x27;DOMContentLoaded&#x27;, () =&gt; {
   &lt;div class=&quot;style-pick&quot; id=&quot;style-pick&quot; hidden&gt;
     &lt;label for=&quot;style&quot;&gt;Style for this send&lt;/label&gt;
     &lt;select id=&quot;style&quot; title=&quot;Change the default in Settings.&quot;&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;style-pick&quot; id=&quot;bulk-pick&quot; hidden&gt;
+    &lt;label for=&quot;bulk-mode&quot;&gt;Multiple emails&lt;/label&gt;
+    &lt;select id=&quot;bulk-mode&quot; title=&quot;Change the default in Settings.&quot;&gt;&lt;/select&gt;
   &lt;/div&gt;
   &lt;ul id=&quot;list&quot; aria-labelledby=&quot;context&quot;&gt;&lt;/ul&gt;
   &lt;footer&gt;

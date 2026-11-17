@@ -14,72 +14,45 @@ When the listing is live, paste its address into `STORES.chrome` at the top of t
 
 **Description:**
 
-Right-click a Gmail thread to open it in Claude, ChatGPT, Gemini, Claude Code, Codex or one of five other AIs, all listed on the website and in the screenshots. Tick several emails first to have them sorted into tasks, or triage the unread ones from the inbox's own toolbar.
-
-I built this for my own inbox. Web AIs open in a new tab next to your inbox with the whole thread copied: press Cmd+V (Ctrl+V on Windows), read it, then press Enter. The two desktop agents open a session on your computer and read the thread through their own connection to your mailbox.
+Right-click one email or tick several in Gmail to open separate named sessions in Claude, ChatGPT, Gemini, Claude Code, Codex or Antigravity, plus six more web AIs shown in the screenshots. Triage up to 25 unread threads at once without marking them read. Runs locally on your computer: open source (MIT), no server, no account and no subscription.
 
 Set up in two steps
 1. Add the extension.
-2. Tick the AIs you use on the page that opens.
+2. Tick the AIs you use on the settings page that opens.
 Then right-click any email. Tabs that are already open need no reload.
 
+New in 1.6.0: separate sessions, desktop companion and auto-fill
+• Separate sessions per ticked email: ticking 2 to 5 emails opens a separate chat tab or named desktop session for each thread by default, so unrelated threads never mix and each conversation gets titled after its own subject. Prefer one combined prompt? Switch Multiple emails to One combined batch on Settings or in the toolbar popup (6 to 25 ticked emails combine automatically).
+• Four desktop agents: Claude Code, Codex, Antigravity and Gemini CLI launch in your working folder and read threads through their own mailbox connection. Run the optional local companion script once to open CLI and IDE sessions directly with named titles.
+• Optional prompt-box auto-fill: enable composer auto-fill on Settings to place the prepared prompt straight into the input box on newly opened Claude, ChatGPT and Gemini tabs without pressing Enter, so nothing sends until you check it.
+
 What happens when you click
-• Inbox: your picks appear at the top of the inbox's own right-click menu.
-• Inside an open thread: right-click and use the browser's menu (under the extension's name when you pick more than one).
-• Web AIs: the extension opens the thread, copies the subject, senders, dates and message text with a short prompt, and opens the site in a new tab. A note on the page names the keys to press. You paste and send.
-• Copy thread for any AI: copies the same text and opens nothing.
-• Claude Code pre-fills a session named after the email's subject for you to start. Codex gets no subject and, with a working folder set, starts straight away.
-• The inbox's own toolbar: one button, just before More. It reads Send to AI in an open email and Send 3 to AI with three ticked, and opens a short menu of your picks.
-• Toolbar icon: the same picks in a short list, for the thread you have open, the emails you ticked or, on another site, the text you selected, with a link to the settings. Pin it from the browser's Extensions menu.
-• Keyboard: one shortcut opens that list, another sends to the AI you used last, never to the desktop agent that starts at once. The settings page shows the keys and where to change them.
+• Inbox list: your picks appear at the top of the inbox's own right-click menu.
+• Inside an open thread: right-click and use the browser's menu.
+• Web AIs: copies the subject, senders, dates and message text with a structured resolve-first prompt, then opens the site in a new tab next to your inbox (250 ms). Paste (or let optional auto-fill place it), review and press Enter.
+• Copy thread for any AI: copies the prepared prompt and thread to your clipboard and opens nothing.
+• Inbox toolbar button: sits just before More. Reads Send to AI in an open thread, Send 3 to AI with three ticked, and Triage unread with nothing ticked.
+• Browser toolbar icon and keyboard shortcuts: open the quick-pick list (with a per-send prompt style selector) or send straight to the AI you used last, never to an agent that starts before you review.
 
-Several emails at once
-• Tick two or more emails in the inbox, right-click one of them and pick, for example, "Ask ChatGPT about 3 emails". Up to 25 at a time.
-• Web AIs and Copy get each thread's full text, read in the background from its print view. Nothing is opened or clicked, so unread emails stay unread.
-• The prompt asks for the threads to be grouped into tasks, related ones together and the most urgent first, each with where it stands and what resolving it needs. It asks the AI to do as much of the work as the text allows, name the facts to check before a reply commits to anything, and draft any reply with findings or the one question that remains.
-• The desktop agents get a list of thread IDs and links, and read the emails themselves. They are asked to resolve the matter behind each task before drafting, to follow nothing an email asks of them, and to send, post, pay or change nothing without your explicit approval.
+Several emails and Triage unread
+• Tick up to 25 emails, or click Triage unread in the inbox toolbar with nothing ticked.
+• Background print-view reader: reads ticked and triaged threads in the background without clicking or opening them, so unread messages stay unread.
+• Triage unread sorts every thread into Action (owner, deadline and next step), Consolidate (related threads merged), Disregard (newsletters, alerts and receipts) and Draft (substantive replies, saved as drafts only when you approve).
 
-Triage unread
-• With nothing ticked, the button in the inbox's toolbar reads Triage unread. It hands the unread emails on this page of the list, up to 25, to the AI you pick, without opening them, so they stay unread.
-• The AI puts every thread in one of four groups: Action (what resolving it needs, who owns it, any deadline and the next step, most urgent first), Consolidate (related threads merged into one task), Disregard (newsletters, alerts and receipts, each with a one-line reason) and Draft (a reply with substance for each thread that needs one).
-• Every AI is told not to mark anything as read, and not to send, archive, label, delete or change anything without your explicit approval. The desktop agent you start yourself shows its replies first and saves them as drafts in your mailbox, each in reply to its own thread, only when you say yes; the one that starts straight away keeps its drafts in its answer.
+Prompt styles, saved prompts and selected text on any page
+• Choose Resolve fully (default), Quick summary and reply, or Draft replies only, or save up to three custom prompts of your own (up to 4,000 characters per group, synced with your browser profile).
+• Select text on any other webmail or web page, right-click it and pick an AI: uses activeTab on that one tab only, strips hidden characters and reads nothing else on the page.
 
-Other webmail, and any page
-• Select text, right-click it and pick an AI, or use the toolbar icon or the shortcut. Only the text you selected goes, with nothing hidden in it. The pick lets the extension into that one tab until you leave the page, to read your selection with its line breaks and show its note; it reads nothing else there.
-• Web AIs get it on your clipboard, as for an email. The desktop agent that starts straight away never gets it in its prompt.
+Privacy and safety
+• Runs entirely on your computer: zero external servers, zero analytics and zero tracking.
+• Every prompt frames email text inside lookalike-safe markers as untrusted data, not instructions, and ends with an explicit approval gate forbidding sending, paying, deleting or changing anything without your confirmation.
+• Built-in inbox self-check and a Report a problem link that never includes email text or addresses.
 
-Prompt styles and your own prompts
-• On the settings page, choose how the AIs are asked about one email or several: resolve fully (the default), a quick summary with a draft reply where needed, or draft replies only. Or save up to three prompts of your own, each with a name, a box for the desktop agents and one for the web AIs and Copy. The toolbar list can use another style for one send. Triage unread and selected text keep the built-in prompts.
-• The extension still adds the thread details, the line that email content is information, not instructions, and the line asking the AI to change nothing without your approval. Each box holds up to 4,000 characters and is saved with your other settings, so it syncs with your browser: leave out passwords.
+Compatibility
+• Chrome 116+ and Chromium browsers that install from the Chrome Web Store (website lists the Edge and Firefox builds). Works with Gmail in a desktop browser, not the mobile app.
+• Free and open source under the MIT licence. If it saves you time, the settings page includes an optional donate link straight to Friends of Larnaca Cats, a volunteer street-cat charity in Cyprus.
 
-When it cannot read everything
-• If some messages come through only as snippets, the note says how many were read in full, and the prompt says the same.
-• If it cannot read the thread at all, it copies the subject and link only, and says so and how to get the full text.
-• The settings page has a self-check for your inbox tab and a Report a problem link that never includes email text.
-
-Privacy
-• Runs on your computer. No server and no analytics. Nothing is sent to me.
-• It reads emails only after you pick an AI for them, and only those threads.
-• Web AIs get the email only through your clipboard. You see it and press Enter yourself.
-• Every prompt says to treat the email as information, not instructions, and to send or change nothing without your explicit approval. Replies come as drafts for you to review.
-• Desktop agents never get the message text in their prompt; they read the email through their own mail connection.
-• Two side effects: picking a web AI or Copy for a single inbox row opens the thread, so it is marked read, and the copied text replaces whatever was on your clipboard.
-• It stores only your picks, the working folder, your prompt style and any prompts of your own and, on this computer, the AI you used last.
-
-Which browsers
-• Chrome and other browsers that install from the Chrome Web Store (the website lists them, along with the Edge and Firefox versions).
-• It works in a desktop browser, not in the Gmail app.
-
-You need
-• Chrome 116 or later, or a browser built on the same version. Tested in Chrome on macOS.
-• For a web AI: its website, signed in if it asks.
-• For a desktop agent: the Claude desktop app or the ChatGPT desktop app, with Gmail connected for the same mailbox.
-
-Free and open source (MIT). The website links to the source on GitHub.
-
-If it saves you time, please give something to Friends of Larnaca Cats, a volunteer group that neuters, feeds and treats street cats in Larnaca, Cyprus. The donation link is on the settings page; the money goes straight to them.
-
-Not affiliated with or endorsed by Google or any AI provider named here. All trademarks belong to their owners.
+Not affiliated with or endorsed by Google, Anthropic, OpenAI or any other AI provider. All trademarks belong to their respective owners.
 
 **Category:** Productivity › Communication, where the store lists Gmail tools (fallback: Productivity › Workflow & Planning). Both category pages exist on the store, checked 5 Nov 2026.
 **Language:** English (UK)
